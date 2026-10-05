@@ -32,7 +32,6 @@ window.URGENT = (function () {
     clock:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></svg>',
     bell:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15 18 8.5"/><path d="M10.3 20.5a2 2 0 0 0 3.4 0"/></svg>',
     sound:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19Z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
-    speech: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19Z"/><path d="M15 9a4.5 4.5 0 0 1 0 6"/><path d="M18 6a9 9 0 0 1 0 12"/></svg>',
     key:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15.5" r="4.2"/><path d="m11.2 12.4 8.3-8.4 1.5 1.5-2 2 2 2-2 2-2-2-2 2"/></svg>',
     person: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
     screen: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>',
@@ -269,60 +268,6 @@ window.URGENT = (function () {
     }
     return { unlock: unlock, play: play, ready: function () { return !!(ctx && ctx.state === 'running'); } };
   }
-
-  var speech = {
-    _voices: [],
-    _selected: '',
-    available: function () {
-      try { return (typeof speechSynthesis !== 'undefined') && !!speechSynthesis; } catch (e) { return false; }
-    },
-    // تحميل قائمة الأصوات (تُحمّل بشكل غير متزامن في بعض المتصفحات)
-    loadVoices: function (cb) {
-      if (!this.available()) { try { cb && cb([]); } catch (e) {} return; }
-      var self = this;
-      function grab() {
-        try { self._voices = speechSynthesis.getVoices() || []; } catch (e) { self._voices = []; }
-        try { cb && cb(self._voices); } catch (e) {}
-      }
-      grab();
-      if (!self._voices.length) {
-        try { speechSynthesis.onvoiceschanged = grab; } catch (e) {}
-        setTimeout(grab, 700);
-        setTimeout(grab, 2000);
-      }
-    },
-    arabicVoices: function () {
-      return (this._voices || []).filter(function (v) {
-        return ((v.lang || '') + ' ' + (v.name || '')).toLowerCase().indexOf('ar') >= 0;
-      });
-    },
-    // اختيار أفضل صوت عربي: المفضَّل المحفوظ ثم ar-SA ثم أي صوت عربي
-    pick: function (saved) {
-      var list = this.arabicVoices();
-      if (!list.length) return null;
-      if (saved) {
-        for (var i = 0; i < list.length; i++) if (list[i].name === saved) return list[i];
-      }
-      for (var j = 0; j < list.length; j++) if (/ar[-_]?sa/i.test(list[j].lang || '')) return list[j];
-      for (var k = 0; k < list.length; k++) if (/^ar/i.test(list[k].lang || '')) return list[k];
-      return list[0];
-    },
-    speak: function (text, voiceName) {
-      if (!this.available()) return false;
-      try {
-        speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(String(text));
-        var v = this.pick(voiceName || this._selected);
-        if (v) { u.voice = v; u.lang = v.lang || 'ar-SA'; } else { u.lang = 'ar-SA'; }
-        u.rate = 0.98;
-        u.pitch = 1;
-        u.volume = 1;
-        speechSynthesis.speak(u);
-        return true;
-      } catch (e) { return false; }
-    },
-    stop: function () { try { speechSynthesis.cancel(); } catch (e) {} }
-  };
 
   /* ===================== ناقل الرسائل (MQTT عبر WebSocket) ===================== */
   function loadMqtt(cb) {
@@ -935,43 +880,27 @@ window.URGENT = (function () {
     alarmRow.appendChild(switchEl(st.alarmRepeat !== false, function (v) { opts.onChange('alarmRepeat', v); }));
     secS.appendChild(alarmRow);
 
-    var spkRow = rowEl('قراءة الخبر صوتياً', 'يُقرأ نص الخبر تلقائياً عند وصوله');
-    spkRow.appendChild(switchEl(!!st.speak, function (v) { opts.onChange('speak', v); }));
-    secS.appendChild(spkRow);
-
-    var voiceRow = rowEl('صوت القراءة', 'اختر الصوت العربي المتوفر على جهازك');
-    var sel = el('select', 'uc-select');
-    var testBtn = btnEl('تجربة', '', 'speech');
-    var slWrap = el('div', 'uc-row-actions');
-    slWrap.appendChild(sel); slWrap.appendChild(testBtn);
-    voiceRow.appendChild(slWrap);
-    secS.appendChild(voiceRow);
-    body.appendChild(secS);
-
-    function fillVoices() {
-      var list = speech.arabicVoices();
-      sel.innerHTML = '';
-      if (!list.length) {
-        var o = el('option', null, 'لا يوجد صوت عربي على هذا الجهاز'); o.value = ''; sel.appendChild(o);
-        sel.disabled = true; testBtn.disabled = true;
-        return;
-      }
-      sel.disabled = false; testBtn.disabled = false;
-      list.forEach(function (v) {
-        var o = el('option', null, v.name + '  (' + (v.lang || 'ar') + ')');
-        o.value = v.name;
-        if (st.speakVoice === v.name) o.selected = true;
-        sel.appendChild(o);
-      });
-      if (!st.speakVoice) st.speakVoice = sel.value;
-    }
-    sel.addEventListener('change', function () { st.speakVoice = sel.value; opts.onChange('speakVoice', sel.value); });
-    testBtn.addEventListener('click', function () {
-      var text = opts.speakSample || 'عاجل: وصل خبر جديد إلى غرفة التنفيذ.';
-      speech.speak(text, sel.value || st.speakVoice);
+    var edgeRow = rowEl('إطار التنبيه المضيء', 'ضوء أحمر يدور على أطراف الشاشة بسرعة ما دام هناك خبر غير منسوخ');
+    var edgeWrap = el('div', 'uc-row-actions');
+    var edgeSel = el('select', 'uc-select');
+    edgeSel.setAttribute('data-role', 'edge-speed');
+    [['normal', 'عادي'], ['fast', 'سريع'], ['veryfast', 'سريع جداً']].forEach(function (o) {
+      var op = el('option', null, o[1]); op.value = o[0];
+      if ((st.edgeSpeedKey || 'fast') === o[0]) op.selected = true;
+      edgeSel.appendChild(op);
     });
-    speech.loadVoices(fillVoices);
-    setTimeout(fillVoices, 1500);
+    edgeSel.style.minWidth = '120px';
+    edgeSel.disabled = st.edgeGlow === false;
+    edgeSel.addEventListener('change', function () { opts.onChange('edgeSpeedKey', edgeSel.value); });
+    edgeWrap.appendChild(edgeSel);
+    var edgeSw = switchEl(st.edgeGlow !== false, function (v) {
+      edgeSel.disabled = !v;
+      opts.onChange('edgeGlow', v);
+    });
+    edgeWrap.appendChild(edgeSw);
+    edgeRow.appendChild(edgeWrap);
+    secS.appendChild(edgeRow);
+    body.appendChild(secS);
 
     /* ---- قسم حجم الخط ---- */
     if (opts.showDisplay) {
@@ -1171,7 +1100,7 @@ window.URGENT = (function () {
     openModal: openModal, closeModal: closeModal, buildSettings: buildSettings,
     isStandalone: isStandalone, promptInstall: promptInstall, initInstallCapture: initInstallCapture,
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
-    createAlerter: createAlerter, speech: speech,
+    createAlerter: createAlerter,
     // PWA وPush
     swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
     enablePush: enablePush, disablePush: disablePush, pushStatus: pushStatus,

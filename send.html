@@ -549,10 +549,10 @@
       room: room,
       state: {
         sound: S.sound !== false,
-        speak: false, speakVoice: '',
         alarmRepeat: S.alarmRepeat !== false,
         notifyRepeat: true,
-        fontScale: 1
+        fontScale: 1,
+        edgeGlow: true, edgeSpeedKey: 'fast'   // تُضبط من شاشة الاستقبال
       },
       showDisplay: false,
       onChange: function (k, v) { if (k === 'sound') { S.sound = v; U.lsSet(U.LS_PREFIX + room + ':edSound', v); } },

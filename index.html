@@ -38,6 +38,20 @@
   }
   button{font-family:inherit}
   .hidden{display:none !important}
+
+  /* ===== إطار التنبيه المضيء (إضاءة أطراف الشاشة) ===== */
+  .edge-glow{position:fixed;inset:0;z-index:9990;pointer-events:none;opacity:0;
+    transition:opacity .3s ease;display:none}
+  .edge-glow.on{display:block;opacity:1}
+  .edge-glow svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+  .edge-glow .ebase{fill:none;stroke:rgba(255,60,60,.34);stroke-width:2}
+  .edge-glow .erun{fill:none;stroke:#ff2d2d;stroke-width:3.4;stroke-linecap:round;filter:url(#edgeBlur)}
+  .edge-glow .ecore{fill:none;stroke:#fff2f2;stroke-width:1.5;stroke-linecap:round}
+  .edge-glow .ehalo{position:absolute;inset:0;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55);
+    animation:edgePulse 1.35s ease-in-out infinite}
+  @keyframes edgePulse{0%,100%{opacity:.45}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){ .edge-glow .ehalo{animation:none} }
+
   .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
   .ico svg{display:block}
   .chip .ico{margin-inline-end:5px}
@@ -230,7 +244,6 @@
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
     <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i>الصوت</button>
-    <button class="chip sep-btn" id="btnSpeak" title="قراءة الخبر بصوت مرتفع"><i class="ico" data-ic="speech"></i>القراءة</button>
     <span class="chip" id="verChip" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث" style="cursor:default;font-family:ui-monospace,Menlo,Consolas,monospace">v2.1</span>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
@@ -239,6 +252,20 @@
     <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين"><i class="ico" data-ic="key"></i>المحررون</a>
   </div>
 </header>
+
+<div class="edge-glow" id="edgeGlow" aria-hidden="true">
+  <svg id="edgeSvg" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="edgeBlur" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="3.2"/>
+      </filter>
+    </defs>
+    <rect class="ebase" id="edgeBase" x="2" y="2" rx="15"/>
+    <rect class="erun"  id="edgeRun"  x="2" y="2" rx="15"/>
+    <rect class="ecore" id="edgeCore" x="2" y="2" rx="15"/>
+  </svg>
+  <div class="ehalo"></div>
+</div>
 
 <div class="banner hidden" id="banner"></div>
 <div class="alarmbar hidden" id="alarmbar">
@@ -281,8 +308,8 @@
   var S = {
     opName: U.lsGet(LSP + 'opName', D.operatorName || 'المنفذ') || 'المنفذ',
     sound: U.lsGet(LSP + 'sound', D.sound !== false) !== false,
-    speak: U.lsGet(LSP + 'speak', !!D.speak) === true,
-    speakVoice: U.lsGet(LSP + 'speakVoice', '') || '',
+    edgeGlow: U.lsGet(LSP + 'edgeGlow', D.edgeGlow !== false) !== false,
+    edgeSpeedKey: U.lsGet(LSP + 'edgeSpeedKey', D.edgeSpeed || 'fast') || 'fast',
     alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
     alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 30)) || 30,
     alarmMutedUntil: 0,
@@ -303,7 +330,7 @@
   var banner = U.$('#banner'), soundbar = U.$('#soundbar');
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
   var clockEl = U.$('#clock');
-  var btnSound = U.$('#btnSound'), btnSpeak = U.$('#btnSpeak');
+  var btnSound = U.$('#btnSound');
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
 
   /* ---------- المخزن والناقل ---------- */
@@ -326,16 +353,16 @@
       subtitle: 'التنبيهات، الصوت، حجم الخط، وتثبيت التطبيق',
       room: room,
       state: {
-        sound: S.sound, speak: S.speak, speakVoice: S.speakVoice,
+        sound: S.sound,
         alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery,
-        notifyRepeat: S.notifyRepeat, fontScale: S.fs
+        notifyRepeat: S.notifyRepeat, fontScale: S.fs,
+        edgeGlow: S.edgeGlow, edgeSpeedKey: S.edgeSpeedKey
       },
       showDisplay: true,
-      speakSample: 'عاجل: وصل خبر جديد إلى غرفة التنفيذ.',
       onChange: function (key, val) {
         if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
-        else if (key === 'speak') { S.speak = val; U.lsSet(LSP + 'speak', val); syncToggles(); }
-        else if (key === 'speakVoice') { S.speakVoice = val; U.lsSet(LSP + 'speakVoice', val); }
+        else if (key === 'edgeGlow') { S.edgeGlow = val; U.lsSet(LSP + 'edgeGlow', val); updateAlarmBar(); }
+        else if (key === 'edgeSpeedKey') { S.edgeSpeedKey = val; U.lsSet(LSP + 'edgeSpeedKey', val); edgeResize(); }
         else if (key === 'alarmRepeat') { S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val); updateAlarmBar(); if (val) startAlarmLoop(); }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
@@ -414,7 +441,6 @@
 
   function syncToggles() {
     btnSound.className = 'chip' + (S.sound ? ' on' : '');
-    btnSpeak.className = 'chip' + (S.speak ? ' on' : '');
     soundbar.classList.toggle('hidden', !S.sound || alerter.ready());
   }
 
@@ -435,13 +461,6 @@
       U.lsSet(LSP + 'sound', S.sound);
       if (S.sound) { alerter.unlock(); alerter.play('info'); }
       U.toast(S.sound ? 'تم تشغيل صوت التنبيه' : 'تم إسكات صوت التنبيه', 'ok');
-      syncToggles();
-    });
-    btnSpeak.addEventListener('click', function () {
-      S.speak = !S.speak;
-      U.lsSet(LSP + 'speak', S.speak);
-      if (!S.speak) U.speech.stop();
-      U.toast(S.speak ? 'سيتم قراءة الأخبار صوتياً' : 'تم إيقاف القراءة الصوتية', 'ok');
       syncToggles();
     });
     U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
@@ -559,6 +578,65 @@
   }
 
   /* ---------- خبر جديد ---------- */
+  /* ===================== إطار التنبيه المضيء (إضاءة الأطراف) ===================== */
+  var EDGE_SPEEDS = { normal: 620, fast: 980, veryfast: 1500 };   // بكسل في الثانية
+  var edge = {
+    box: U.$('#edgeGlow'), svg: U.$('#edgeSvg'),
+    base: U.$('#edgeBase'), run: U.$('#edgeRun'), core: U.$('#edgeCore'),
+    styleEl: null, on: false, len: 0
+  };
+
+  function edgeSpeed() { return EDGE_SPEEDS[S.edgeSpeedKey] || EDGE_SPEEDS.fast; }
+
+  function edgeResize() {
+    if (!edge.svg) return;
+    var w = window.innerWidth, hgt = window.innerHeight;
+    var pad = 2.4;
+    var attrs = {
+      x: pad, y: pad, width: Math.max(0, w - pad * 2), height: Math.max(0, hgt - pad * 2), rx: Math.min(18, hgt / 12)
+    };
+    [edge.base, edge.run, edge.core].forEach(function (r) {
+      if (!r) return;
+      for (var k in attrs) r.setAttribute(k, attrs[k]);
+    });
+    // طول المسار (مع بديل إن لم يدعمه المتصفح)
+    var len = 0;
+    try { len = edge.base.getTotalLength(); } catch (e) { len = 0; }
+    if (!len || !isFinite(len)) len = 2 * (w + hgt);
+    edge.len = len;
+
+    // مقطع مضيء يدور على الأطراف
+    var seg = Math.max(150, Math.min(430, len * 0.17));
+    var dur = Math.max(0.7, len / edgeSpeed());
+    [edge.run, edge.core].forEach(function (r) {
+      if (!r) return;
+      r.style.strokeDasharray = seg + ' ' + Math.max(1, len - seg);
+      r.style.strokeDashoffset = '0';
+      r.style.animation = 'edgeRun ' + dur.toFixed(2) + 's linear infinite';
+    });
+    if (!edge.styleEl) {
+      edge.styleEl = document.createElement('style');
+      document.head.appendChild(edge.styleEl);
+    }
+    edge.styleEl.textContent =
+      '@keyframes edgeRun{from{stroke-dashoffset:0}to{stroke-dashoffset:-' + len.toFixed(1) + '}}';
+  }
+
+  function edgeSet(on) {
+    if (!edge.box) return;
+    if (on === edge.on) return;
+    edge.on = on;
+    edge.box.classList.toggle('on', on);
+    if (on) {
+      edgeResize();
+      window.addEventListener('resize', edgeResize);
+      window.addEventListener('orientationchange', edgeResize);
+    } else {
+      window.removeEventListener('resize', edgeResize);
+      window.removeEventListener('orientationchange', edgeResize);
+    }
+  }
+
   /* ---------- التنبيه المتكرر كل 30 ثانية حتى يتم نسخ الخبر ---------- */
   var alarmTimer = null;
 
@@ -569,6 +647,7 @@
   function updateAlarmBar() {
     var n = uncopiedItems().length;
     var on = S.alarmRepeat && n > 0;
+    edgeSet(on && S.edgeGlow !== false);       // إضاءة أطراف الشاشة
     alarmbar.classList.toggle('hidden', !on);
     if (on) {
       var secs = Math.round((S.alarmMutedUntil - Date.now()) / 1000);
@@ -585,12 +664,8 @@
     document.title = (n ? '(' + n + ') تنبيه — ' : '') + base;
   }
 
-  function fireAlarm(kind) {
+  function fireAlarm() {
     if (S.sound && Date.now() > S.alarmMutedUntil) alerter.play('urgent');
-    if (S.speak && kind === 'new') {
-      var list = uncopiedItems();
-      if (list.length && list[0]) U.speech.speak(list[0].text, S.speakVoice);
-    }
   }
 
   function startAlarmLoop() {
@@ -624,7 +699,6 @@
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
-    if (S.speak) U.speech.speak(item.text, S.speakVoice);
     var nTitle = 'خبر عاجل — ' + (item.author || 'غرفة الأخبار');
     if (!U.showViaSW(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id) && 'Notification' in window) {
       U.browserNotify(nTitle, item.text);
@@ -661,7 +735,6 @@
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
       alerter.play('info');
-      U.speech.stop();
       updateAlarmBar();
       U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر' : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');
     });
