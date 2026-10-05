@@ -366,10 +366,17 @@
 
     // ---- قسم إدارة المحررين: إضافة، إعادة تسمية، تغيير كلمات المرور ----
     var sec = U.section('بيانات دخول المحررين', 'lock');
-    var draft = U.admins().map(function (a) { return { user: a.user, name: a.name, salt: a.salt, hash: a.hash }; });
+    var amOwner = U.isOwner(S.admin && S.admin.user);
+    var myUser = S.admin ? S.admin.user : '';
+
+    function allAdmins() { return U.admins().map(function (a) { return { user: a.user, name: a.name, salt: a.salt, hash: a.hash }; }); }
+    // غير المالك يرى حسابه فقط — لا تبديل بين الحسابات
+    var draft = amOwner ? allAdmins() : allAdmins().filter(function (a) { return a.user === myUser; });
     var dirty = false;
 
-    var headRow = U.rowEl('قائمة المحررين', 'أضف محرراً، أعِد التسمية، أو غيّر كلمة المرور — ثم احفظ');
+    var headRow = U.rowEl(amOwner ? 'قائمة المحررين' : 'حسابك',
+      amOwner ? 'أضف محرراً، أعِد التسمية، أو غيّر كلمة المرور — ثم احفظ'
+              : 'يمكنك إعادة تسمية حسابك وتغيير كلمة مرورك فقط');
     var statusBadge = U.el('div', 'uc-badge');
     statusBadge.setAttribute('data-role', 'ed-status');
     headRow.appendChild(statusBadge);
@@ -397,9 +404,13 @@
         var acts = U.el('div', 'uc-ed-acts');
         var bEdit = U.btnEl('تعديل', 'ghost', 'edit');
         bEdit.setAttribute('data-act', 'edit');
-        var bDel = U.btnEl('حذف', 'danger', 'trash');
-        bDel.setAttribute('data-act', 'del');
-        acts.appendChild(bEdit); acts.appendChild(bDel);
+        var bDel = null;
+        if (amOwner && draft.length > 1) {
+          bDel = U.btnEl('حذف', 'danger', 'trash');
+          bDel.setAttribute('data-act', 'del');
+        }
+        acts.appendChild(bEdit);
+        if (bDel) acts.appendChild(bDel);
         head.appendChild(acts);
         row.appendChild(head);
 
@@ -430,7 +441,7 @@
         bEdit.addEventListener('click', function () { form.classList.toggle('hidden'); if (!form.classList.contains('hidden')) iN.focus(); });
         bCancel.addEventListener('click', function () { form.classList.add('hidden'); iP.value = ''; iN.value = a.name || ''; });
         bGen.addEventListener('click', function () { iP.value = U.makePassword(12); });
-        bDel.addEventListener('click', function () {
+        if (bDel) bDel.addEventListener('click', function () {
           if (draft.length <= 1) { U.toast('لا يمكن حذف آخر محرر', 'warn', 6000); return; }
           if (S.admin && a.user === S.admin.user && !confirm('تنبيه: أنت تحذف حسابك الحالي «' + a.user + '». متابعة؟')) return;
           if (!confirm('حذف المحرر «' + (a.name || a.user) + '» نهائياً؟')) return;
@@ -460,7 +471,8 @@
     }
     renderList();
 
-    /* ---- إضافة محرر جديد ---- */
+    /* ---- إضافة محرر جديد (للمالك فقط) ---- */
+    if (amOwner) {
     var addH = U.el('div', 'uc-sec-h');
     addH.innerHTML = U.ic('person', 18) + 'إضافة محرر جديد';
     sec.appendChild(addH);
@@ -512,6 +524,7 @@
         try { navigator.clipboard.writeText(usePass); } catch (e) {}
       });
     });
+    }
 
     /* ---- حفظ التغييرات ---- */
     var saveRow = U.el('div', 'uc-saverow');
@@ -555,22 +568,30 @@
     gitBox.appendChild(gitErr);
     sec.appendChild(gitBox);
 
+    // غير المالك: تُدمج بياناته في القائمة الكاملة حتى لا تُمسح الحسابات الأخرى
+    function listToSave() {
+      if (amOwner) return draft;
+      var mine = draft.filter(function (a) { return a.user === myUser; })[0];
+      return allAdmins().map(function (a) { return (a.user === myUser && mine) ? mine : a; });
+    }
+
     function afterSave(msg) {
       dirty = false; renderList();
       U.toast(msg, 'ok', 7000);
     }
     bLocal.addEventListener('click', function () {
-      U.saveAdminsLocal(draft);
+      U.saveAdminsLocal(listToSave());
       afterSave('تم الحفظ على هذا الجهاز');
     });
     bAll.addEventListener('click', function () {
-      U.saveAdminsLocal(draft);
-      U.publishAdmins(bus, draft, S.admin ? S.admin.name : '');
+      var full = listToSave();
+      U.saveAdminsLocal(full);
+      U.publishAdmins(bus, full, S.admin ? S.admin.name : '');
       afterSave('تم النشر لكل الأجهزة فوراً');
     });
     bCode.addEventListener('click', function () {
       codeBox.style.display = 'block';
-      codeBox.value = U.adminsToConfigCode(draft);
+      codeBox.value = U.adminsToConfigCode(listToSave());
       U.toast('انسخ الكود إلى config.js (قسم admins)', 'ok', 6000);
     });
     bGitOpen.addEventListener('click', function () {
@@ -582,10 +603,10 @@
       var tk = inTok.value.trim();
       if (!tk) { gitErr.textContent = 'الصق رمز GitHub أولاً.'; return; }
       bGitGo.disabled = true; bGitGo.textContent = 'جارٍ الحفظ في المستودع…';
-      U.gitSaveAdmins(draft, tk).then(function (res) {
+      U.gitSaveAdmins(listToSave(), tk).then(function (res) {
         bGitGo.disabled = false; bGitGo.textContent = 'حفظ في المستودع الآن';
         if (!res.changed) { U.toast('لا يوجد تغيير لحفظه', 'warn', 6000); return; }
-        U.saveAdminsLocal(draft);
+        U.saveAdminsLocal(listToSave());
         U.publishAdminsReset(bus);
         afterSave('تم الحفظ الدائم في المستودع ✅' + (res.commit ? ' (نسخة ' + res.commit + ')' : '') + ' — فرسل سينشره تلقائياً');
       }).catch(function (e) {
@@ -595,7 +616,8 @@
     });
 
     var tail = U.el('p', 'uc-note');
-    tail.innerHTML = 'هذه القائمة تظهر لمن يسجّل الدخول فقط. «حفظ على هذا الجهاز» يطبّق التغيير على متصفحك، ' +
+    tail.innerHTML = (amOwner ? '' : 'أنت مسجّل كمحرر — تظهر لك بيانات <b>حسابك فقط</b> ولا يمكنك التبديل بين الحسابات. ') +
+      'هذه القائمة تظهر لمن يسجّل الدخول فقط. «حفظ على هذا الجهاز» يطبّق التغيير على متصفحك، ' +
       '«نشر لكل الأجهزة» يطبّقه على كل الأجهزة المتصلة مباشرة بلا أي رمز، ' +
       '«حفظ دائم في المستودع» يعدّل config.js في GitHub فيبقى لكل من يفتح الموقع. ' +
       'وللإدارة من خارج اللوحة استخدم <a href="tools/change-password.html" target="_blank" rel="noopener" style="color:#7dd3fc">أداة إدارة المحررين</a>.';

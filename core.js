@@ -675,6 +675,20 @@ window.URGENT = (function () {
   // القراءة: config.js (الأساس) + تعديلات محفوظة محلياً (تُطبَّق عند تطابق رمز الإعدادات)
   function adminsKey() { return LS + resolveRoom() + ':admins-override'; }
 
+  /* المالكون: حسابات تدير كل المحررين. غيرهم يدير حسابه فقط. */
+  function owners() {
+    var o = config().owners;
+    if (!o || !o.length) {
+      var first = (config().admins || [])[0];
+      o = first && first.user ? [first.user] : [];
+    }
+    return o.slice();
+  }
+  function isOwner(user) {
+    if (!user) return false;
+    return owners().some(function (u) { return String(u).toLowerCase() === String(user).toLowerCase(); });
+  }
+
   function admins() {
     var base = (config().admins || []).slice();
     var ov = lsGet(adminsKey(), null);
@@ -1188,6 +1202,9 @@ window.URGENT = (function () {
   }
 
   /* ===================== الجلسة (دخول المحررين) ===================== */
+  /* جلسة دائمة افتراضياً: تبقى حتى «تسجيل الخروج» فقط.
+     يمكن تقييدها بساعات عبر تمرير عدد ساعات صحيح (> 0). */
+  var SESSION_FOREVER = 100 * 365.25 * 24 * 3600e3;   // 100 سنة
   function createSession(room, hours) {
     var K = LS + room + ':session';
     function get() {
@@ -1196,8 +1213,9 @@ window.URGENT = (function () {
       return s;
     }
     function set(user, name) {
-      var hours_ = Number(hours) > 0 ? Number(hours) : 12;
-      lsSet(K, { user: user, name: name, at: Date.now(), exp: Date.now() + hours_ * 3600e3 });
+      var h = Number(hours);
+      var exp = (isFinite(h) && h > 0) ? Date.now() + h * 3600e3 : Date.now() + SESSION_FOREVER;
+      lsSet(K, { user: user, name: name, at: Date.now(), exp: exp, forever: !(isFinite(h) && h > 0) });
     }
     function clear() { lsDel(K); }
     return { get: get, set: set, clear: clear };
@@ -1268,7 +1286,7 @@ window.URGENT = (function () {
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
     publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
-    makePassword: makePassword,
+    makePassword: makePassword, isOwner: isOwner, owners: owners,
     ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,
     gitSaveAdmins: gitSaveAdmins, replaceAdminsBlock: replaceAdminsBlock,
     createAlerter: createAlerter,
