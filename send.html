@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0f1a" />
+<meta name="description" content="لوحة المحررين — إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ." />
+<title>لوحة المحررين — غرفة الأخبار</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<style>
+  :root{
+    --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
+    --gr-1:#4b5563; --gr-2:#374151; --gr-3:#252c39;
+    --panel:#121a28; --panel-2:#0e1522;
+    --line:rgba(148,163,184,.16);
+    --ink:#eef2f8; --dim:#94a3b8;
+    --ok:#34d399; --info:#38bdf8; --warn:#fbbf24;
+    --font:"Noto Kufi Arabic","Segoe UI",Tahoma,system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font);color:var(--ink);min-height:100vh;
+    background:
+      radial-gradient(1000px 480px at 85% -10%, rgba(224,36,36,.18), transparent 60%),
+      radial-gradient(800px 420px at 5% 0%, rgba(56,189,248,.10), transparent 60%),
+      linear-gradient(180deg,#070b13,#0a1018 60%,#070b13);
+    background-attachment:fixed;
+  }
+  button{font-family:inherit}
+  input,textarea{font-family:inherit}
+  .hidden{display:none !important}
+
+  /* ============ الدخول ============ */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px}
+  .card{background:rgba(18,26,40,.9);border:1px solid var(--line);border-radius:22px;
+    box-shadow:0 26px 60px -30px rgba(0,0,0,.9)}
+  .login{width:100%;max-width:420px;padding:28px 24px 22px}
+  .login .logo{width:66px;height:66px;border-radius:20px;margin:0 auto 14px;display:grid;place-items:center;
+    font-size:32px;background:linear-gradient(140deg,#ef4444,#7f1d1d);box-shadow:0 14px 30px -14px rgba(224,36,36,.9)}
+  .login h1{margin:0 0 6px;font-size:22px;text-align:center;font-weight:800}
+  .login .sub{margin:0 0 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
+  label{display:block;margin-bottom:13px}
+  label span{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
+  input[type=text],input[type=password],textarea{
+    width:100%;padding:13px 14px;border-radius:14px;background:#0c1421;color:var(--ink);
+    border:1px solid var(--line);outline:none;font-size:15px;transition:.15s;resize:vertical;
+  }
+  input:focus,textarea:focus{border-color:rgba(56,189,248,.55);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
+  .err{min-height:20px;color:#fca5a5;font-size:12.5px;margin:0 2px 10px}
+  .btn{border:none;cursor:pointer;border-radius:14px;font-size:15px;font-weight:700;padding:13px 18px;transition:.15s}
+  .btn:active{transform:scale(.99)}
+  .btn.primary{width:100%;color:#fff;background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
+  .btn.primary:disabled{opacity:.6;cursor:default}
+  .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:#dbe3ee}
+  .btn.ghost:hover{background:rgba(255,255,255,.13)}
+  .btn.tiny{padding:8px 13px;font-size:13px;border-radius:11px}
+  .btn.danger{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  .btn.danger:hover{background:rgba(239,68,68,.26)}
+  .back-link{display:block;text-align:center;margin-top:16px;color:#93c5fd;font-size:13px;text-decoration:none}
+
+  /* ============ الشريط العلوي ============ */
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.85));
+    backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09)}
+  .brand{display:flex;align-items:center;gap:11px;min-width:0}
+  .brand .logo{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:21px;
+    background:linear-gradient(140deg,#ef4444,#7f1d1d);flex:0 0 auto}
+  .brand h1{margin:0;font-size:18px;font-weight:800}
+  .brand p{margin:2px 0 0;font-size:12px;color:var(--dim)}
+  .grow{flex:1 1 auto}
+  .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);color:#dbe3ee;
+    padding:9px 13px;border-radius:12px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+    transition:.15s;text-decoration:none}
+  .chip:hover{background:rgba(255,255,255,.13)}
+  .chip.on{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.4);color:#bbf7d0}
+  .chip.alert{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fecaca;animation:blink 1.8s infinite}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
+  .chip .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
+  .chip .dot.wait{background:var(--warn)}
+  .chip .dot.off{background:#ef4444}
+  @keyframes blink{50%{opacity:.55}}
+
+  .banner{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(251,191,36,.14);
+    color:#fde68a;border-bottom:1px solid rgba(251,191,36,.25)}
+  .banner.err{background:rgba(239,68,68,.15);color:#fecaca;border-bottom-color:rgba(239,68,68,.3)}
+
+  /* ============ التغليف ============ */
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:16px}
+
+  .composer{padding:18px}
+  .composer .lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-bottom:9px;font-weight:700}
+  .composer textarea{min-height:92px;line-height:1.9;font-size:16px;font-weight:600}
+  .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px}
+  .tpl{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);color:#bae6fd;
+    border-radius:999px;padding:7px 13px;font-size:12.5px;cursor:pointer}
+  .tpl:hover{background:rgba(56,189,248,.22)}
+  .counter{font-size:12.5px;color:var(--dim);margin-inline-start:auto}
+  .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
+    padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
+  .send-btn:hover{filter:brightness(1.06)}
+
+  /* ============ الإحصاءات ============ */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
+  .stat .n{font-size:24px;font-weight:800;line-height:1.2}
+  .stat .t{font-size:12px;color:var(--dim);margin-top:3px}
+  .stat.red .n{color:#fca5a5}
+  .stat.green .n{color:#6ee7b7}
+  .stat.blue .n{color:#7dd3fc}
+  .stat.gray .n{color:#cbd5e1}
+
+  /* ============ الفلاتر ============ */
+  .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fbtn{background:rgba(255,255,255,.05);border:1px solid var(--line);color:#cbd5e1;border-radius:999px;
+    padding:8px 15px;font-size:13px;cursor:pointer}
+  .fbtn.active{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe;font-weight:700}
+  .filters input{max-width:230px;margin-inline-start:auto;padding:9px 13px;font-size:13.5px}
+
+  /* ============ بطاقات الأخبار ============ */
+  .feed{display:flex;flex-direction:column;gap:13px}
+  .item{position:relative;border-radius:18px;padding:15px 17px 13px;color:#fff;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2) 62%,var(--red-3));
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 16px 34px -22px rgba(224,36,36,.8);
+    transition:background .5s ease}
+  .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
+  .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
+  .item.isnew{animation:cardIn .35s ease-out}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-8px)}}
+  .itop{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:12.5px}
+  .itop .tag{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);padding:4px 11px;border-radius:999px;font-weight:800}
+  .itop .who{font-weight:700}
+  .itop .ts{font-family:ui-monospace,Menlo,Consolas,monospace;opacity:.9}
+  .itop .mini{background:rgba(0,0,0,.25);padding:3px 9px;border-radius:999px;font-size:11.5px}
+  .itop .mini.gold{background:rgba(251,191,36,.3);color:#fef3c7}
+  .itext{margin:0;font-size:17px;line-height:1.95;font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+  .iedit{width:100%;min-height:90px;margin-top:6px;font-size:16px;font-weight:600;line-height:1.9}
+  .ibottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+    padding-top:11px;border-top:1px solid rgba(255,255,255,.15)}
+  .pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.18)}
+  .pill.ok{background:rgba(52,211,153,.22);border-color:rgba(52,211,153,.5);color:#eafff7}
+  .pill.info{background:rgba(56,189,248,.22);border-color:rgba(56,189,248,.5);color:#eaf7ff}
+  .pill.warn{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#fef3c7}
+  .pill.big{font-size:13px;padding:8px 15px}
+  .iactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-inline-start:auto}
+  .ibtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:11px;
+    padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .ibtn:hover{background:rgba(255,255,255,.24)}
+  .ibtn.solid{background:#fff;color:#b91c1c;border-color:#fff}
+  .empty{text-align:center;padding:46px 20px;color:var(--dim);background:var(--panel);
+    border:1px dashed var(--line);border-radius:18px;font-size:14px;line-height:2}
+  .empty .big{font-size:44px;display:block;margin-bottom:10px}
+  .danger-zone{display:flex;justify-content:center}
+</style>
+</head>
+<body>
+
+<!-- ==================== تسجيل الدخول ==================== -->
+<section class="login-wrap" id="loginScreen">
+  <div class="card login">
+    <div class="logo">🔑</div>
+    <h1>لوحة المحررين</h1>
+    <p class="sub" id="loginSub">الدخول مخصص لفريق الأخبار — مدير التحرير ورئيس الأخبار.<br />شاشة الاستقبال لا تحتاج تسجيل دخول.</p>
+    <form id="loginForm" autocomplete="on">
+      <label><span>اسم المستخدم</span><input id="inUser" type="text" autocomplete="username" placeholder="admin" /></label>
+      <label><span>كلمة المرور</span><input id="inPass" type="password" autocomplete="current-password" placeholder="••••••••" /></label>
+      <div class="err" id="loginErr"></div>
+      <button class="btn primary" id="btnLogin" type="submit">دخول</button>
+    </form>
+    <a class="back-link" href="index.html">← الانتقال إلى شاشة الاستقبال</a>
+  </div>
+</section>
+
+<!-- ==================== اللوحة ==================== -->
+<section class="hidden" id="appScreen">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">📤</div>
+      <div>
+        <h1 id="appTitle">لوحة المحررين</h1>
+        <p id="appSub">إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ</p>
+      </div>
+    </div>
+    <div class="grow"></div>
+
+    <button class="chip" id="chipDisplay" title="حالة شاشة المنفذ">
+      <span class="dot off" id="displayDot"></span><span id="displayText">شاشة المنفذ: غير متصلة</span>
+    </button>
+    <button class="chip" id="chipConn" title="حالة الاتصال بخادم البث">
+      <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
+    </button>
+    <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد">⚠️ <span id="pendingText">0</span> بانتظار النسخ</button>
+    <button class="chip" id="chipUser" title="الحساب الحالي">👤 <span id="userLabel">—</span></button>
+    <a class="chip" href="index.html" target="_blank" rel="noopener" title="فتح شاشة الاستقبال">📡 الشاشة</a>
+    <button class="chip" id="btnLogout" title="خروج">↩ خروج</button>
+  </header>
+
+  <div class="banner hidden" id="banner"></div>
+
+  <main class="wrap">
+    <!-- محرر الخبر -->
+    <div class="card composer">
+      <div class="lbl">🚨 نص الخبر العاجل <span style="font-weight:400;color:#64748b">(Ctrl + Enter للإرسال)</span></div>
+      <textarea id="newsText" placeholder="اكتب نص الخبر كما سيُقرأ على شاشة التنفيذ…"></textarea>
+      <div class="row">
+        <div id="templates" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+        <span class="counter" id="counter">0 كلمة</span>
+        <button class="btn ghost tiny" id="btnClearText" type="button">مسح</button>
+        <button class="send-btn" id="btnPublish" type="button">إرسال عاجل ➤</button>
+      </div>
+    </div>
+
+    <!-- الإحصاءات -->
+    <div class="stats" id="stats"></div>
+
+    <!-- الفلاتر -->
+    <div class="filters">
+      <button class="fbtn active" data-f="all">الكل</button>
+      <button class="fbtn" data-f="uncopied">لم يُنسخ بعد</button>
+      <button class="fbtn" data-f="pending">لم يصل بعد</button>
+      <button class="fbtn" data-f="copied">تم نسخه</button>
+      <input id="search" type="text" placeholder="بحث في الأخبار…" />
+    </div>
+
+    <!-- الأخبار -->
+    <div class="feed" id="feed"></div>
+
+    <div class="danger-zone">
+      <button class="btn danger tiny" id="btnWipeAll" type="button">🗑 مسح كل الأخبار من الشاشة</button>
+    </div>
+  </main>
+</section>
+
+<script src="config.js"></script>
+<script src="core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = window.URGENT;
+  var cfg = U.config();
+  var room = U.room();
+  var BASE = 'urgent/' + room + '/';
+  var LSP = U.LS_PREFIX + room + ':';
+
+  var S = {
+    admin: null,               // {user, name}
+    editing: null,             // id الخبر الجاري تعديله
+    filter: 'all',
+    search: '',
+    shownIds: {},              // لتمييز الجديد بحركة
+    displayOnline: false,
+    displayLatestTs: 0,
+    displayName: 'المنفذ'
+  };
+
+  var session = U.createSession(room, cfg.sessionHours);
+  var store = U.createStore({ room: room, limit: 300 });
+  var alerter = U.createAlerter();
+  var bus = U.createBus({
+    base: BASE,
+    role: 'editor',
+    who: 'editor-' + (session.get() ? session.get().user : 'anon'),
+    name: function () { return S.admin ? S.admin.name : 'محرر'; },
+    onMessage: onMessage,
+    onState: onState,
+    onReady: onReady
+  });
+
+  /* ---------- عناصر ---------- */
+  var loginScreen = U.$('#loginScreen'), appScreen = U.$('#appScreen');
+  var loginForm = U.$('#loginForm'), inUser = U.$('#inUser'), inPass = U.$('#inPass');
+  var loginErr = U.$('#loginErr'), btnLogin = U.$('#btnLogin');
+  var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
+  var feed = U.$('#feed'), statsBox = U.$('#stats'), banner = U.$('#banner');
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
+  var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
+  var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
+  var templatesBox = U.$('#templates');
+
+  /* ==================== الدخول ==================== */
+  function boot() {
+    var ch = cfg.channel || {};
+    if (ch.title) { U.txt(U.$('#appTitle'), 'لوحة المحررين — ' + ch.title); document.title = 'لوحة المحررين — ' + ch.title; }
+    if (ch.subtitle) U.txt(U.$('#appSub'), ch.subtitle);
+    (cfg.templates || []).forEach(function (t) {
+      var b = U.el('button', 'tpl', t.label);
+      b.type = 'button';
+      b.addEventListener('click', function () { insertTemplate(t.text); });
+      templatesBox.appendChild(b);
+    });
+    wire();
+    var s = session.get();
+    if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
+    else { inUser.focus(); }
+  }
+
+  function loginSuccess(admin, silent) {
+    S.admin = admin;
+    U.txt(U.$('#userLabel'), admin.name);
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    U.askNotify();
+    store.load();
+    render();
+    bus.connect();
+    bus.startPresence();
+    if (!silent) U.toast('مرحباً ' + admin.name + ' 👋', 'ok');
+    setTimeout(function () { newsText.focus(); }, 300);
+  }
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var user = inUser.value.trim(), pass = inPass.value;
+    loginErr.textContent = '';
+    if (!user || !pass) { loginErr.textContent = 'اكتب اسم المستخدم وكلمة المرور.'; return; }
+    if (!U.hasCrypto()) { loginErr.textContent = 'هذه الصفحة تحتاج فتحها عبر https (رابط فرسل) أو localhost لتشفير كلمة المرور.'; return; }
+
+    var admin = (cfg.admins || []).filter(function (a) { return a.user === user; })[0];
+    if (!admin) { loginErr.textContent = 'اسم المستخدم غير صحيح.'; return; }
+
+    btnLogin.disabled = true; btnLogin.textContent = 'جارٍ التحقق…';
+    U.verifyPassword(pass, admin).then(function (ok) {
+      btnLogin.disabled = false; btnLogin.textContent = 'دخول';
+      if (!ok) { loginErr.textContent = 'كلمة المرور غير صحيحة.'; inPass.value = ''; inPass.focus(); return; }
+      session.set(admin.user, admin.name);
+      loginSuccess(admin, false);
+      inPass.value = '';
+    });
+  });
+
+  U.$('#btnLogout').addEventListener('click', function () {
+    if (!confirm('الخروج من لوحة المحررين؟')) return;
+    session.clear();
+    bus.end();
+    location.reload();
+  });
+
+  /* ==================== الواجهة ==================== */
+  function wire() {
+    btnPublish.addEventListener('click', publish);
+    newsText.addEventListener('input', updateCounter);
+    newsText.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); publish(); }
+    });
+    U.$('#btnClearText').addEventListener('click', function () { newsText.value = ''; updateCounter(); newsText.focus(); });
+
+    U.$$('.fbtn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        S.filter = b.getAttribute('data-f');
+        U.$$('.fbtn').forEach(function (x) { x.classList.toggle('active', x === b); });
+        render();
+      });
+    });
+    U.$('#search').addEventListener('input', function (e) { S.search = e.target.value.trim(); render(); });
+
+    feed.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (!b) return;
+      var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+      if (act === 'copy') actCopy(id);
+      else if (act === 'edit') { S.editing = id; S.draft = null; S.focusEdit = true; render(); }
+      else if (act === 'cancel') { S.editing = null; S.draft = null; render(); }
+      else if (act === 'save') {
+        var ta = feed.querySelector('.iedit');
+        if (ta) actEdit(id, ta.value);
+      }
+      else if (act === 'pin') actPin(id);
+      else if (act === 'del') actDelete(id);
+    });
+
+    U.$('#btnWipeAll').addEventListener('click', function () {
+      var items = store.list();
+      if (!items.length) { U.toast('لا توجد أخبار لمسحها', 'warn'); return; }
+      if (!confirm('سيتم حذف كل الأخبار (' + items.length + ') من شاشة المنفذ ومن كل الأجهزة. متابعة؟')) return;
+      if (!confirm('تأكيد أخير: حذف الكل نهائياً؟')) return;
+      items.forEach(function (it) { wipe(it.id); });
+      U.toast('تم مسح كل الأخبار', 'ok');
+    });
+
+    document.addEventListener('click', function () { alerter.unlock(); U.askNotify(); });
+    window.addEventListener('online', function () { bus.reconnectNow(); });
+    setInterval(tick, 15000);
+  }
+
+  function insertTemplate(t) {
+    var v = newsText.value;
+    if (v && !/\s$/.test(v)) v += ' ';
+    newsText.value = v + t;
+    updateCounter();
+    newsText.focus();
+  }
+
+  function updateCounter() {
+    var w = U.countWords(newsText.value);
+    U.txt(counter, w + ' كلمة · ' + newsText.value.length + ' حرف');
+  }
+
+  /* ==================== إرسال خبر ==================== */
+  function publish() {
+    var text = U.cleanNewsText(newsText.value);
+    if (!text) { U.toast('اكتب نص الخبر أولاً', 'warn'); newsText.focus(); return; }
+    if (text.length < 3) { U.toast('النص قصير جداً', 'warn'); return; }
+
+    var id = U.uid();
+    var item = { id: id, t: text, a: S.admin.name, ts: Date.now() };
+    store.applyNews(item);
+    var live = bus.publish('news/' + id, item, { retain: true });
+    S.shownIds[id] = Date.now();
+    newsText.value = '';
+    updateCounter();
+    render();
+    U.toast(live ? 'تم إرسال الخبر إلى شاشة المنفذ 🚨' : 'لا اتصال حالياً — سيُرسل الخبر تلقائياً عند عودة الاتصال', live ? 'ok' : 'warn');
+  }
+
+  function actEdit(id, newText) {
+    var it = store.get(id);
+    if (!it) return;
+    var text = U.cleanNewsText(newText);
+    if (!text) { U.toast('لا يمكن حفظ نص فارغ', 'warn'); return; }
+    if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
+    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now() };
+    store.applyNews(upd);
+    bus.publish('news/' + id, upd, { retain: true });
+    S.editing = null;
+    S.draft = null;
+    render();
+    U.toast('تم تحديث الخبر ✏️', 'ok');
+  }
+
+  function actPin(id) {
+    var it = store.get(id);
+    if (!it) return;
+    if (it.pin) {
+      store.applyPin({ id: id }, false);
+      bus.publish('pin/' + id, '', { retain: true });
+      U.toast('تم إلغاء التثبيت', 'ok');
+    } else {
+      var p = { id: id, ts: Date.now(), b: S.admin.name };
+      store.applyPin(p, true);
+      bus.publish('pin/' + id, p, { retain: true });
+      U.toast('تم تثبيت الخبر أعلى الشاشة 📌', 'ok');
+    }
+    render();
+  }
+
+  function actDelete(id) {
+    var it = store.get(id);
+    if (!it) return;
+    if (!confirm('حذف هذا الخبر من شاشة المنفذ ومن كل الأجهزة؟')) return;
+    wipe(id);
+    U.toast('تم حذف الخبر 🗑', 'ok');
+  }
+
+  function wipe(id) {
+    bus.publish('news/' + id, '', { retain: true });
+    bus.publish('ack/' + id, '', { retain: true });
+    bus.publish('pin/' + id, '', { retain: true });
+    bus.publish('ctrl', { action: 'delete', id: id });
+    store.remove(id);
+    render();
+  }
+
+  function actCopy(id) {
+    var it = store.get(id);
+    if (!it) return;
+    U.copyText(it.text).then(function (ok) {
+      U.toast(ok ? 'تم نسخ نص الخبر 📋' : 'تعذّر النسخ التلقائي — حدّد النص يدوياً', ok ? 'ok' : 'warn');
+    });
+  }
+
+  /* ==================== الاستقبال ==================== */
+  function onMessage(rel, data, isEmpty) {
+    if (rel.indexOf('news/') === 0) {
+      var id = rel.slice(5);
+      if (isEmpty) { store.remove(id); return; }
+      if (!data || !data.t) return;
+      var before = store.has(data.id || id);
+      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (res && res.isNew && !before) {
+        // خبر وصل من محرر آخر
+        if (normOwn(data.a)) return;
+        alerter.play('info');
+        if (document.hidden) U.flashTitle('خبر جديد');
+      }
+      return;
+    }
+    if (rel.indexOf('ack/') === 0) {
+      if (isEmpty) return;
+      var prev = store.get(data.id);
+      var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
+      store.applyAck(data);
+      if (data.k === 'copied' && !wasCopied) {
+        alerter.play('info');
+        U.toast('✅ المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
+        if (document.hidden) U.flashTitle('تم نسخ الخبر');
+      }
+      return;
+    }
+    if (rel.indexOf('pin/') === 0) {
+      var pid = rel.slice(4);
+      if (isEmpty) store.applyPin({ id: pid }, false);
+      else if (data && data.id) store.applyPin(data, true);
+      return;
+    }
+    if (rel.indexOf('presence/') === 0) {
+      if (!data || data.role !== 'display') return;
+      if (isEmpty || data.off || !data.ts) {
+        S.displayOnline = false; S.displayLatestTs = 0;
+      } else {
+        S.displayLatestTs = Number(data.ts) || Date.now();
+        S.displayName = data.name || 'المنفذ';
+        S.displayOnline = (Date.now() - S.displayLatestTs) < U.ONLINE_TTL;
+      }
+      updateDisplayChip();
+      return;
+    }
+    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); render(); }
+  }
+
+  function normOwn(author) { return S.admin && String(author || '') === String(S.admin.name); }
+
+  function onState(st, info) {
+    if (st === 'connected') {
+      connDot.className = 'dot on';
+      U.txt(connText, 'متصل');
+      hideBanner();
+      updatePendingChip();
+    } else if (st === 'connecting') {
+      connDot.className = 'dot wait';
+      U.txt(connText, 'جارٍ الاتصال…');
+    } else if (st === 'offline') {
+      connDot.className = 'dot off';
+      U.txt(connText, 'انقطع الاتصال');
+      showBanner('انقطع الاتصال بخادم البث — أي خبر ترسله سيُحفظ ويُرسل تلقائياً عند العودة.', false);
+    } else if (st === 'failed') {
+      connDot.className = 'dot off';
+      U.txt(connText, 'غير متصل');
+      showBanner('تعذّر الاتصال بخوادم البث. تحقّق من الإنترنت — ستُعاد المحاولة تلقائياً.', true);
+    }
+  }
+
+  function onReady() { render(); }
+
+  function showBanner(msg, isErr) { banner.className = 'banner' + (isErr ? ' err' : ''); U.txt(banner, msg); }
+  function hideBanner() { banner.classList.add('hidden'); }
+
+  function updateDisplayChip() {
+    displayDot.className = 'dot ' + (S.displayOnline ? 'on' : 'off');
+    U.txt(displayText, S.displayOnline ? ('شاشة ' + S.displayName + ': متصلة') : 'شاشة المنفذ: غير متصلة');
+    if (!S.displayOnline && store.list().length) {
+      showBanner('⚠️ شاشة المنفذ غير متصلة الآن — الأخبار تُبث وتُخزَّن وستظهر عليها فور اتصالها.', false);
+    } else if (bus.state() === 'connected') { hideBanner(); }
+    U.$('#chipDisplay').classList.toggle('on', S.displayOnline);
+  }
+
+  function updatePendingChip() {
+    var st = store.stats();
+    var pending = st.pending + st.received;
+    chipPending.classList.toggle('hidden', pending === 0);
+    U.txt(pendingText, String(pending));
+  }
+
+  /* ==================== العرض ==================== */
+  var renderQueued = false;
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    setTimeout(function () { renderQueued = false; render(); }, 20);
+  }
+  store.on('change', queueRender);
+
+  function render() {
+    // نحافظ على النص الذي يكتبه المحرر إن كانت هناك إعادة رسم أثناء التعديل
+    if (S.editing) {
+      var cur = feed.querySelector('.iedit');
+      if (cur) S.draft = cur.value;
+    }
+    var items = store.list();
+    var st = store.stats();
+
+    // الإحصاءات
+    statsBox.innerHTML = '';
+    [['total', 'إجمالي الأخبار', 'gray'], ['copied', 'تم نسخها', 'green'], ['received', 'وصلت ولم تُنسخ', 'blue'],
+     ['pending', 'لم تصل بعد', 'red'], ['pinned', 'مثبّتة', 'gray']].forEach(function (x) {
+      var d = U.el('div', 'stat ' + x[2]);
+      d.appendChild(U.el('div', 'n', String(st[x[0]])));
+      d.appendChild(U.el('div', 't', x[1]));
+      statsBox.appendChild(d);
+    });
+
+    var list = items.filter(function (it) {
+      var kind = it.ack ? it.ack.kind : null;
+      if (S.filter === 'pending' && kind) return false;                 // لم يصل بعد
+      if (S.filter === 'uncopied' && kind === 'copied') return false;    // لم يُنسخ بعد (يشمل من وصل)
+      if (S.filter === 'copied' && kind !== 'copied') return false;
+      if (S.search && it.text.toLowerCase().indexOf(S.search.toLowerCase()) < 0) return false;
+      return true;
+    });
+
+    feed.innerHTML = '';
+    if (!list.length) {
+      var e = U.el('div', 'empty');
+      e.appendChild(U.el('span', 'big', '📭'));
+      e.appendChild(document.createTextNode(items.length
+        ? 'لا توجد أخبار مطابقة للفلتر الحالي.'
+        : 'لم تُرسل أي أخبار بعد. اكتب الخبر في الأعلى واضغط «إرسال عاجل».'));
+      feed.appendChild(e);
+    } else {
+      list.forEach(function (it) { feed.appendChild(buildItem(it)); });
+    }
+
+    updateDisplayChip();
+    updatePendingChip();
+    var live = bus.state() === 'connected';
+    btnPublish.textContent = live ? 'إرسال عاجل ➤' : 'إرسال (سيُوجَّه عند الاتصال) ➤';
+  }
+
+  function buildItem(it) {
+    var n = U.el('article', 'item');
+    n.setAttribute('data-id', it.id);
+    var copied = it.ack && it.ack.kind === 'copied';
+    if (copied) n.classList.add('copied');
+    if (it.pin) n.classList.add('pinned');
+    if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
+
+    var top = U.el('div', 'itop');
+    top.appendChild(U.el('span', 'tag', '🚨 عاجل'));
+    top.appendChild(U.el('span', 'who', it.author || ''));
+    top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
+    if (it.editedAt) top.appendChild(U.el('span', 'mini', 'محدَّث ' + U.fmtTime(it.editedAt)));
+    if (it.pin) top.appendChild(U.el('span', 'mini gold', '📌 مثبّت'));
+    top.appendChild(U.el('span', 'mini', U.rel(it.ts)));
+    n.appendChild(top);
+
+    if (S.editing === it.id) {
+      var ta = U.el('textarea', 'iedit');
+      ta.value = (S.draft != null && S.editing === it.id) ? S.draft : it.text;
+      n.appendChild(ta);
+      var er = U.el('div', 'ibottom');
+      var save = U.el('button', 'ibtn solid', '💾 حفظ التعديل');
+      save.setAttribute('data-act', 'save'); save.setAttribute('data-id', it.id);
+      var cancel = U.el('button', 'ibtn', 'إلغاء');
+      cancel.setAttribute('data-act', 'cancel'); cancel.setAttribute('data-id', it.id);
+      er.appendChild(save); er.appendChild(cancel);
+      n.appendChild(er);
+      if (S.focusEdit) {
+        S.focusEdit = false;
+        setTimeout(function () { try { ta.focus(); } catch (e) {} }, 20);
+      }
+      return n;
+    }
+
+    n.appendChild(U.el('p', 'itext', it.text));
+
+    var bottom = U.el('div', 'ibottom');
+
+    // حالة الخبر
+    if (copied) {
+      var p = U.el('span', 'pill ok big', '✅ تم نسخه من المنفذ — ' + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
+      bottom.appendChild(p);
+    } else if (it.ack && it.ack.kind === 'received') {
+      bottom.appendChild(U.el('span', 'pill info big', '📥 وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + ' — بانتظار النسخ'));
+    } else if (bus.state() === 'connected') {
+      bottom.appendChild(U.el('span', 'pill warn big', '🕓 يُرسل الآن…'));
+    } else {
+      bottom.appendChild(U.el('span', 'pill warn big', '🕓 بانتظار عودة الاتصال'));
+    }
+
+    var acts = U.el('div', 'iactions');
+    var bCopy = U.el('button', 'ibtn', '📋 نسخ');
+    bCopy.setAttribute('data-act', 'copy'); bCopy.setAttribute('data-id', it.id);
+    var bEdit = U.el('button', 'ibtn', '✏️ تعديل');
+    bEdit.setAttribute('data-act', 'edit'); bEdit.setAttribute('data-id', it.id);
+    var bPin = U.el('button', 'ibtn', it.pin ? '📍 إلغاء التثبيت' : '📌 تثبيت');
+    bPin.setAttribute('data-act', 'pin'); bPin.setAttribute('data-id', it.id);
+    var bDel = U.el('button', 'ibtn', '🗑 حذف');
+    bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
+    acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
+    bottom.appendChild(acts);
+    n.appendChild(bottom);
+    return n;
+  }
+
+  // تحديث دوري خفيف (بدون إعادة بناء القائمة حتى لا يُفقد تحديد النص)
+  function tick() {
+    var now = Date.now();
+    Object.keys(S.shownIds).forEach(function (k) { if (now - S.shownIds[k] > 12000) delete S.shownIds[k]; });
+    if (S.displayLatestTs) S.displayOnline = (now - S.displayLatestTs) < U.ONLINE_TTL;
+    updateDisplayChip();
+    updatePendingChip();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

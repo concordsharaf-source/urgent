@@ -3,858 +3,609 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0b1220" />
-<meta name="description" content="محادثة فورية بسيطة: تدخل باسم حساب وترسل نصوصاً يستقبلها الطرف الآخر مباشرة من المتصفح." />
-<title>محادثة فورية | Urgent Chat</title>
+<meta name="theme-color" content="#0a0f1a" />
+<meta name="description" content="شاشة استقبال الأخبار العاجلة — بث مباشر من غرفة الأخبار إلى غرفة التنفيذ." />
+<title>غرفة الأخبار — شاشة الأخبار العاجلة</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
 <style>
   :root{
-    --bg:#070b16;
-    --bg2:#0b1220;
-    --card:rgba(19,27,45,.86);
-    --card-solid:#131b2d;
-    --line:rgba(148,163,184,.16);
-    --txt:#e8eefc;
-    --txt-dim:#93a3bd;
-    --mine1:#12b981;
-    --mine2:#0d8f68;
-    --peer:#1d2740;
-    --accent:#38bdf8;
-    --danger:#f87171;
-    --ok:#34d399;
-    --warn:#fbbf24;
-    --radius:18px;
+    --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
+    --gr-1:#4b5563; --gr-2:#374151; --gr-3:#252c39;
+    --ink:#eef2f8; --dim:#94a3b8;
+    --ok:#34d399; --info:#38bdf8; --warn:#fbbf24;
+    --font:"Noto Kufi Arabic","Segoe UI",Tahoma,system-ui,-apple-system,Arial,sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%}
+  html,body{margin:0;padding:0;min-height:100%}
   body{
-    margin:0;
-    font-family:"Segoe UI","Noto Kufi Arabic","Noto Naskh Arabic",Tahoma,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-family:var(--font);
+    color:var(--ink);
     background:
-      radial-gradient(900px 500px at 100% -10%, rgba(56,189,248,.16), transparent 60%),
-      radial-gradient(800px 500px at -10% 110%, rgba(16,185,129,.14), transparent 60%),
-      linear-gradient(180deg,var(--bg),var(--bg2) 60%,#060a13);
-    color:var(--txt);
-    min-height:100vh;
-    min-height:100dvh;
-    overflow:hidden;
+      radial-gradient(1100px 520px at 82% -8%, rgba(224,36,36,.22), transparent 62%),
+      radial-gradient(900px 480px at 6% 4%, rgba(56,189,248,.10), transparent 60%),
+      linear-gradient(180deg,#070b13,#0a1018 55%,#070b13);
+    background-attachment:fixed;
   }
+  button{font-family:inherit}
   .hidden{display:none !important}
 
-  /* ============ شاشة الدخول ============ */
-  .screen{height:100vh;height:100dvh;display:flex;flex-direction:column}
-  .login{align-items:center;justify-content:center;padding:20px;overflow:auto}
-  .card{
-    width:100%;max-width:430px;background:var(--card);
-    border:1px solid var(--line);border-radius:24px;padding:26px 22px 20px;
-    box-shadow:0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
-    backdrop-filter:blur(14px);
-  }
-  .logo{
-    width:64px;height:64px;border-radius:20px;margin:0 auto 14px;
-    display:grid;place-items:center;font-size:32px;
-    background:linear-gradient(140deg,#1f2937,#0b1220);
-    border:1px solid var(--line);
-    box-shadow:0 10px 30px rgba(16,185,129,.22);
-  }
-  h1{font-size:23px;margin:0 0 6px;text-align:center;letter-spacing:.2px}
-  .sub{margin:0 0 20px;text-align:center;color:var(--txt-dim);font-size:13.5px;line-height:1.9}
-  .field{display:block;margin-bottom:13px}
-  .field span{display:block;font-size:12.5px;color:var(--txt-dim);margin-bottom:7px}
-  .field input{
-    width:100%;padding:13px 14px;border-radius:14px;font-size:15px;
-    background:#0d1526;color:var(--txt);border:1px solid var(--line);
-    outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit;
-  }
-  .field input:focus{border-color:rgba(56,189,248,.6);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
-  .field input::placeholder{color:#5b6b86}
-  .btn{
-    border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;
-    border-radius:14px;padding:13px 16px;transition:transform .08s,filter .15s,opacity .15s;
-  }
-  .btn:active{transform:scale(.985)}
-  .btn.primary{
-    width:100%;color:#04140f;
-    background:linear-gradient(135deg,#34d399,#0ea5e9);
-    box-shadow:0 12px 26px rgba(16,185,129,.28);
-  }
-  .btn.primary:disabled{opacity:.55;cursor:default;box-shadow:none}
-  .hint{min-height:19px;font-size:12.5px;color:var(--danger);margin:0 2px 10px}
-  .tiny{margin:14px 2px 0;font-size:12px;color:var(--txt-dim);line-height:1.95;text-align:center}
-  .tiny b{color:var(--accent);font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.5px}
-  .steps{margin:16px 0 0;padding:12px 14px;border-radius:14px;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.18)}
-  .steps ol{margin:0;padding-inline-start:18px;font-size:12.5px;color:#b9c7dd;line-height:2}
-
-  /* ============ شاشة المحادثة ============ */
+  /* ============ الشريط العلوي ============ */
   .topbar{
-    display:flex;align-items:center;gap:10px;
-    padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));
-    background:rgba(11,18,32,.9);backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--line);z-index:5;
+    position:sticky;top:0;z-index:30;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;
+    background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.86));
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,.09);
   }
-  .peer{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
-  .avatar{
-    width:42px;height:42px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
-    font-weight:700;font-size:17px;color:#04140f;
-    background:linear-gradient(135deg,#67e8f9,#34d399);
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .logo{
+    width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:24px;
+    background:linear-gradient(140deg,#ef4444,#7f1d1d);
+    box-shadow:0 10px 26px -10px rgba(224,36,36,.8);flex:0 0 auto;
   }
-  .peer-info{min-width:0}
-  .peer-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .peer-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt-dim);margin-top:2px}
-  .dot{width:8px;height:8px;border-radius:50%;background:#64748b;flex:0 0 auto;transition:background .2s}
-  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
-  .dot.conn{background:var(--warn);animation:pulse 1.4s infinite}
-  .dot.off{background:var(--danger)}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .room-chip{
-    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--accent);
-    background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);
-    padding:5px 9px;border-radius:999px;white-space:nowrap;
-  }
-  .icon-btn{
-    background:rgba(148,163,184,.1);border:1px solid var(--line);color:var(--txt);
-    width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:16px;
-    display:grid;place-items:center;flex:0 0 auto;transition:background .15s;
-  }
-  .icon-btn:hover{background:rgba(148,163,184,.2)}
+  .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.2px}
+  .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
+  .grow{flex:1 1 auto}
 
-  .banner{
-    padding:9px 14px;font-size:12.5px;text-align:center;
-    background:rgba(251,191,36,.13);color:#fde68a;border-bottom:1px solid rgba(251,191,36,.22);
-  }
-  .banner.err{background:rgba(248,113,113,.13);color:#fecaca;border-bottom-color:rgba(248,113,113,.25)}
+  .conn{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+    padding:8px 13px;border-radius:999px}
+  .conn .dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+  .conn .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16)}
+  .conn .dot.wait{background:var(--warn);animation:blink 1.3s infinite}
+  .conn .dot.off{background:#ef4444}
+  @keyframes blink{50%{opacity:.3}}
 
-  .messages{
-    flex:1;overflow-y:auto;padding:16px 12px 6px;
-    display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .clock{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:#cbd5e1;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:9px 13px;border-radius:12px;direction:ltr}
+  .chip{
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);color:#dbe3ee;
+    padding:9px 13px;border-radius:12px;font-size:13.5px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px;text-decoration:none;
   }
-  .messages::-webkit-scrollbar{width:8px}
-  .messages::-webkit-scrollbar-thumb{background:rgba(148,163,184,.25);border-radius:8px}
-  .empty{margin:auto;text-align:center;color:var(--txt-dim);font-size:13.5px;line-height:2;padding:20px}
-  .empty .big{font-size:40px;display:block;margin-bottom:10px;opacity:.85}
+  .chip:hover{background:rgba(255,255,255,.12)}
+  .chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe}
+  .chip.off{opacity:.55}
+  .chip.link{color:#bae6fd;border-color:rgba(56,189,248,.35)}
 
-  .day{align-self:center;font-size:11.5px;color:var(--txt-dim);background:rgba(148,163,184,.1);
-    padding:4px 12px;border-radius:999px;margin:6px 0}
-  .msg{max-width:78%;padding:9px 12px 7px;border-radius:16px;position:relative;
-    animation:pop .18s ease-out;word-wrap:break-word;overflow-wrap:anywhere}
-  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .msg.mine{align-self:flex-start;background:linear-gradient(135deg,var(--mine1),var(--mine2));color:#04140f;border-bottom-right-radius:6px}
-  .msg.peer{align-self:flex-end;background:var(--peer);border:1px solid var(--line);border-bottom-left-radius:6px}
-  .msg .who{font-size:11.5px;font-weight:700;margin-bottom:3px;color:#7dd3fc}
-  .msg .text{font-size:14.8px;line-height:1.75;white-space:pre-wrap}
-  .msg .meta{display:flex;align-items:center;gap:5px;justify-content:flex-end;
-    font-size:10.5px;margin-top:3px;opacity:.75;font-family:ui-monospace,Menlo,Consolas,monospace}
-  .msg.mine .meta{color:#03302a}
-  .msg.pending{opacity:.6}
+  /* ============ شرائط الحالة ============ */
+  .banner{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(251,191,36,.14);
+    color:#fde68a;border-bottom:1px solid rgba(251,191,36,.25)}
+  .banner.err{background:rgba(239,68,68,.15);color:#fecaca;border-bottom-color:rgba(239,68,68,.3)}
+  .soundbar{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(56,189,248,.15);
+    color:#e0f2fe;border-bottom:1px solid rgba(56,189,248,.3);cursor:pointer;font-weight:600}
 
-  .jump{
-    position:absolute;bottom:88px;left:50%;transform:translateX(-50%);
-    background:#0ea5e9;color:#04141f;border:none;padding:8px 16px;border-radius:999px;
-    font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.4);font-family:inherit;
-  }
-  .typing{
-    display:flex;align-items:center;gap:6px;padding:4px 18px 8px;font-size:12px;color:var(--txt-dim);
-  }
-  .tdot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.1s infinite}
-  .tdot:nth-child(2){animation-delay:.15s}
-  .tdot:nth-child(3){animation-delay:.3s}
-  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+  .editors{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 0;max-width:1240px;margin:0 auto}
+  .editors .lbl{font-size:12.5px;color:var(--dim)}
+  .edchip{font-size:12px;padding:5px 11px;border-radius:999px;background:rgba(52,211,153,.12);
+    border:1px solid rgba(52,211,153,.32);color:#bbf7d0;display:inline-flex;align-items:center;gap:6px}
+  .edchip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
 
-  .composer{
-    display:flex;gap:8px;align-items:center;padding:10px 12px;
-    padding-bottom:calc(10px + env(safe-area-inset-bottom));
-    background:rgba(11,18,32,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  /* ============ قائمة الأخبار ============ */
+  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:16px;--fs:1}
+
+  .card{
+    position:relative;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2) 62%,var(--red-3));
+    border:1px solid rgba(255,255,255,.20);
+    border-radius:22px;
+    padding:20px 24px 16px;
+    color:#fff;
+    box-shadow:0 22px 44px -20px rgba(224,36,36,.62), inset 0 1px 0 rgba(255,255,255,.14);
+    transition:background .5s ease, box-shadow .5s ease, border-color .5s ease;
   }
-  .composer input{
-    flex:1;padding:13px 15px;border-radius:16px;background:#0d1526;color:var(--txt);
-    border:1px solid var(--line);outline:none;font-size:15px;font-family:inherit;
+  .card.copied{
+    background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.14);
+    box-shadow:0 16px 30px -22px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.08);
   }
-  .composer input:focus{border-color:rgba(52,211,153,.5);box-shadow:0 0 0 4px rgba(52,211,153,.1)}
-  .send{
-    width:50px;height:50px;flex:0 0 auto;border-radius:16px;font-size:19px;color:#04140f;
-    background:linear-gradient(135deg,#34d399,#0ea5e9);display:grid;place-items:center;
+  .card.copied .text{color:#f1f5f9}
+  .card.pinned{outline:2px solid rgba(251,191,36,.75);outline-offset:3px}
+  .card.fresh{animation:cardIn .5s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-16px) scale(.985)}}
+  .card.fresh::after{
+    content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
+    box-shadow:0 0 0 0 rgba(255,255,255,.34);animation:ring 1.5s ease-out 3;
   }
-  .send:disabled{opacity:.5;cursor:default}
-  .chat{position:relative}
-  @media (max-width:420px){
-    .msg{max-width:86%}
-    .peer-name{font-size:14px}
+  @keyframes ring{to{box-shadow:0 0 0 30px rgba(255,255,255,0)}}
+
+  .card-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.28);color:#fff;
+    font-size:13.5px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:.3px}
+  .card.copied .tag{background:rgba(0,0,0,.22)}
+  .who{font-size:13.5px;font-weight:700;color:rgba(255,255,255,.95)}
+  .sep{opacity:.5}
+  .ts{font-size:13px;color:rgba(255,255,255,.85);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .mini{font-size:11.5px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.25);color:rgba(255,255,255,.9)}
+  .mini.gold{background:rgba(251,191,36,.28);color:#fef3c7}
+  .mini.new{background:rgba(0,0,0,.3);color:#fff;animation:blink 1.2s infinite}
+  .grow2{flex:1 1 auto}
+
+  .text{
+    margin:0;
+    font-size:calc(clamp(19px, 1.05vw + 13.5px, 30px) * var(--fs));
+    line-height:1.95;
+    font-weight:700;
+    letter-spacing:.1px;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    user-select:text;
+  }
+
+  .card-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;
+    padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
+  .stat{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;
+    padding:8px 15px;border-radius:999px}
+  .stat.pending{background:rgba(0,0,0,.26);color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.18)}
+  .stat.received{background:rgba(56,189,248,.24);color:#eaf7ff;border:1px solid rgba(56,189,248,.5)}
+  .stat.copied{background:rgba(52,211,153,.2);color:#e8fff6;border:1px solid rgba(52,211,153,.5)}
+  .actions{display:flex;align-items:center;gap:9px;margin-inline-start:auto}
+  .copy-btn{
+    background:#fff;color:#b91c1c;border:none;border-radius:14px;font-weight:800;font-size:17px;
+    padding:13px 28px;min-height:50px;cursor:pointer;
+    box-shadow:0 12px 24px -12px rgba(0,0,0,.7);transition:.15s;
+  }
+  .copy-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
+  .copy-btn:active{transform:translateY(0) scale(.99)}
+  .recopy-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.34);
+    border-radius:14px;font-weight:700;font-size:13.5px;padding:11px 18px;min-height:44px;cursor:pointer}
+  .recopy-btn:hover{background:rgba(255,255,255,.22)}
+
+  .empty{text-align:center;padding:70px 20px 40px;color:var(--dim)}
+  .empty .big{font-size:64px;display:block;margin-bottom:14px;opacity:.85;filter:drop-shadow(0 10px 24px rgba(224,36,36,.4))}
+  .empty h2{margin:0 0 8px;font-size:22px;color:#e2e8f0;font-weight:800}
+  .empty p{margin:0;font-size:14px;line-height:2}
+
+  .hint{max-width:1240px;margin:8px auto 34px;padding:14px 20px;color:var(--dim);font-size:13px;
+    text-align:center;line-height:2;border-top:1px solid rgba(255,255,255,.07)}
+  .hint b{color:#cbd5e1}
+
+  @media (max-width:720px){
+    .brand h1{font-size:17px}
+    .brand p{display:none}
+    .clock{display:none}
+    .feed{padding:12px 12px 4px}
+    .card{padding:16px 16px 12px;border-radius:18px}
+    .actions{margin-inline-start:0;width:100%}
+    .copy-btn{flex:1}
+    .copy-btn{padding:14px 18px}
   }
 </style>
 </head>
 <body>
 
-<!-- ==================== شاشة الدخول ==================== -->
-<section class="screen login" id="screenLogin">
-  <div class="card">
-    <div class="logo">💬</div>
-    <h1>محادثة فورية</h1>
-    <p class="sub">اكتب اسم حسابك واسم الطرف الآخر، وستُفتح غرفة خاصة بينكما فقط — بدون تسجيل ولا سيرفر.</p>
-
-    <form id="loginForm" autocomplete="off">
-      <label class="field">
-        <span>اسم حسابي</span>
-        <input id="inputMe" type="text" placeholder="مثال: أحمد" maxlength="24" />
-      </label>
-      <label class="field">
-        <span>اسم الطرف الآخر</span>
-        <input id="inputPeer" type="text" placeholder="مثال: سارة" maxlength="24" />
-      </label>
-      <div class="hint" id="loginHint"></div>
-      <button class="btn primary" id="btnEnter" type="submit">دخول إلى المحادثة</button>
-    </form>
-
-    <div class="steps">
-      <ol>
-        <li>ابدأ أنت المحادثة واكتب رسالتك.</li>
-        <li>أرسل رابط الصفحة للطرف الآخر.</li>
-        <li>عندما يفتحه ويكتب <b style="font-family:inherit">اسمه واسمك</b> بالطريقة نفسها، يدخل نفس الغرفة ويرى كل الرسائل.</li>
-      </ol>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" id="chLogo">📡</div>
+    <div>
+      <h1 id="chTitle">غرفة الأخبار</h1>
+      <p id="chSub">بث الأخبار العاجلة إلى غرفة التنفيذ</p>
     </div>
-
-    <p class="tiny">كود الغرفة الحالي: <b id="previewRoom">—</b><br />يجب أن يكتب الطرفان الأسماء بالطريقة نفسها (يتم تجاهل الهمزات والمسافات الزائدة).</p>
-  </div>
-</section>
-
-<!-- ==================== شاشة المحادثة ==================== -->
-<section class="screen chat hidden" id="screenChat">
-  <header class="topbar">
-    <button class="icon-btn" id="btnBack" title="خروج / تغيير الحساب">↩</button>
-    <div class="peer">
-      <div class="avatar" id="peerAvatar">؟</div>
-      <div class="peer-info">
-        <div class="peer-name" id="peerNameLabel">—</div>
-        <div class="peer-status">
-          <span class="dot" id="peerDot"></span>
-          <span id="peerStatusText">جارٍ الاتصال…</span>
-        </div>
-      </div>
-    </div>
-    <div class="room-chip" id="roomChip" title="كود الغرفة — تأكد أن الطرف الآخر لديه نفس الكود">#—</div>
-    <button class="icon-btn" id="btnClear" title="مسح المحادثة">🗑</button>
-  </header>
-
-  <div class="banner hidden" id="banner"></div>
-
-  <main class="messages" id="messages">
-    <div class="empty" id="emptyState">
-      <span class="big">👋</span>
-      لا توجد رسائل بعد.<br />اكتب أول رسالة وسيراها الطرف الآخر فوراً.
-    </div>
-  </main>
-
-  <button class="jump hidden" id="btnJump">رسائل جديدة ↓</button>
-
-  <div class="typing hidden" id="typing">
-    <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
-    <span id="typingName">الطرف الآخر</span> يكتب…
   </div>
 
-  <form class="composer" id="composer">
-    <input id="inputMsg" type="text" placeholder="اكتب رسالة…" autocomplete="off" maxlength="2000" />
-    <button class="btn send" id="btnSend" type="submit" title="إرسال">➤</button>
-  </form>
-</section>
+  <div class="grow"></div>
 
+  <div class="conn" title="حالة الاتصال بخادم البث">
+    <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
+  </div>
+
+  <div class="controls">
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="chip" id="btnOp" title="اسمك الذي يظهر للمحررين">👤 <span id="opNameLabel">المنفذ</span></button>
+    <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل">🔊 الصوت</button>
+    <button class="chip sep-btn" id="btnSpeak" title="قراءة الخبر بصوت مرتفع">🗣 القراءة</button>
+    <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
+    <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
+    <button class="chip" id="btnFull" title="ملء الشاشة">⛶</button>
+    <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين">🔑 المحررون</a>
+  </div>
+</header>
+
+<div class="banner hidden" id="banner"></div>
+<div class="soundbar hidden" id="soundbar">🔔 اضغط في أي مكان لتفعيل صوت التنبيه</div>
+
+<div class="editors hidden" id="editors"><span class="lbl">المحررون المتصلون:</span></div>
+
+<main class="feed" id="feed">
+  <div class="empty" id="empty">
+    <span class="big">📡</span>
+    <h2>بانتظار الأخبار…</h2>
+    <p>هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
+  </div>
+</main>
+
+<div class="hint" id="hint">
+  بعد نشر الخبر في نظامك <b>اضغط «نسخ الخبر»</b> — تصل إشارة فورية إلى المحرر بأن الخبر وصل وتم نسخه.
+</div>
+
+<script src="config.js"></script>
+<script src="core.js"></script>
 <script>
-/* =========================================================================
-   محادثة فورية — صفحة واحدة تعمل بالكامل من المتصفح.
-   لا سيرفر ولا قاعدة بيانات: الرسائل تُنقل عبر WebSocket إلى وسيط MQTT عام،
-   وتُحفظ آخر الرسائل في "رسالة محتجزة" (retained) ليقرأها من يدخل لاحقاً.
-   ========================================================================= */
 (function () {
   'use strict';
+  var U = window.URGENT;
+  var cfg = U.config();
+  var D = cfg.display || {};
+  var room = U.room();
+  var BASE = 'urgent/' + room + '/';
+  var LSP = U.LS_PREFIX + room + ':';
 
-  /* ---------- إعدادات ---------- */
-  var BROKERS = [
-    { url: 'wss://broker.emqx.io:8084/mqtt',   name: 'EMQX' },
-    { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' },
-    { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
-  ];
-  var TOPIC_BASE   = 'urgentchat/v1/';
-  var STORE_CFG    = 'uc_cfg_v1';
-  var STORE_MSGS   = 'uc_msgs_v1_';
-  var KEEP_MSGS    = 300;   // أقصى عدد رسائل محفوظة محلياً
-  var SEND_HISTORY = 60;    // عدد الرسائل المنشورة كسجل محتجز للطرف الآخر
-  var PRESENCE_MS  = 8000;  // نبضة "أنا متصل"
-  var PEER_TIMEOUT = 26000; // بعد هذه المدة يُعتبر الطرف غير متصل
-  var TYPING_MS    = 3000;  // مدة عرض "يكتب الآن"
+  /* ---------- الحالة ---------- */
+  var S = {
+    opName: U.lsGet(LSP + 'opName', D.operatorName || 'المنفذ') || 'المنفذ',
+    sound: U.lsGet(LSP + 'sound', D.sound !== false) !== false,
+    speak: U.lsGet(LSP + 'speak', !!D.speak) === true,
+    fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
+    editors: {},
+    fresh: {},
+    acksSeen: {},   // إشارات استلام/نسخ معروفة (لمنع الكتابة فوقها)
+    pruned: false
+  };
+  function clampFs(v) { return Math.min(1.8, Math.max(0.75, v)); }
 
   /* ---------- عناصر ---------- */
-  var $ = function (id) { return document.getElementById(id); };
-  var screenLogin = $('screenLogin'), screenChat = $('screenChat');
-  var inputMe = $('inputMe'), inputPeer = $('inputPeer');
-  var loginForm = $('loginForm'), loginHint = $('loginHint'), previewRoom = $('previewRoom');
-  var btnEnter = $('btnEnter');
-  var peerNameLabel = $('peerNameLabel'), peerAvatar = $('peerAvatar');
-  var peerDot = $('peerDot'), peerStatusText = $('peerStatusText');
-  var roomChip = $('roomChip'), banner = $('banner');
-  var messagesEl = $('messages'), emptyState = $('emptyState');
-  var composer = $('composer'), inputMsg = $('inputMsg'), btnSend = $('btnSend');
-  var typingEl = $('typing'), typingName = $('typingName'), btnJump = $('btnJump');
-  var btnBack = $('btnBack'), btnClear = $('btnClear');
+  var feed = U.$('#feed'), emptyBox = U.$('#empty');
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
+  var banner = U.$('#banner'), soundbar = U.$('#soundbar');
+  var clockEl = U.$('#clock'), opLabel = U.$('#opNameLabel');
+  var btnSound = U.$('#btnSound'), btnSpeak = U.$('#btnSpeak');
+  var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
 
-  /* ---------- حالة التطبيق ---------- */
-  var S = {
-    me: '', peer: '', room: '', broker: '',
-    client: null, connected: false, connecting: false, brokerIndex: 0,
-    msgs: [], ids: {}, pending: [], queue: [],
-    peerSeen: 0, lastTypingSent: 0, typingTimer: null, peerTypingTimer: null,
-    historySent: false, unread: 0, lastDay: ''
-  };
+  /* ---------- المخزن والناقل ---------- */
+  var store = U.createStore({ room: room, limit: 400 });
+  var alerter = U.createAlerter();
+  var bus = U.createBus({
+    base: BASE,
+    role: 'display',
+    who: 'display',
+    name: function () { return S.opName; },
+    onMessage: onMessage,
+    onState: onState,
+    onReady: onReady
+  });
 
-  /* =========== أدوات مساعدة =========== */
+  /* ---------- التهيئة ---------- */
+  // أي تغيير في المخزن (خبر جديد/إشارة نسخ/تثبيت/حذف) => إعادة رسم مؤجلة قليلاً
+  var renderQueued = false;
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    setTimeout(function () { renderQueued = false; render(); }, 20);
+  }
+  store.on('change', queueRender);
 
-  // توحيد الاسم: تجاهل الهمزات والتشكيل والتطويل والمسافات الزائدة
-  function normName(s) {
-    return String(s || '')
-      .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-      .replace(/[أإآٱ]/g, 'ا')
-      .replace(/ى/g, 'ي')
-      .replace(/ة/g, 'ه')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+  function init() {
+    var ch = cfg.channel || {};
+    if (ch.title) { U.txt(U.$('#chTitle'), ch.title); document.title = ch.title + ' — شاشة الأخبار العاجلة'; }
+    if (ch.subtitle) U.txt(U.$('#chSub'), ch.subtitle); else U.$('#chSub').classList.add('hidden');
+    if (ch.logo) U.txt(U.$('#chLogo'), ch.logo);
+    if (D.showHint === false) hintBox.classList.add('hidden');
+
+    U.txt(opLabel, S.opName);
+    applyFs();
+    syncToggles();
+    store.load();
+    render();
+    wire();
+    bus.connect();
+    bus.startPresence();
+    setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
+    U.txt(clockEl, U.fmtClock(Date.now()));
+    setInterval(tick, 15000);
   }
 
-  function esc(s) { return String(s == null ? '' : s); }
+  function applyFs() { feed.style.setProperty('--fs', String(S.fs)); }
 
-  function uid() {
-    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+  function syncToggles() {
+    btnSound.className = 'chip' + (S.sound ? ' on' : '');
+    btnSpeak.className = 'chip' + (S.speak ? ' on' : '');
+    soundbar.classList.toggle('hidden', !S.sound || alerter.ready());
   }
 
-  function timeStr(ts) {
-    var d = new Date(ts);
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-  }
-
-  function dayStr(ts) {
-    var d = new Date(ts), n = new Date();
-    var same = function (a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
-    var y = new Date(n.getTime() - 86400000);
-    if (same(d, n)) return 'اليوم';
-    if (same(d, y)) return 'أمس';
-    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
-  }
-
-  // معرّف الغرفة = بصمة أسماء الطرفين مرتّبة أبجدياً + تطبيع
-  function roomKeyFor(a, b) {
-    return [normName(a), normName(b)].sort().join('|');
-  }
-
-  function hashKey(str) {
-    if (window.crypto && crypto.subtle && window.TextEncoder) {
-      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (buf) {
-        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-          return ('0' + b.toString(16)).slice(-2);
-        }).join('').slice(0, 24);
-      }).catch(function () { return hashFallback(str); });
+  /* ---------- الأحداث ---------- */
+  function wire() {
+    function unlock(e) {
+      if (e && e.target && e.target.closest && e.target.closest('a')) return;
+      alerter.unlock();
+      U.askNotify();
+      syncToggles();
     }
-    return Promise.resolve(hashFallback(str));
-  }
-  function hashFallback(str) {
-    var h1 = 0x811c9dc5, h2 = 0x9e3779b9, i, c;
-    for (i = 0; i < str.length; i++) {
-      c = str.charCodeAt(i);
-      h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
-      h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
-    }
-    return (('0000000' + h1.toString(16)).slice(-8) + ('0000000' + h2.toString(16)).slice(-8) + ('0000000' + (h1 ^ h2).toString(16)).slice(-8));
+    document.addEventListener('click', unlock);
+    document.addEventListener('keydown', unlock);
+    soundbar.addEventListener('click', function () { alerter.unlock(); alerter.play('urgent'); syncToggles(); });
+
+    U.$('#btnSound').addEventListener('click', function () {
+      S.sound = !S.sound;
+      U.lsSet(LSP + 'sound', S.sound);
+      if (S.sound) { alerter.unlock(); alerter.play('info'); }
+      U.toast(S.sound ? 'تم تشغيل صوت التنبيه 🔔' : 'تم إسكات صوت التنبيه 🔇', 'ok');
+      syncToggles();
+    });
+    btnSpeak.addEventListener('click', function () {
+      S.speak = !S.speak;
+      U.lsSet(LSP + 'speak', S.speak);
+      if (!S.speak) U.speech.stop();
+      U.toast(S.speak ? 'سيتم قراءة الأخبار صوتياً 🗣' : 'تم إيقاف القراءة الصوتية', 'ok');
+      syncToggles();
+    });
+    U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
+    U.$('#btnFontMinus').addEventListener('click', function () { S.fs = clampFs(S.fs - 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
+    U.$('#btnFull').addEventListener('click', function () {
+      try {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      } catch (e) {}
+    });
+    U.$('#btnOp').addEventListener('click', function () {
+      var v = prompt('اكتب اسمك (يظهر للمحررين عند تأكيد استلام الأخبار):', S.opName);
+      if (v && v.trim()) {
+        S.opName = v.trim().slice(0, 24);
+        U.lsSet(LSP + 'opName', S.opName);
+        U.txt(opLabel, S.opName);
+        bus.end(); // نعيد إنشاء نبضة الحضور بالاسم الجديد
+        location.reload();
+      }
+    });
+    window.addEventListener('online', function () { bus.reconnectNow(); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+    // نقرة على زر النسخ داخل أي بطاقة
+    feed.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
+      if (btn) { copyItem(btn.getAttribute('data-copy')); }
+    });
   }
 
-  function topic(suffix) { return TOPIC_BASE + S.room + '/' + suffix; }
-
-  function topics() { return [topic('m'), topic('h'), topic('p'), topic('t')]; }
-
-  /* =========== التخزين المحلي =========== */
-  function saveCfg() {
-    try { localStorage.setItem(STORE_CFG, JSON.stringify({ me: S.me, peer: S.peer })); } catch (e) {}
-  }
-  function loadCfg() {
-    try { return JSON.parse(localStorage.getItem(STORE_CFG) || 'null'); } catch (e) { return null; }
-  }
-  function saveMsgs() {
-    try { localStorage.setItem(STORE_MSGS + S.room, JSON.stringify(S.msgs.slice(-KEEP_MSGS))); } catch (e) {}
-  }
-  function loadMsgs() {
-    try { return JSON.parse(localStorage.getItem(STORE_MSGS + S.room) || '[]') || []; } catch (e) { return []; }
-  }
-
-  /* =========== إدارة الرسائل =========== */
-  function addMsg(m, opts) {
-    opts = opts || {};
-    if (!m || !m.id || !m.text) return false;
-    if (S.ids[m.id]) return false;
-    S.ids[m.id] = true;
-    S.msgs.push(m);
-    S.msgs.sort(function (a, b) { return a.ts - b.ts; });
-    if (S.msgs.length > KEEP_MSGS) {
-      var removed = S.msgs.splice(0, S.msgs.length - KEEP_MSGS);
-      removed.forEach(function (r) { delete S.ids[r.id]; });
-    }
-    saveMsgs();
-    if (opts.quiet !== true) renderAll();
-    return true;
-  }
-
-  function renderAll() {
-    if (!S.msgs.length) {
-      messagesEl.innerHTML = '';
-      messagesEl.appendChild(emptyState);
-      emptyState.classList.remove('hidden');
-      S.lastDay = '';
+  /* ---------- استقبال الرسائل ---------- */
+  function onMessage(rel, data, isEmpty) {
+    if (rel.indexOf('news/') === 0) {
+      var id = rel.slice(5);
+      if (isEmpty) { store.remove(id); return; }         // خبر محذوف من المحرر
+      if (!data || !data.id) data = { id: id, t: '', ts: Date.now() };
+      if (!data.t) return;
+      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (res && res.isNew) onNewItem(res.item);
       return;
     }
-    var frag = document.createDocumentFragment();
-    S.lastDay = '';
-    S.msgs.forEach(function (m) {
-      var day = dayStr(m.ts);
-      if (day !== S.lastDay) {
-        S.lastDay = day;
-        var d = document.createElement('div');
-        d.className = 'day';
-        d.textContent = day;
-        frag.appendChild(d);
+    if (rel.indexOf('ack/') === 0) {
+      if (!isEmpty && data) {
+        S.acksSeen[data.id || rel.slice(4)] = true;
+        store.applyAck(data);
       }
-      frag.appendChild(bubbleFor(m));
-    });
-    messagesEl.innerHTML = '';
-    messagesEl.appendChild(frag);
-    scrollToBottom();
-  }
-
-  function bubbleFor(m) {
-    var mine = normName(m.from) === normName(S.me);
-    var wrap = document.createElement('div');
-    wrap.className = 'msg ' + (mine ? 'mine' : 'peer') + (m.pending ? ' pending' : '');
-    wrap.setAttribute('data-id', m.id);
-
-    if (!mine) {
-      var who = document.createElement('div');
-      who.className = 'who';
-      who.textContent = m.from;
-      wrap.appendChild(who);
-    }
-    var text = document.createElement('div');
-    text.className = 'text';
-    text.textContent = esc(m.text);          // آمن: نص فقط بدون HTML
-    wrap.appendChild(text);
-
-    var meta = document.createElement('div');
-    meta.className = 'meta';
-    var t = document.createElement('span');
-    t.textContent = timeStr(m.ts);
-    meta.appendChild(t);
-    var state = document.createElement('span');
-    state.textContent = m.pending ? '🕓' : '✓';
-    meta.appendChild(state);
-    wrap.appendChild(meta);
-    return wrap;
-  }
-
-  function nearBottom() {
-    return (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 120;
-  }
-  function scrollToBottom() {
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    S.unread = 0;
-    btnJump.classList.add('hidden');
-  }
-
-  /* =========== الصوت والتنبيهات =========== */
-  var audioCtx = null;
-  function beep() {
-    try {
-      if (!audioCtx) {
-        var AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        audioCtx = new AC();
-      }
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      var t0 = audioCtx.currentTime;
-      [[880, 0], [1180, 0.11]].forEach(function (p) {
-        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = 'sine';
-        o.frequency.value = p[0];
-        g.gain.setValueAtTime(0.0001, t0 + p[1]);
-        g.gain.exponentialRampToValueAtTime(0.16, t0 + p[1] + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + p[1] + 0.16);
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start(t0 + p[1]); o.stop(t0 + p[1] + 0.18);
-      });
-    } catch (e) {}
-  }
-
-  function notify(title, body) {
-    try {
-      if (!('Notification' in window)) return;
-      if (Notification.permission === 'granted' && document.hidden) {
-        var n = new Notification(title, { body: body, dir: 'rtl', lang: 'ar' });
-        setTimeout(function () { try { n.close(); } catch (e) {} }, 6000);
-      }
-    } catch (e) {}
-  }
-  function askNotify() {
-    try {
-      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
-    } catch (e) {}
-  }
-  function flashTitle(txt) {
-    try {
-      var old = document.title;
-      document.title = txt + ' | محادثة فورية';
-      document.addEventListener('visibilitychange', function h() {
-        if (!document.hidden) { document.title = old; document.removeEventListener('visibilitychange', h); }
-      });
-    } catch (e) {}
-  }
-
-  /* =========== الرسائل الصادرة =========== */
-  function sendMsg() {
-    var text = inputMsg.value.trim();
-    if (!text) return;
-    var m = { id: uid(), from: S.me, text: text, ts: Date.now() };
-    addMsg(m);                                   // تُعرض فوراً (optimistic)
-    inputMsg.value = '';
-    sendTyping(true);
-    if (S.connected) {
-      publishMsg(m);
-    } else {
-      m.pending = true;
-      S.queue.push(m);
-      renderAll();
-      setBanner(S.connecting
-        ? 'جارٍ الاتصال… ستُرسل الرسالة تلقائياً عند الاتصال.'
-        : 'لا يوجد اتصال بالشبكة — ستُرسل الرسالة تلقائياً عند عودة الاتصال.', 'warn');
-    }
-  }
-
-  function publishMsg(m) {
-    if (!S.client || !S.connected) return;
-    var payload = JSON.stringify({ id: m.id, from: m.from, text: m.text, ts: m.ts });
-    S.client.publish(topic('m'), payload, { qos: 0 });
-    publishHistory();
-  }
-
-  function flushQueue() {
-    if (!S.queue.length) return;
-    var q = S.queue.slice();
-    S.queue = [];
-    q.forEach(function (m) {
-      delete m.pending;
-      publishMsg(m);
-    });
-    renderAll();
-    setBanner(null);
-    toast('تم إرسال الرسائل المعلّقة ✔');
-  }
-
-  function publishHistory() {
-    if (!S.client || !S.connected) return;
-    var last = S.msgs.filter(function (m) { return !m.pending; }).slice(-SEND_HISTORY)
-      .map(function (m) { return { id: m.id, from: m.from, text: m.text, ts: m.ts }; });
-    S.client.publish(topic('h'), JSON.stringify(last), { qos: 0, retain: true });
-    S.historySent = true;
-  }
-
-  /* =========== الاتصال بالوسيط =========== */
-  function setBanner(txt, kind) {
-    if (!txt) { banner.classList.add('hidden'); return; }
-    banner.classList.remove('hidden');
-    banner.className = 'banner' + (kind === 'err' ? ' err' : '');
-    banner.textContent = txt;
-  }
-  function toast(txt) {
-    setBanner(txt, 'warn');
-    setTimeout(function () { if (banner.textContent === txt) setBanner(null); }, 2600);
-  }
-
-  function setConnState(st) {
-    // st: 'on' | 'conn' | 'off'
-    peerDot.className = 'dot' + (st === 'on' ? ' on' : st === 'conn' ? ' conn' : ' off');
-    if (st === 'conn') peerStatusText.textContent = 'جارٍ الاتصال…';
-    else if (st === 'off') peerStatusText.textContent = 'غير متصل — ستُعاد المحاولة';
-  }
-
-  function updatePeerStatus() {
-    var diff = Date.now() - S.peerSeen;
-    if (S.peerSeen && diff < PEER_TIMEOUT) {
-      peerDot.className = 'dot on';
-      peerStatusText.textContent = 'متصل الآن';
-    } else if (S.peerSeen) {
-      peerDot.className = 'dot';
-      var mins = Math.floor(diff / 60000);
-      peerStatusText.textContent = mins < 1 ? 'آخر ظهور: قبل لحظات' : 'آخر ظهور: قبل ' + mins + ' دقيقة';
-    } else {
-      peerDot.className = 'dot';
-      peerStatusText.textContent = S.connected ? 'بانتظار دخول الطرف الآخر…' : 'غير متصل';
-    }
-  }
-  setInterval(updatePeerStatus, 4000);
-
-  function ensureMqtt(cb) {
-    if (window.mqtt) return cb(true);
-    var urls = [
-      './mqtt.min.js',
-      'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js',
-      'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js'
-    ];
-    var i = 0;
-    (function next() {
-      if (window.mqtt) return cb(true);
-      if (i >= urls.length) return cb(false);
-      var s = document.createElement('script');
-      s.src = urls[i++];
-      s.onload = function () { window.mqtt ? cb(true) : next(); };
-      s.onerror = next;
-      document.head.appendChild(s);
-    })();
-  }
-
-  function connect(idx) {
-    S.brokerIndex = idx;
-    if (idx >= BROKERS.length) {
-      S.connecting = false; S.connected = false;
-      setConnState('off');
-      setBanner('تعذّر الاتصال بخوادم الرسائل. تحقّق من الإنترنت، وستُعاد المحاولة بعد قليل.', 'err');
-      setTimeout(function () { connect(0); }, 12000);
       return;
     }
-    var b = BROKERS[idx];
-    S.connecting = true;
-    setConnState('conn');
-    setBanner('جارٍ الاتصال بالخادم (' + b.name + ')…');
-
-    var opened = false, dead = false;
-    var client;
-    try {
-      client = window.mqtt.connect(b.url, {
-        clientId: 'uc_' + Math.random().toString(16).slice(2, 12),
-        clean: true,
-        keepalive: 30,
-        connectTimeout: 9000,
-        reconnectPeriod: 4000,
-        protocolVersion: 4,
-        will: { topic: topic('p'), payload: JSON.stringify({ from: S.me, ts: 0, bye: 1 }), qos: 0, retain: false }
-      });
-    } catch (e) {
-      return connect(idx + 1);
+    if (rel.indexOf('pin/') === 0) {
+      var pid = rel.slice(4);
+      if (isEmpty) store.applyPin({ id: pid }, false);
+      else if (data && data.id) store.applyPin(data, true);
+      return;
     }
-    S.client = client;
+    if (rel.indexOf('presence/') === 0) {
+      if (!data || data.role === 'display') return;
+      if (isEmpty || data.off || !data.ts) { delete S.editors[data.who]; renderEditors(); return; }
+      S.editors[data.who] = { name: data.name || data.who, ts: data.ts };
+      renderEditors();
+      return;
+    }
+    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); return; }
+  }
 
-    var guard = setTimeout(function () {
-      if (!opened) { dead = true; try { client.end(true); } catch (e) {} connect(idx + 1); }
-    }, 11000);
+  function onState(st, info) {
+    if (st === 'connected') {
+      connDot.className = 'dot on';
+      U.txt(connText, 'متصل — ' + (info.broker || ''));
+      banner.classList.add('hidden');
+    } else if (st === 'connecting') {
+      connDot.className = 'dot wait';
+      U.txt(connText, 'جارٍ الاتصال…');
+    } else if (st === 'offline') {
+      connDot.className = 'dot off';
+      U.txt(connText, 'انقطع الاتصال');
+      showBanner('انقطع الاتصال بخادم البث — تجري إعادة المحاولة تلقائياً…', false);
+    } else if (st === 'failed') {
+      connDot.className = 'dot off';
+      U.txt(connText, 'غير متصل');
+      showBanner('تعذّر الاتصال بخوادم البث. تأكد من الإنترنت — ستُعاد المحاولة تلقائياً.', true);
+    }
+  }
 
-    client.on('connect', function () {
-      opened = true; S.connecting = false; S.connected = true; S.broker = b.name;
-      clearTimeout(guard);
-      setBanner(null);
-      setConnState('on');
-      updatePeerStatus();
-      client.subscribe(topics(), { qos: 0 }, function (err) {
-        if (err) { setBanner('فشل الاشتراك في الغرفة: ' + err.message, 'err'); return; }
-        publishPresence();
-        flushQueue();
-        setTimeout(publishHistory, 1200);   // نشر السجل ليقرأه من يدخل بعدنا
-      });
-    });
+  function onReady() { render(); setTimeout(pruneOld, 9000); }
 
-    client.on('message', function (t, payload) {
-      var raw = payload ? payload.toString() : '';
-      if (!raw) return;                       // رسالة محتجزة فارغة = تم تفريغ السجل
-      var d; try { d = JSON.parse(raw); } catch (e) { return; }
-      if (t === topic('m')) onIncomingMsg(d);
-      else if (t === topic('h')) onIncomingHistory(d);
-      else if (t === topic('p')) onPresence(d);
-      else if (t === topic('t')) onTyping(d);
-    });
+  function showBanner(msg, isErr) {
+    banner.className = 'banner' + (isErr ? ' err' : '');
+    U.txt(banner, msg);
+  }
 
-    client.on('error', function (err) {
-      if (!opened) { dead = true; clearTimeout(guard); try { client.end(true); } catch (e) {} connect(idx + 1); }
-    });
+  /* ---------- خبر جديد ---------- */
+  function onNewItem(item) {
+    S.fresh[item.id] = Date.now();
+    if (S.sound) alerter.play('urgent');
+    if (S.speak) U.speech.speak(item.text);
+    U.browserNotify('🚨 خبر عاجل — ' + (item.author || 'غرفة الأخبار'), item.text);
+    if (document.hidden) U.flashTitle('🚨 خبر عاجل');
+    scheduleReceivedAck(item);
+    render();
+  }
 
-    client.on('close', function () {
-      S.connected = false; S.connecting = false;
-      if (!dead && S.client === client) {
-        setConnState('conn');
-        if (S.msgs.length) setBanner('انقطع الاتصال — ستُعاد المحاولة تلقائياً…', 'warn');
-        updatePeerStatus();
+  // إشعار المحرر بأن الخبر وصل إلى شاشة المنفذ
+  function scheduleReceivedAck(item) {
+    if (cfg.ackOnReceive === false) return;
+    setTimeout(function () {
+      var cur = store.get(item.id);
+      if (cur && !cur.ack && !S.acksSeen[item.id]) {
+        var a = { id: item.id, k: 'received', b: S.opName, ts: Date.now() };
+        bus.publish('ack/' + item.id, a, { retain: true });
+        store.applyAck(a);
       }
+    }, 2500);
+  }
+
+  /* ---------- النسخ ---------- */
+  function copyItem(id) {
+    var it = store.get(id);
+    if (!it) return;
+    U.copyText(it.text).then(function (ok) {
+      var a = { id: id, k: 'copied', b: S.opName, ts: Date.now(), n: ok ? '' : 'manual' };
+      store.applyAck(a);
+      bus.publish('ack/' + id, a, { retain: true });
+      alerter.play('info');
+      U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر ✅' : 'لم يتوفر النسخ التلقائي — حدّد النص وانسخه يدوياً', ok ? 'ok' : 'warn');
+    });
+  }
+
+  /* ---------- حذف الأخبار القديمة ---------- */
+  function pruneOld() {
+    if (S.pruned) return;
+    S.pruned = true;
+    var days = Number(cfg.maxAgeDays || 0);
+    if (!days) return;
+    var cut = Date.now() - days * 86400e3;
+    store.list().forEach(function (it) { if (it.ts < cut) wipe(it.id); });
+  }
+  function wipe(id) {
+    bus.publish('news/' + id, '', { retain: true });
+    bus.publish('ack/' + id, '', { retain: true });
+    bus.publish('pin/' + id, '', { retain: true });
+    bus.publish('ctrl', { action: 'delete', id: id });
+    store.remove(id);
+  }
+
+  /* ---------- العرض ---------- */
+  var nodes = {};
+
+  function render() {
+    var items = store.list();
+    var want = {};
+    items.forEach(function (it) { want[it.id] = true; });
+
+    Object.keys(nodes).forEach(function (id) {
+      if (!want[id]) { nodes[id].remove(); delete nodes[id]; delete S.fresh[id]; }
     });
 
-    client.on('offline', function () { setConnState('off'); });
-  }
-
-  /* =========== استقبال البيانات =========== */
-  function onIncomingMsg(d) {
-    if (!d || !d.id || !d.text) return;
-    if (normName(d.from) === normName(S.me) && S.ids[d.id]) return;   // نسختنا نفسها
-    var isNew = addMsg({ id: d.id, from: d.from, text: d.text, ts: d.ts || Date.now() });
-    if (!isNew) return;
-    if (normName(d.from) === normName(S.me)) return;                  // من جهاز آخر بنفس الاسم
-    beep();
-    notify(d.from, d.text);
-    if (document.hidden) flashTitle('رسالة جديدة');
-    else if (!nearBottom()) { S.unread++; btnJump.classList.remove('hidden'); btnJump.textContent = 'رسائل جديدة (' + S.unread + ') ↓'; }
-  }
-
-  function onIncomingHistory(arr) {
-    if (!Array.isArray(arr) || !arr.length) return;
-    var added = 0, hasMine = false;
-    arr.forEach(function (m) {
-      if (!m || !m.id || !m.text) return;
-      if (normName(m.from) === normName(S.me)) hasMine = true;
-      if (addMsg({ id: m.id, from: m.from, text: m.text, ts: m.ts || Date.now() }, { quiet: true })) added++;
+    var prev = null;
+    items.forEach(function (it) {
+      var node = nodes[it.id];
+      if (!node) { node = buildCard(it); nodes[it.id] = node; }
+      updateCard(node, it);
+      if (prev !== node) {
+        var expected = prev ? prev.nextSibling : feed.firstChild;
+        if (expected !== node) feed.insertBefore(node, expected);
+      }
+      prev = node;
     });
-    if (added) renderAll();
-    // لو طرفنا عنده رسائل ليست عندنا (سجل أقدم/أكمل) نحدّث السجل المحتجز
-    if (!S.historySent) setTimeout(publishHistory, 400);
+
+    emptyBox.classList.toggle('hidden', items.length > 0);
+    if (!items.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
+    if (items.length) updateHeaderCount(items);
   }
 
-  function onPresence(d) {
-    if (!d || normName(d.from) === normName(S.me)) return;
-    if (d.bye) { S.peerSeen = 0; updatePeerStatus(); return; }
-    S.peerSeen = Date.now();
-    updatePeerStatus();
+  function updateHeaderCount(items) {
+    var st = store.stats();
+    var pending = st.pending + st.received;
+    document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
   }
 
-  function onTyping(d) {
-    if (!d || normName(d.from) === normName(S.me)) return;
-    if (!d.stop) {
-      typingName.textContent = d.from;
-      typingEl.classList.remove('hidden');
-      clearTimeout(S.peerTypingTimer);
-      S.peerTypingTimer = setTimeout(function () { typingEl.classList.add('hidden'); }, TYPING_MS);
+  function buildCard(it) {
+    var card = U.el('article', 'card');
+    card.setAttribute('data-id', it.id);
+
+    var top = U.el('div', 'card-top');
+    top.appendChild(U.el('span', 'tag', '🚨 عاجل'));
+    top.appendChild(U.el('span', 'who', it.author || 'غرفة الأخبار'));
+    top.appendChild(U.el('span', 'sep', '•'));
+    var ts = U.el('span', 'ts'); ts.setAttribute('data-role', 'ts'); top.appendChild(ts);
+    var ed = U.el('span', 'mini hidden'); ed.setAttribute('data-role', 'edited'); top.appendChild(ed);
+    var pin = U.el('span', 'mini gold hidden'); pin.setAttribute('data-role', 'pin'); pin.textContent = '📌 مثبّت'; top.appendChild(pin);
+    var nw = U.el('span', 'mini new hidden'); nw.setAttribute('data-role', 'new'); nw.textContent = 'جديد'; top.appendChild(nw);
+    top.appendChild(U.el('span', 'grow2'));
+    var rel = U.el('span', 'ts'); rel.setAttribute('data-role', 'rel'); top.appendChild(rel);
+    card.appendChild(top);
+
+    var text = U.el('p', 'text'); text.setAttribute('data-role', 'text'); card.appendChild(text);
+
+    var bottom = U.el('div', 'card-bottom');
+    var stat = U.el('span', 'stat'); stat.setAttribute('data-role', 'stat'); bottom.appendChild(stat);
+    var actions = U.el('div', 'actions');
+    var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
+    var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy'); copy.textContent = '📋 نسخ الخبر';
+    actions.appendChild(recopy); actions.appendChild(copy);
+    bottom.appendChild(actions);
+    card.appendChild(bottom);
+    return card;
+  }
+
+  function updateCard(card, it) {
+    var r = function (role) { return card.querySelector('[data-role="' + role + '"]'); };
+    U.txt(r('text'), it.text);
+    U.txt(r('ts'), U.fmtTime(it.ts));
+    U.txt(r('rel'), U.rel(it.ts));
+    r('edited').classList.toggle('hidden', !it.editedAt);
+    if (it.editedAt) U.txt(r('edited'), 'محدَّث ' + U.fmtTime(it.editedAt));
+    r('pin').classList.toggle('hidden', !it.pin);
+
+    var fresh = S.fresh[it.id] && (Date.now() - S.fresh[it.id] < 20000);
+    card.classList.toggle('fresh', !!fresh);
+    r('new').classList.toggle('hidden', !fresh);
+
+    var ack = it.ack;
+    var copied = ack && ack.kind === 'copied';
+    card.classList.toggle('copied', !!copied);
+    card.classList.toggle('pinned', !!it.pin);
+
+    var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy');
+    if (copied) {
+      stat.className = 'stat copied';
+      U.txt(stat, '✅ تم النسخ بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
+      copyBtn.classList.add('hidden');
+      recopyBtn.classList.remove('hidden');
+      recopyBtn.setAttribute('data-copy', it.id);
+    } else if (ack && ack.kind === 'received') {
+      stat.className = 'stat received';
+      U.txt(stat, '📥 وصل إلى الشاشة — بانتظار النسخ');
+      copyBtn.classList.remove('hidden');
+      copyBtn.setAttribute('data-copy', it.id);
+      recopyBtn.classList.add('hidden');
     } else {
-      typingEl.classList.add('hidden');
+      stat.className = 'stat pending';
+      U.txt(stat, '⏳ لم يتم النسخ بعد');
+      copyBtn.classList.remove('hidden');
+      copyBtn.setAttribute('data-copy', it.id);
+      recopyBtn.classList.add('hidden');
     }
   }
 
-  function publishPresence() {
-    if (!S.client || !S.connected) return;
-    try { S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: Date.now() }), { qos: 0 }); } catch (e) {}
-  }
-
-  function sendTyping(stop) {
-    if (!S.client || !S.connected) return;
+  function renderEditors() {
     var now = Date.now();
-    if (!stop && (now - S.lastTypingSent) < 2200) return;
-    S.lastTypingSent = now;
-    try { S.client.publish(topic('t'), JSON.stringify({ from: S.me, stop: stop ? 1 : 0 }), { qos: 0 }); } catch (e) {}
-  }
-
-  setInterval(publishPresence, PRESENCE_MS);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) { publishPresence(); updatePeerStatus(); } });
-
-  /* =========== الدخول والخروج =========== */
-  function updateRoomPreview() {
-    var a = inputMe.value.trim(), b = inputPeer.value.trim();
-    if (!a || !b || normName(a) === normName(b)) { previewRoom.textContent = '—'; return; }
-    hashKey(roomKeyFor(a, b)).then(function (h) { previewRoom.textContent = '#' + h.slice(0, 8); });
-  }
-  inputMe.addEventListener('input', updateRoomPreview);
-  inputPeer.addEventListener('input', updateRoomPreview);
-
-  function enterChat() {
-    var me = inputMe.value.trim(), peer = inputPeer.value.trim();
-    if (!me || !peer) { loginHint.textContent = 'اكتب الاسمين أولاً.'; return; }
-    if (normName(me) === normName(peer)) { loginHint.textContent = 'لا يمكن استخدام نفس الاسم للطرفين. اكتب اسمين مختلفين.'; return; }
-    loginHint.textContent = '';
-    btnEnter.disabled = true;
-    btnEnter.textContent = 'جارٍ الدخول…';
-
-    S.me = me; S.peer = peer;
-    hashKey(roomKeyFor(me, peer)).then(function (h) {
-      S.room = h;
-      saveCfg();
-      S.msgs = []; S.ids = {};
-      loadMsgs().forEach(function (m) { if (m && m.id) { S.ids[m.id] = true; S.msgs.push(m); } });
-      S.msgs.sort(function (a, b) { return a.ts - b.ts; });
-
-      // الواجهة
-      peerNameLabel.textContent = peer;
-      peerAvatar.textContent = peer.trim().charAt(0);
-      roomChip.textContent = '#' + h.slice(0, 8);
-      roomChip.title = 'كود الغرفة: #' + h + '\nتأكد أن الطرف الآخر يرى نفس الكود.';
-      document.title = me + ' ↔ ' + peer + ' | محادثة فورية';
-
-      screenLogin.classList.add('hidden');
-      screenChat.classList.remove('hidden');
-      renderAll();
-      setTimeout(scrollToBottom, 60);
-      btnEnter.disabled = false;
-      btnEnter.textContent = 'دخول إلى المحادثة';
-      try { inputMsg.focus(); } catch (e) {}
-      askNotify();
-
-      ensureMqtt(function (ok) {
-        if (!ok) {
-          S.connecting = false;
-          setConnState('off');
-          setBanner('تعذّر تحميل مكتبة الاتصال (تحقّق من الإنترنت ثم أعد تحميل الصفحة).', 'err');
-          return;
-        }
-        connect(0);
-      });
+    var online = Object.keys(S.editors).filter(function (k) { return (now - S.editors[k].ts) < U.ONLINE_TTL; });
+    // إزالة المنتهين
+    Object.keys(S.editors).forEach(function (k) { if ((now - S.editors[k].ts) >= U.ONLINE_TTL) delete S.editors[k]; });
+    editorsBox.classList.toggle('hidden', online.length === 0);
+    if (!online.length) { editorsBox.innerHTML = ''; editorsBox.appendChild(U.el('span', 'lbl', 'المحررون المتصلون:')); return; }
+    editorsBox.innerHTML = '';
+    editorsBox.appendChild(U.el('span', 'lbl', 'المحررون المتصلون:'));
+    online.forEach(function (k) {
+      var c = U.el('span', 'edchip'); c.appendChild(U.el('i'));
+      c.appendChild(document.createTextNode(S.editors[k].name));
+      editorsBox.appendChild(c);
     });
   }
 
-  function leaveChat() {
-    try { if (S.client) { S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: 0, bye: 1 }), { qos: 0 }); S.client.end(true); } } catch (e) {}
-    S.client = null; S.connected = false;
-    screenChat.classList.add('hidden');
-    screenLogin.classList.remove('hidden');
-    document.title = 'محادثة فورية | Urgent Chat';
-    setBanner(null);
-    typingEl.classList.add('hidden');
+  function tick() {
+    var now = Date.now();
+    store.list().forEach(function (it) {
+      var node = nodes[it.id];
+      if (!node) return;
+      var r = function (role) { return node.querySelector('[data-role="' + role + '"]'); };
+      if (r('rel')) U.txt(r('rel'), U.rel(it.ts));
+      var fresh = S.fresh[it.id] && (now - S.fresh[it.id] < 20000);
+      node.classList.toggle('fresh', !!fresh);
+      if (r('new')) r('new').classList.toggle('hidden', !fresh);
+    });
+    renderEditors();
   }
 
-  loginForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    try { if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); } } catch (err) {}
-    enterChat();
-  });
-  inputMe.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); inputPeer.focus(); } });
-  btnBack.addEventListener('click', function () {
-    if (confirm('الخروج من المحادثة؟ (الرسائل تبقى محفوظة على هذا الجهاز)')) leaveChat();
-  });
-  btnClear.addEventListener('click', function () {
-    if (!confirm('مسح كل الرسائل من هذا الجهاز فقط؟ لن تُحذف عند الطرف الآخر.')) return;
-    S.msgs = []; S.ids = {}; S.queue = [];
-    try { localStorage.removeItem(STORE_MSGS + S.room); } catch (e) {}
-    renderAll();
-    toast('تم مسح المحادثة محلياً');
-  });
-
-  /* =========== صندوق الإرسال =========== */
-  composer.addEventListener('submit', function (e) { e.preventDefault(); sendMsg(); });
-  inputMsg.addEventListener('input', function () {
-    sendTyping(false);
-    clearTimeout(S.typingTimer);
-    S.typingTimer = setTimeout(function () { sendTyping(true); }, 2600);
-  });
-
-  messagesEl.addEventListener('scroll', function () {
-    if (nearBottom()) btnJump.classList.add('hidden');
-  });
-  btnJump.addEventListener('click', function () { scrollToBottom(); });
-
-  window.addEventListener('beforeunload', function () {
-    try { if (S.client && S.connected) S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: 0, bye: 1 }), { qos: 0 }); } catch (e) {}
-  });
-
-  // إعادة المزامنة عند عودة الشبكة
-  window.addEventListener('online', function () {
-    if (!S.connected) { try { if (S.client) S.client.reconnect(); } catch (e) { connect(S.brokerIndex); } }
-  });
-
-  /* =========== التهيئة =========== */
-  var cfg = loadCfg();
-  if (cfg && cfg.me && cfg.peer) {
-    inputMe.value = cfg.me;
-    inputPeer.value = cfg.peer;
-  }
-  updateRoomPreview();
+  init();
 })();
 </script>
 </body>
