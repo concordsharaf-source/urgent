@@ -33,15 +33,9 @@ window.URGENT_CONFIG = {
   admins: [
     {
       user: "admin",
-      name: "رئيس الأخبار",
+      name: "مدير التحرير",
       salt: "tILa6FtQ19s0WXWx0jpdjg==",
       hash: "D66jfsVKDVBsNGukn4RlH8e4odaeqr8z4jfbRodubjc="
-    },
-    {
-      user: "editor",
-      name: "مدير التحرير",
-      salt: "s8fRqbSDhN6KTVJ0/0IMdg==",
-      hash: "AswUaqx8F1sFkf9q2iHVqL38JyTlhQDD+UoSUGoMRuI="
     },
     {
       user: "kamal",
