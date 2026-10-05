@@ -32,16 +32,22 @@ window.URGENT_CONFIG = {
      ثم انسخ السطر الناتج هنا. */
   admins: [
     {
-      user: 'admin',
-      name: 'رئيس الأخبار',
-      salt: 'tILa6FtQ19s0WXWx0jpdjg==',
-      hash: 'D66jfsVKDVBsNGukn4RlH8e4odaeqr8z4jfbRodubjc='
+      user: "admin",
+      name: "رئيس الأخبار",
+      salt: "tILa6FtQ19s0WXWx0jpdjg==",
+      hash: "D66jfsVKDVBsNGukn4RlH8e4odaeqr8z4jfbRodubjc="
     },
     {
-      user: 'editor',
-      name: 'مدير التحرير',
-      salt: 's8fRqbSDhN6KTVJ0/0IMdg==',
-      hash: 'AswUaqx8F1sFkf9q2iHVqL38JyTlhQDD+UoSUGoMRuI='
+      user: "editor",
+      name: "مدير التحرير",
+      salt: "s8fRqbSDhN6KTVJ0/0IMdg==",
+      hash: "AswUaqx8F1sFkf9q2iHVqL38JyTlhQDD+UoSUGoMRuI="
+    },
+    {
+      user: "kamal",
+      name: "رئيس دائرة الأخبار",
+      salt: "a6zSL1G9WFj0QlF9dusnCw==",
+      hash: "WW/Wu6xesj3NYylgpjqLbAmj5f3uCHO5I1GT54wmVpw="
     }
   ],
 
