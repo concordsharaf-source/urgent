@@ -108,9 +108,6 @@
   .chip.link{color:#bae6fd;border-color:rgba(56,189,248,.35)}
 
   /* ============ شرائط الحالة ============ */
-  .banner{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(251,191,36,.14);
-    color:#fde68a;border-bottom:1px solid rgba(251,191,36,.25)}
-  .banner.err{background:rgba(239,68,68,.15);color:#fecaca;border-bottom-color:rgba(239,68,68,.3)}
   .soundbar{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(56,189,248,.15);
     color:#e0f2fe;border-bottom:1px solid rgba(56,189,248,.3);cursor:pointer;font-weight:600}
   .alarmbar{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
@@ -276,7 +273,6 @@
   <div class="ehalo"></div>
 </div>
 
-<div class="banner hidden" id="banner"></div>
 <div class="alarmbar hidden" id="alarmbar">
   <span class="ico" data-ic="bell"></span>
   <span id="alarmText">تنبيه متكرر كل 30 ثانية حتى يتم نسخ الخبر</span>
@@ -346,7 +342,7 @@
   /* ---------- عناصر ---------- */
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
   var connDot = U.$('#connDot'), connText = U.$('#connText');
-  var banner = U.$('#banner'), soundbar = U.$('#soundbar');
+  var soundbar = U.$('#soundbar');
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
   var clockEl = U.$('#clock');
   var btnSound = U.$('#btnSound');
@@ -676,30 +672,20 @@
   }
 
   function onState(st, info) {
+    // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
       U.txt(connText, 'متصل — ' + (info.broker || ''));
-      banner.classList.add('hidden');
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       U.txt(connText, 'جارٍ الاتصال…');
-    } else if (st === 'offline') {
-      connDot.className = 'dot off';
-      U.txt(connText, 'انقطع الاتصال');
-      showBanner('انقطع الاتصال بخادم البث — تجري إعادة المحاولة تلقائياً…', false);
-    } else if (st === 'failed') {
+    } else {
       connDot.className = 'dot off';
       U.txt(connText, 'غير متصل');
-      showBanner('تعذّر الاتصال بخوادم البث. تأكد من الإنترنت — ستُعاد المحاولة تلقائياً.', true);
     }
   }
 
   function onReady() { render(); setTimeout(pruneOld, 9000); }
-
-  function showBanner(msg, isErr) {
-    banner.className = 'banner' + (isErr ? ' err' : '');
-    U.txt(banner, msg);
-  }
 
   /* ---------- خبر جديد ---------- */
   /* ===================== إطار التنبيه المضيء (إضاءة الأطراف) ===================== */

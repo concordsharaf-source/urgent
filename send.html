@@ -98,9 +98,6 @@
   .chip .dot.off{background:#ef4444}
   @keyframes blink{50%{opacity:.55}}
 
-  .banner{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(251,191,36,.14);
-    color:#fde68a;border-bottom:1px solid rgba(251,191,36,.25)}
-  .banner.err{background:rgba(239,68,68,.15);color:#fecaca;border-bottom-color:rgba(239,68,68,.3)}
 
   /* ============ التغليف ============ */
   .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:16px}
@@ -214,8 +211,6 @@
     <button class="chip" id="btnLogout" title="خروج"><i class="ico" data-ic="exit"></i>خروج</button>
   </header>
 
-  <div class="banner hidden" id="banner"></div>
-
   <main class="wrap">
     <!-- محرر الخبر -->
     <div class="card composer">
@@ -291,7 +286,7 @@
   var loginForm = U.$('#loginForm'), inUser = U.$('#inUser'), inPass = U.$('#inPass');
   var loginErr = U.$('#loginErr'), btnLogin = U.$('#btnLogin');
   var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
-  var feed = U.$('#feed'), statsBox = U.$('#stats'), banner = U.$('#banner');
+  var feed = U.$('#feed'), statsBox = U.$('#stats');
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
   var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
@@ -861,36 +856,25 @@
   function normOwn(author) { return S.admin && String(author || '') === String(S.admin.name); }
 
   function onState(st, info) {
+    // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
       U.txt(connText, 'متصل');
-      hideBanner();
       updatePendingChip();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       U.txt(connText, 'جارٍ الاتصال…');
-    } else if (st === 'offline') {
-      connDot.className = 'dot off';
-      U.txt(connText, 'انقطع الاتصال');
-      showBanner('انقطع الاتصال بخادم البث — أي خبر ترسله سيُحفظ ويُرسل تلقائياً عند العودة.', false);
-    } else if (st === 'failed') {
+    } else {
       connDot.className = 'dot off';
       U.txt(connText, 'غير متصل');
-      showBanner('تعذّر الاتصال بخوادم البث. تحقّق من الإنترنت — ستُعاد المحاولة تلقائياً.', true);
     }
   }
 
   function onReady() { render(); }
 
-  function showBanner(msg, isErr) { banner.className = 'banner' + (isErr ? ' err' : ''); U.txt(banner, msg); }
-  function hideBanner() { banner.classList.add('hidden'); }
-
   function updateDisplayChip() {
     displayDot.className = 'dot ' + (S.displayOnline ? 'on' : 'off');
     U.setIconText(displayText, null, S.displayOnline ? ('شاشة ' + S.displayName + ': متصلة') : 'شاشة المنفذ: غير متصلة');
-    if (!S.displayOnline && store.list().length) {
-      showBanner('شاشة المنفذ غير متصلة الآن — الأخبار تُبث وتُخزَّن وستظهر عليها فور اتصالها.', false);
-    } else if (bus.state() === 'connected') { hideBanner(); }
     U.$('#chipDisplay').classList.toggle('on', S.displayOnline);
   }
 
