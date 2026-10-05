@@ -1043,9 +1043,6 @@ window.URGENT = (function () {
     var verRow = rowEl('الإصدار', 'رقم إصدار الصفحة الحالي');
     verRow.appendChild(el('div', 'uc-badge', 'v' + (config().version || '—')));
     secI.appendChild(verRow);
-    var roomRow = rowEl('مفتاح القناة', 'تأكد أن كل الأجهزة تستخدم نفس المفتاح');
-    roomRow.appendChild(el('div', 'uc-badge mono', String(opts.room || '').slice(0, 10) + '…'));
-    secI.appendChild(roomRow);
     body.appendChild(secI);
 
     sheet.appendChild(body);
