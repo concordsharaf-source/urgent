@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0f1a" />
 <meta name="description" content="لوحة المحررين — إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ." />
-<title>لوحة المحررين — غرفة الأخبار</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
 <style>
   :root{
@@ -30,14 +33,23 @@
   button{font-family:inherit}
   input,textarea{font-family:inherit}
   .hidden{display:none !important}
+  .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
+  .ico svg{display:block}
+  .chip .ico{margin-inline-end:5px}
+  .ibtn .ico{margin-inline-end:4px;vertical-align:-4px}
+  .pill .ico{margin-inline-end:5px;vertical-align:-4px}
+  .livedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#fff;margin-inline-end:7px;
+    vertical-align:1px;animation:live 1.6s infinite}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 9px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  .empty .ico svg{width:42px;height:42px;opacity:.6}
 
   /* ============ الدخول ============ */
   .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px}
   .card{background:rgba(18,26,40,.9);border:1px solid var(--line);border-radius:22px;
     box-shadow:0 26px 60px -30px rgba(0,0,0,.9)}
   .login{width:100%;max-width:420px;padding:28px 24px 22px}
-  .login .logo{width:66px;height:66px;border-radius:20px;margin:0 auto 14px;display:grid;place-items:center;
-    font-size:32px;background:linear-gradient(140deg,#ef4444,#7f1d1d);box-shadow:0 14px 30px -14px rgba(224,36,36,.9)}
+  .login .logo{width:132px;height:auto;border-radius:20px;margin:0 auto 16px;display:block;
+    background:#fff;padding:8px;box-shadow:0 16px 34px -16px rgba(224,36,36,.9);border:1px solid rgba(255,255,255,.18)}
   .login h1{margin:0 0 6px;font-size:22px;text-align:center;font-weight:800}
   .login .sub{margin:0 0 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
   label{display:block;margin-bottom:13px}
@@ -64,8 +76,8 @@
     padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.85));
     backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09)}
   .brand{display:flex;align-items:center;gap:11px;min-width:0}
-  .brand .logo{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:21px;
-    background:linear-gradient(140deg,#ef4444,#7f1d1d);flex:0 0 auto}
+  .brand .logo{width:50px;height:50px;border-radius:14px;flex:0 0 auto;display:block;
+    background:#fff;padding:3px;object-fit:contain;border:1px solid rgba(255,255,255,.2)}
   .brand h1{margin:0;font-size:18px;font-weight:800}
   .brand p{margin:2px 0 0;font-size:12px;color:var(--dim)}
   .grow{flex:1 1 auto}
@@ -161,7 +173,7 @@
 <!-- ==================== تسجيل الدخول ==================== -->
 <section class="login-wrap" id="loginScreen">
   <div class="card login">
-    <div class="logo">🔑</div>
+    <img class="logo" src="assets/logo-320.png" alt="اليمن اليوم" />
     <h1>لوحة المحررين</h1>
     <p class="sub" id="loginSub">الدخول مخصص لفريق الأخبار — مدير التحرير ورئيس الأخبار.<br />شاشة الاستقبال لا تحتاج تسجيل دخول.</p>
     <form id="loginForm" autocomplete="on">
@@ -178,7 +190,7 @@
 <section class="hidden" id="appScreen">
   <header class="topbar">
     <div class="brand">
-      <div class="logo">📤</div>
+      <img class="logo" src="assets/logo-96.png" alt="اليمن اليوم" />
       <div>
         <h1 id="appTitle">لوحة المحررين</h1>
         <p id="appSub">إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ</p>
@@ -192,10 +204,10 @@
     <button class="chip" id="chipConn" title="حالة الاتصال بخادم البث">
       <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
     </button>
-    <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد">⚠️ <span id="pendingText">0</span> بانتظار النسخ</button>
-    <button class="chip" id="chipUser" title="الحساب الحالي">👤 <span id="userLabel">—</span></button>
-    <a class="chip" href="index.html" target="_blank" rel="noopener" title="فتح شاشة الاستقبال">📡 الشاشة</a>
-    <button class="chip" id="btnLogout" title="خروج">↩ خروج</button>
+    <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span> بانتظار النسخ</button>
+    <button class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></button>
+    <a class="chip" href="index.html" target="_blank" rel="noopener" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i>الشاشة</a>
+    <button class="chip" id="btnLogout" title="خروج"><i class="ico" data-ic="exit"></i>خروج</button>
   </header>
 
   <div class="banner hidden" id="banner"></div>
@@ -203,13 +215,13 @@
   <main class="wrap">
     <!-- محرر الخبر -->
     <div class="card composer">
-      <div class="lbl">🚨 نص الخبر العاجل <span style="font-weight:400;color:#64748b">(Ctrl + Enter للإرسال)</span></div>
+      <div class="lbl"><i class="livedot" style="background:#ef4444"></i>نص الخبر العاجل <span style="font-weight:400;color:#64748b">(Ctrl + Enter للإرسال)</span></div>
       <textarea id="newsText" placeholder="اكتب نص الخبر كما سيُقرأ على شاشة التنفيذ…"></textarea>
       <div class="row">
         <div id="templates" style="display:flex;gap:7px;flex-wrap:wrap"></div>
         <span class="counter" id="counter">0 كلمة</span>
         <button class="btn ghost tiny" id="btnClearText" type="button">مسح</button>
-        <button class="send-btn" id="btnPublish" type="button">إرسال عاجل ➤</button>
+        <button class="send-btn" id="btnPublish" type="button">إرسال عاجل</button>
       </div>
     </div>
 
@@ -229,7 +241,7 @@
     <div class="feed" id="feed"></div>
 
     <div class="danger-zone">
-      <button class="btn danger tiny" id="btnWipeAll" type="button">🗑 مسح كل الأخبار من الشاشة</button>
+      <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
     </div>
   </main>
 </section>
@@ -283,7 +295,12 @@
   /* ==================== الدخول ==================== */
   function boot() {
     var ch = cfg.channel || {};
-    if (ch.title) { U.txt(U.$('#appTitle'), 'لوحة المحررين — ' + ch.title); document.title = 'لوحة المحررين — ' + ch.title; }
+    if (ch.title) {
+      U.txt(U.$('#appTitle'), 'لوحة المحررين — ' + ch.title);
+      document.title = 'لوحة المحررين — ' + ch.title;
+      var sub = U.$('.login .sub');
+      if (sub) sub.insertAdjacentHTML('afterbegin', '<b>' + ch.title + '</b> — ');
+    }
     if (ch.subtitle) U.txt(U.$('#appSub'), ch.subtitle);
     (cfg.templates || []).forEach(function (t) {
       var b = U.el('button', 'tpl', t.label);
@@ -291,6 +308,7 @@
       b.addEventListener('click', function () { insertTemplate(t.text); });
       templatesBox.appendChild(b);
     });
+    U.hydrateIcons(document);
     wire();
     var s = session.get();
     if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
@@ -307,7 +325,7 @@
     render();
     bus.connect();
     bus.startPresence();
-    if (!silent) U.toast('مرحباً ' + admin.name + ' 👋', 'ok');
+    if (!silent) U.toast('مرحباً ' + admin.name, 'ok');
     setTimeout(function () { newsText.focus(); }, 300);
   }
 
@@ -412,7 +430,7 @@
     newsText.value = '';
     updateCounter();
     render();
-    U.toast(live ? 'تم إرسال الخبر إلى شاشة المنفذ 🚨' : 'لا اتصال حالياً — سيُرسل الخبر تلقائياً عند عودة الاتصال', live ? 'ok' : 'warn');
+    U.toast(live ? 'تم إرسال الخبر إلى شاشة المنفذ' : 'لا اتصال حالياً — سيُرسل الخبر تلقائياً عند عودة الاتصال', live ? 'ok' : 'warn');
   }
 
   function actEdit(id, newText) {
@@ -427,7 +445,7 @@
     S.editing = null;
     S.draft = null;
     render();
-    U.toast('تم تحديث الخبر ✏️', 'ok');
+    U.toast('تم تحديث الخبر', 'ok');
   }
 
   function actPin(id) {
@@ -441,7 +459,7 @@
       var p = { id: id, ts: Date.now(), b: S.admin.name };
       store.applyPin(p, true);
       bus.publish('pin/' + id, p, { retain: true });
-      U.toast('تم تثبيت الخبر أعلى الشاشة 📌', 'ok');
+      U.toast('تم تثبيت الخبر أعلى الشاشة', 'ok');
     }
     render();
   }
@@ -451,7 +469,7 @@
     if (!it) return;
     if (!confirm('حذف هذا الخبر من شاشة المنفذ ومن كل الأجهزة؟')) return;
     wipe(id);
-    U.toast('تم حذف الخبر 🗑', 'ok');
+    U.toast('تم حذف الخبر', 'ok');
   }
 
   function wipe(id) {
@@ -467,7 +485,7 @@
     var it = store.get(id);
     if (!it) return;
     U.copyText(it.text).then(function (ok) {
-      U.toast(ok ? 'تم نسخ نص الخبر 📋' : 'تعذّر النسخ التلقائي — حدّد النص يدوياً', ok ? 'ok' : 'warn');
+      U.toast(ok ? 'تم نسخ نص الخبر' : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
     });
   }
 
@@ -494,7 +512,7 @@
       store.applyAck(data);
       if (data.k === 'copied' && !wasCopied) {
         alerter.play('info');
-        U.toast('✅ المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
+        U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
         if (document.hidden) U.flashTitle('تم نسخ الخبر');
       }
       return;
@@ -549,9 +567,9 @@
 
   function updateDisplayChip() {
     displayDot.className = 'dot ' + (S.displayOnline ? 'on' : 'off');
-    U.txt(displayText, S.displayOnline ? ('شاشة ' + S.displayName + ': متصلة') : 'شاشة المنفذ: غير متصلة');
+    U.setIconText(displayText, null, S.displayOnline ? ('شاشة ' + S.displayName + ': متصلة') : 'شاشة المنفذ: غير متصلة');
     if (!S.displayOnline && store.list().length) {
-      showBanner('⚠️ شاشة المنفذ غير متصلة الآن — الأخبار تُبث وتُخزَّن وستظهر عليها فور اتصالها.', false);
+      showBanner('شاشة المنفذ غير متصلة الآن — الأخبار تُبث وتُخزَّن وستظهر عليها فور اتصالها.', false);
     } else if (bus.state() === 'connected') { hideBanner(); }
     U.$('#chipDisplay').classList.toggle('on', S.displayOnline);
   }
@@ -603,7 +621,7 @@
     feed.innerHTML = '';
     if (!list.length) {
       var e = U.el('div', 'empty');
-      e.appendChild(U.el('span', 'big', '📭'));
+      var bigIcon = U.el('span', ''); bigIcon.innerHTML = U.ic('inbox', 42); e.appendChild(bigIcon);
       e.appendChild(document.createTextNode(items.length
         ? 'لا توجد أخبار مطابقة للفلتر الحالي.'
         : 'لم تُرسل أي أخبار بعد. اكتب الخبر في الأعلى واضغط «إرسال عاجل».'));
@@ -615,7 +633,8 @@
     updateDisplayChip();
     updatePendingChip();
     var live = bus.state() === 'connected';
-    btnPublish.textContent = live ? 'إرسال عاجل ➤' : 'إرسال (سيُوجَّه عند الاتصال) ➤';
+    btnPublish.dataset.live = live ? '1' : '0';
+    btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
   }
 
   function buildItem(it) {
@@ -627,11 +646,13 @@
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
 
     var top = U.el('div', 'itop');
-    top.appendChild(U.el('span', 'tag', '🚨 عاجل'));
+    var tag = U.el('span', 'tag');
+    tag.innerHTML = '<i class="livedot"></i>عاجل';
+    top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || ''));
     top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
     if (it.editedAt) top.appendChild(U.el('span', 'mini', 'محدَّث ' + U.fmtTime(it.editedAt)));
-    if (it.pin) top.appendChild(U.el('span', 'mini gold', '📌 مثبّت'));
+    if (it.pin) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
     top.appendChild(U.el('span', 'mini', U.rel(it.ts)));
     n.appendChild(top);
 
@@ -640,7 +661,8 @@
       ta.value = (S.draft != null && S.editing === it.id) ? S.draft : it.text;
       n.appendChild(ta);
       var er = U.el('div', 'ibottom');
-      var save = U.el('button', 'ibtn solid', '💾 حفظ التعديل');
+      var save = U.el('button', 'ibtn solid');
+      save.innerHTML = U.ic('check') + 'حفظ التعديل';
       save.setAttribute('data-act', 'save'); save.setAttribute('data-id', it.id);
       var cancel = U.el('button', 'ibtn', 'إلغاء');
       cancel.setAttribute('data-act', 'cancel'); cancel.setAttribute('data-id', it.id);
@@ -659,24 +681,35 @@
 
     // حالة الخبر
     if (copied) {
-      var p = U.el('span', 'pill ok big', '✅ تم نسخه من المنفذ — ' + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
+      var p = U.el('span', 'pill ok big');
+      U.setIconText(p, 'check', 'تم نسخه من المنفذ — ' + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
       bottom.appendChild(p);
     } else if (it.ack && it.ack.kind === 'received') {
-      bottom.appendChild(U.el('span', 'pill info big', '📥 وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + ' — بانتظار النسخ'));
+      var p2 = U.el('span', 'pill info big');
+      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + ' — بانتظار النسخ');
+      bottom.appendChild(p2);
     } else if (bus.state() === 'connected') {
-      bottom.appendChild(U.el('span', 'pill warn big', '🕓 يُرسل الآن…'));
+      var p3 = U.el('span', 'pill warn big');
+      U.setIconText(p3, 'clock', 'يُرسل الآن…');
+      bottom.appendChild(p3);
     } else {
-      bottom.appendChild(U.el('span', 'pill warn big', '🕓 بانتظار عودة الاتصال'));
+      var p4 = U.el('span', 'pill warn big');
+      U.setIconText(p4, 'clock', 'بانتظار عودة الاتصال');
+      bottom.appendChild(p4);
     }
 
     var acts = U.el('div', 'iactions');
-    var bCopy = U.el('button', 'ibtn', '📋 نسخ');
+    var bCopy = U.el('button', 'ibtn');
+    bCopy.innerHTML = U.ic('copy') + 'نسخ';
     bCopy.setAttribute('data-act', 'copy'); bCopy.setAttribute('data-id', it.id);
-    var bEdit = U.el('button', 'ibtn', '✏️ تعديل');
+    var bEdit = U.el('button', 'ibtn');
+    bEdit.innerHTML = U.ic('edit') + 'تعديل';
     bEdit.setAttribute('data-act', 'edit'); bEdit.setAttribute('data-id', it.id);
-    var bPin = U.el('button', 'ibtn', it.pin ? '📍 إلغاء التثبيت' : '📌 تثبيت');
+    var bPin = U.el('button', 'ibtn');
+    bPin.innerHTML = U.ic('pin') + (it.pin ? 'إلغاء التثبيت' : 'تثبيت');
     bPin.setAttribute('data-act', 'pin'); bPin.setAttribute('data-id', it.id);
-    var bDel = U.el('button', 'ibtn', '🗑 حذف');
+    var bDel = U.el('button', 'ibtn');
+    bDel.innerHTML = U.ic('trash') + 'حذف';
     bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
     acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
     bottom.appendChild(acts);

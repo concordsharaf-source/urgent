@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0f1a" />
 <meta name="description" content="شاشة استقبال الأخبار العاجلة — بث مباشر من غرفة الأخبار إلى غرفة التنفيذ." />
-<title>غرفة الأخبار — شاشة الأخبار العاجلة</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="اليمن اليوم" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
 <style>
   :root{
@@ -28,6 +33,14 @@
   }
   button{font-family:inherit}
   .hidden{display:none !important}
+  .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
+  .ico svg{display:block}
+  .chip .ico{margin-inline-end:5px}
+  .livedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#fff;
+    margin-inline-end:7px;vertical-align:1px;box-shadow:0 0 0 0 rgba(255,255,255,.7);animation:live 1.6s infinite}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 9px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  .tag .livedot{background:#fff}
+  .empty .ico svg{width:46px;height:46px;opacity:.7}
 
   /* ============ الشريط العلوي ============ */
   .topbar{
@@ -40,9 +53,13 @@
   }
   .brand{display:flex;align-items:center;gap:12px;min-width:0}
   .logo{
-    width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:24px;
-    background:linear-gradient(140deg,#ef4444,#7f1d1d);
-    box-shadow:0 10px 26px -10px rgba(224,36,36,.8);flex:0 0 auto;
+    width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;
+    background:#fff;object-fit:contain;padding:3px;
+    box-shadow:0 10px 26px -12px rgba(224,36,36,.85);border:1px solid rgba(255,255,255,.22);
+  }
+  .logo-emoji{
+    width:56px;height:56px;border-radius:16px;display:grid;place-items:center;font-size:26px;
+    background:linear-gradient(140deg,#ef4444,#7f1d1d);flex:0 0 auto;
   }
   .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.2px}
   .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
@@ -131,8 +148,11 @@
     letter-spacing:.1px;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
-    user-select:text;
+    user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;
+    -webkit-touch-callout:none;
   }
+  /* النسخ متاح فقط عبر زر «نسخ الخبر» */
+  .feed,.card{user-select:none;-webkit-user-select:none;-moz-user-select:none;-webkit-touch-callout:none}
 
   .card-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;
     padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
@@ -155,6 +175,8 @@
 
   .empty{text-align:center;padding:70px 20px 40px;color:var(--dim)}
   .empty .big{font-size:64px;display:block;margin-bottom:14px;opacity:.85;filter:drop-shadow(0 10px 24px rgba(224,36,36,.4))}
+  .empty-logo{width:190px;max-width:58%;height:auto;border-radius:22px;margin:0 auto 18px;display:block;
+    background:#fff;padding:8px;box-shadow:0 18px 40px -18px rgba(224,36,36,.6)}
   .empty h2{margin:0 0 8px;font-size:22px;color:#e2e8f0;font-weight:800}
   .empty p{margin:0;font-size:14px;line-height:2}
 
@@ -178,7 +200,8 @@
 
 <header class="topbar">
   <div class="brand">
-    <div class="logo" id="chLogo">📡</div>
+    <img class="logo" id="chLogo" src="assets/logo-320.png" alt="اليمن اليوم"
+         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-emoji',textContent:'YT'}))" />
     <div>
       <h1 id="chTitle">غرفة الأخبار</h1>
       <p id="chSub">بث الأخبار العاجلة إلى غرفة التنفيذ</p>
@@ -193,31 +216,32 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
-    <button class="chip" id="btnOp" title="اسمك الذي يظهر للمحررين">👤 <span id="opNameLabel">المنفذ</span></button>
-    <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل">🔊 الصوت</button>
-    <button class="chip sep-btn" id="btnSpeak" title="قراءة الخبر بصوت مرتفع">🗣 القراءة</button>
+    <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i>الصوت</button>
+    <button class="chip sep-btn" id="btnSpeak" title="قراءة الخبر بصوت مرتفع"><i class="ico" data-ic="speech"></i>القراءة</button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
-    <button class="chip" id="btnFull" title="ملء الشاشة">⛶</button>
-    <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين">🔑 المحررون</a>
+    <button class="chip" id="btnFull" title="ملء الشاشة"><i class="ico" data-ic="expand"></i>توسيع</button>
+    <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين"><i class="ico" data-ic="key"></i>المحررون</a>
   </div>
 </header>
 
 <div class="banner hidden" id="banner"></div>
-<div class="soundbar hidden" id="soundbar">🔔 اضغط في أي مكان لتفعيل صوت التنبيه</div>
+<div class="soundbar hidden" id="soundbar"><i class="ico" data-ic="bell"></i> اضغط في أي مكان لتفعيل صوت التنبيه</div>
 
 <div class="editors hidden" id="editors"><span class="lbl">المحررون المتصلون:</span></div>
 
 <main class="feed" id="feed">
   <div class="empty" id="empty">
-    <span class="big">📡</span>
+    <img src="assets/logo-320.png" alt="اليمن اليوم" class="empty-logo" />
     <h2>بانتظار الأخبار…</h2>
     <p>هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
   </div>
 </main>
 
 <div class="hint" id="hint">
-  بعد نشر الخبر في نظامك <b>اضغط «نسخ الخبر»</b> — تصل إشارة فورية إلى المحرر بأن الخبر وصل وتم نسخه.
+  لكل خبر زر <b>«نسخ الخبر»</b> — بالضغط عليه يُنسخ النص، ويتحوّل الكونتينر إلى الرمادي،
+  وتصل غرفة الأخبار إشارة فورية بأن الخبر تم استلامه ونسخه.<br />
+  النسخ بالزر فقط — لضمان معرفة المرسل بالضبط أن الخبر تم نسخه.
 </div>
 
 <script src="config.js"></script>
@@ -249,7 +273,7 @@
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var banner = U.$('#banner'), soundbar = U.$('#soundbar');
-  var clockEl = U.$('#clock'), opLabel = U.$('#opNameLabel');
+  var clockEl = U.$('#clock');
   var btnSound = U.$('#btnSound'), btnSpeak = U.$('#btnSpeak');
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
 
@@ -280,10 +304,14 @@
     var ch = cfg.channel || {};
     if (ch.title) { U.txt(U.$('#chTitle'), ch.title); document.title = ch.title + ' — شاشة الأخبار العاجلة'; }
     if (ch.subtitle) U.txt(U.$('#chSub'), ch.subtitle); else U.$('#chSub').classList.add('hidden');
-    if (ch.logo) U.txt(U.$('#chLogo'), ch.logo);
+    var logoEl = U.$('#chLogo');
+    if (ch.logo && logoEl && logoEl.tagName === 'IMG') {
+      if (/\.(png|jpe?g|svg|webp|gif)$/i.test(ch.logo)) { logoEl.src = ch.logo; }
+      else { logoEl.replaceWith(Object.assign(document.createElement('span'), { className: 'logo-emoji', textContent: ch.logo })); }
+      if (ch.logoAlt) logoEl.alt = ch.logoAlt;
+    }
     if (D.showHint === false) hintBox.classList.add('hidden');
 
-    U.txt(opLabel, S.opName);
     applyFs();
     syncToggles();
     store.load();
@@ -293,6 +321,7 @@
     bus.startPresence();
     setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
     U.txt(clockEl, U.fmtClock(Date.now()));
+    U.hydrateIcons(document);
     setInterval(tick, 15000);
   }
 
@@ -320,14 +349,14 @@
       S.sound = !S.sound;
       U.lsSet(LSP + 'sound', S.sound);
       if (S.sound) { alerter.unlock(); alerter.play('info'); }
-      U.toast(S.sound ? 'تم تشغيل صوت التنبيه 🔔' : 'تم إسكات صوت التنبيه 🔇', 'ok');
+      U.toast(S.sound ? 'تم تشغيل صوت التنبيه' : 'تم إسكات صوت التنبيه', 'ok');
       syncToggles();
     });
     btnSpeak.addEventListener('click', function () {
       S.speak = !S.speak;
       U.lsSet(LSP + 'speak', S.speak);
       if (!S.speak) U.speech.stop();
-      U.toast(S.speak ? 'سيتم قراءة الأخبار صوتياً 🗣' : 'تم إيقاف القراءة الصوتية', 'ok');
+      U.toast(S.speak ? 'سيتم قراءة الأخبار صوتياً' : 'تم إيقاف القراءة الصوتية', 'ok');
       syncToggles();
     });
     U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
@@ -338,18 +367,25 @@
         else document.documentElement.requestFullscreen();
       } catch (e) {}
     });
-    U.$('#btnOp').addEventListener('click', function () {
-      var v = prompt('اكتب اسمك (يظهر للمحررين عند تأكيد استلام الأخبار):', S.opName);
-      if (v && v.trim()) {
-        S.opName = v.trim().slice(0, 24);
-        U.lsSet(LSP + 'opName', S.opName);
-        U.txt(opLabel, S.opName);
-        bus.end(); // نعيد إنشاء نبضة الحضور بالاسم الجديد
-        location.reload();
-      }
-    });
     window.addEventListener('online', function () { bus.reconnectNow(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+    // النسخ متاح فقط عبر زر «نسخ الخبر»:
+    //    نمنع تحديد النص، والنسخ/القص، وقائمة الزر الأيمن داخل قائمة الأخبار.
+    var lastWarn = 0;
+    function warnCopyOnly(e) {
+      if (e) e.preventDefault();
+      var now = Date.now();
+      if (now - lastWarn > 4000) { lastWarn = now; U.toast('النسخ متاح فقط عبر زر «نسخ الخبر»', 'warn'); }
+    }
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function (ev) {
+      feed.addEventListener(ev, warnCopyOnly);
+      emptyBox.addEventListener(ev, warnCopyOnly);
+    });
+    document.addEventListener('keydown', function (e) {
+      var k = e.key ? e.key.toLowerCase() : '';
+      if (e.ctrlKey && (k === 'c' || k === 'x')) warnCopyOnly(e);
+    });
+
     // نقرة على زر النسخ داخل أي بطاقة
     feed.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
@@ -422,8 +458,8 @@
     S.fresh[item.id] = Date.now();
     if (S.sound) alerter.play('urgent');
     if (S.speak) U.speech.speak(item.text);
-    U.browserNotify('🚨 خبر عاجل — ' + (item.author || 'غرفة الأخبار'), item.text);
-    if (document.hidden) U.flashTitle('🚨 خبر عاجل');
+    U.browserNotify('خبر عاجل — ' + (item.author || 'غرفة الأخبار'), item.text);
+    if (document.hidden) U.flashTitle('خبر عاجل');
     scheduleReceivedAck(item);
     render();
   }
@@ -450,7 +486,7 @@
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
       alerter.play('info');
-      U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر ✅' : 'لم يتوفر النسخ التلقائي — حدّد النص وانسخه يدوياً', ok ? 'ok' : 'warn');
+      U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر' : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');
     });
   }
 
@@ -511,12 +547,15 @@
     card.setAttribute('data-id', it.id);
 
     var top = U.el('div', 'card-top');
-    top.appendChild(U.el('span', 'tag', '🚨 عاجل'));
+    var tag = U.el('span', 'tag');
+    tag.innerHTML = '<i class="livedot"></i>عاجل';
+    top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || 'غرفة الأخبار'));
     top.appendChild(U.el('span', 'sep', '•'));
     var ts = U.el('span', 'ts'); ts.setAttribute('data-role', 'ts'); top.appendChild(ts);
     var ed = U.el('span', 'mini hidden'); ed.setAttribute('data-role', 'edited'); top.appendChild(ed);
-    var pin = U.el('span', 'mini gold hidden'); pin.setAttribute('data-role', 'pin'); pin.textContent = '📌 مثبّت'; top.appendChild(pin);
+    var pin = U.el('span', 'mini gold hidden'); pin.setAttribute('data-role', 'pin');
+    pin.innerHTML = U.ic('pin', 14) + 'مثبّت'; top.appendChild(pin);
     var nw = U.el('span', 'mini new hidden'); nw.setAttribute('data-role', 'new'); nw.textContent = 'جديد'; top.appendChild(nw);
     top.appendChild(U.el('span', 'grow2'));
     var rel = U.el('span', 'ts'); rel.setAttribute('data-role', 'rel'); top.appendChild(rel);
@@ -528,7 +567,8 @@
     var stat = U.el('span', 'stat'); stat.setAttribute('data-role', 'stat'); bottom.appendChild(stat);
     var actions = U.el('div', 'actions');
     var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
-    var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy'); copy.textContent = '📋 نسخ الخبر';
+    var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy');
+    copy.innerHTML = U.ic('copy', 20) + 'نسخ الخبر';
     actions.appendChild(recopy); actions.appendChild(copy);
     bottom.appendChild(actions);
     card.appendChild(bottom);
@@ -556,19 +596,19 @@
     var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy');
     if (copied) {
       stat.className = 'stat copied';
-      U.txt(stat, '✅ تم النسخ بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
+      U.setIconText(stat, 'check', 'تم النسخ بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
       copyBtn.classList.add('hidden');
       recopyBtn.classList.remove('hidden');
       recopyBtn.setAttribute('data-copy', it.id);
     } else if (ack && ack.kind === 'received') {
       stat.className = 'stat received';
-      U.txt(stat, '📥 وصل إلى الشاشة — بانتظار النسخ');
+      U.setIconText(stat, 'inbox', 'وصل إلى الشاشة — جاهز للنسخ عبر الزر');
       copyBtn.classList.remove('hidden');
       copyBtn.setAttribute('data-copy', it.id);
       recopyBtn.classList.add('hidden');
     } else {
       stat.className = 'stat pending';
-      U.txt(stat, '⏳ لم يتم النسخ بعد');
+      U.setIconText(stat, 'clock', 'بانتظار النسخ — اضغط زر «نسخ الخبر»');
       copyBtn.classList.remove('hidden');
       copyBtn.setAttribute('data-copy', it.id);
       recopyBtn.classList.add('hidden');

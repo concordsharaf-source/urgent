@@ -20,6 +20,56 @@ window.URGENT = (function () {
   var ONLINE_TTL = 45000;                // صلاحية نبضة الحضور
   var PRESENCE_MS = 15000;               // دورية نبضة الحضور
 
+
+  /* ===================== أيقونات SVG (بدل الإيموجي: تظهر بنفس الشكل على كل الأجهزة) ===================== */
+  var ICONS = {
+    copy:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h8.5A1.5 1.5 0 0 1 15 5v.5"/></svg>',
+    edit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.6 3.4a2.1 2.1 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5Z"/></svg>',
+    pin:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V22"/><path d="M9 4h6v6.6l2 3.4H7l2-3.4Z"/></svg>',
+    trash:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17"/><path d="M8.5 6.5V4h7v2.5"/><path d="M6 6.5 7 20h10l1-13.5"/><path d="M10.5 10.5v6M13.5 10.5v6"/></svg>',
+    check:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6.5 9.3 17.2 4 12"/></svg>',
+    inbox:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5h-5.5L14 15h-4l-1.5-2.5H3"/><path d="M5.5 5h13l2.5 7.5V19H3v-6.5Z"/></svg>',
+    clock:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></svg>',
+    bell:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15 18 8.5"/><path d="M10.3 20.5a2 2 0 0 0 3.4 0"/></svg>',
+    sound:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19Z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
+    speech: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 8.5H3.5v7h3L11 19Z"/><path d="M15 9a4.5 4.5 0 0 1 0 6"/><path d="M18 6a9 9 0 0 1 0 12"/></svg>',
+    key:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15.5" r="4.2"/><path d="m11.2 12.4 8.3-8.4 1.5 1.5-2 2 2 2-2 2-2-2-2 2"/></svg>',
+    person: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
+    screen: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5H5.5A2 2 0 0 0 3.5 5.5V8"/><path d="M16 3.5h2.5a2 2 0 0 1 2 2V8"/><path d="M8 20.5H5.5a2 2 0 0 1-2-2V16"/><path d="M16 20.5h2.5a2 2 0 0 0 2-2V16"/></svg>',
+    warn:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5"/><path d="M12 17.5h.01"/></svg>',
+    send:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20.5 4l-7 16-3-6.5-6.5-1.5Z"/></svg>',
+    exit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 21H5.5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 16.5 4.5-4.5L16 7.5"/><path d="M20.5 12h-11"/></svg>'
+  };
+
+  function ic(name, size) {
+    var s = ICONS[name] || '';
+    if (size) s = s.replace(/width="18" height="18"/, 'width="' + size + '" height="' + size + '"');
+    return s;
+  }
+
+  // أيقونة كعنصر مستقل (بدون محتوى نصي)
+  function iconEl(name, size) {
+    var i = document.createElement('i');
+    i.className = 'ico';
+    i.innerHTML = ic(name, size);
+    return i;
+  }
+
+  // تعبئة كل العناصر الوسومة بـ data-ic داخل الصفحة
+  function hydrateIcons(root) {
+    $$('[data-ic]', root || document).forEach(function (el) {
+      el.innerHTML = ic(el.getAttribute('data-ic'), el.getAttribute('data-size') || null);
+    });
+  }
+
+  // تعيين نص مؤمَّن + أيقونة داخل عنصر (يمنع أي احتمال حقن)
+  function setIconText(el, iconName, text) {
+    el.innerHTML = '';
+    if (iconName) el.appendChild(iconEl(iconName));
+    el.appendChild(document.createTextNode(text == null ? '' : String(text)));
+  }
+
   /* ===================== أدوات عامة ===================== */
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
@@ -584,6 +634,7 @@ window.URGENT = (function () {
     // أدوات
     $: $, $$: $$, uid: uid, el: el, txt: txt,
     fmtTime: fmtTime, fmtClock: fmtClock, fmtDate: fmtDate, rel: rel,
+    ic: ic, iconEl: iconEl, hydrateIcons: hydrateIcons, setIconText: setIconText,
     b64: b64, unb64: unb64, randToken: randToken, makeSalt: makeSalt,
     hashPassword: hashPassword, verifyPassword: verifyPassword, hasCrypto: hasCrypto,
     // إعدادات
