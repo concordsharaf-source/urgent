@@ -1,0 +1,13 @@
+{
+  "name": "yt-news-push-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "سيرفر إشعارات الأخبار العاجلة (Web Push) لتطبيق اليمن اليوم",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "mqtt": "^5.10.1",
+    "web-push": "^3.6.7"
+  }
+}

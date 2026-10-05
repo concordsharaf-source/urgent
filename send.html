@@ -11,6 +11,10 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="ui.css" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#e02424" />
+<link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root{
     --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
@@ -105,9 +109,6 @@
   .composer .lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-bottom:9px;font-weight:700}
   .composer textarea{min-height:92px;line-height:1.9;font-size:16px;font-weight:600}
   .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px}
-  .tpl{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);color:#bae6fd;
-    border-radius:999px;padding:7px 13px;font-size:12.5px;cursor:pointer}
-  .tpl:hover{background:rgba(56,189,248,.22)}
   .counter{font-size:12.5px;color:var(--dim);margin-inline-start:auto}
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
@@ -209,6 +210,7 @@
     <button class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></button>
     <span class="chip" id="verChip" title="إصدار الصفحة" style="cursor:default;font-family:ui-monospace,Menlo,Consolas,monospace">v2.1</span>
     <a class="chip" href="index.html" target="_blank" rel="noopener" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i>الشاشة</a>
+    <button class="chip" id="btnSettings" title="الإعدادات وبيانات الدخول"><i class="ico" data-ic="gear"></i>الإعدادات</button>
     <button class="chip" id="btnLogout" title="خروج"><i class="ico" data-ic="exit"></i>خروج</button>
   </header>
 
@@ -220,7 +222,6 @@
       <div class="lbl"><i class="livedot" style="background:#ef4444"></i>نص الخبر العاجل <span style="font-weight:400;color:#64748b">(Ctrl + Enter للإرسال)</span></div>
       <textarea id="newsText" placeholder="اكتب نص الخبر كما سيُقرأ على شاشة التنفيذ…"></textarea>
       <div class="row">
-        <div id="templates" style="display:flex;gap:7px;flex-wrap:wrap"></div>
         <span class="counter" id="counter">0 كلمة</span>
         <button class="btn ghost tiny" id="btnClearText" type="button">مسح</button>
         <button class="send-btn" id="btnPublish" type="button">إرسال عاجل</button>
@@ -265,6 +266,8 @@
     filter: 'all',
     search: '',
     shownIds: {},              // لتمييز الجديد بحركة
+    sound: true,
+    alarmRepeat: true,
     displayOnline: false,
     displayLatestTs: 0,
     displayName: 'المنفذ'
@@ -292,7 +295,6 @@
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
   var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
-  var templatesBox = U.$('#templates');
 
   /* ==================== الدخول ==================== */
   function boot() {
@@ -304,13 +306,11 @@
       if (sub) sub.insertAdjacentHTML('afterbegin', '<b>' + ch.title + '</b> — ');
     }
     if (ch.subtitle) U.txt(U.$('#appSub'), ch.subtitle);
-    (cfg.templates || []).forEach(function (t) {
-      var b = U.el('button', 'tpl', t.label);
-      b.type = 'button';
-      b.addEventListener('click', function () { insertTemplate(t.text); });
-      templatesBox.appendChild(b);
-    });
     U.hydrateIcons(document);
+    try { U.initInstallCapture(); } catch (e) {}
+    try { U.registerSW(); } catch (e) {}
+    S.sound = U.lsGet(U.LS_PREFIX + room + ':edSound', true) !== false;
+    S.alarmRepeat = true;
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
@@ -340,7 +340,7 @@
     if (!user || !pass) { loginErr.textContent = 'اكتب اسم المستخدم وكلمة المرور.'; return; }
     if (!U.hasCrypto()) { loginErr.textContent = 'هذه الصفحة تحتاج فتحها عبر https (رابط فرسل) أو localhost لتشفير كلمة المرور.'; return; }
 
-    var admin = (cfg.admins || []).filter(function (a) { return a.user === user; })[0];
+    var admin = U.findAdmin(user);
     if (!admin) { loginErr.textContent = 'اسم المستخدم غير صحيح.'; return; }
 
     btnLogin.disabled = true; btnLogin.textContent = 'جارٍ التحقق…';
@@ -360,6 +360,208 @@
     location.reload();
   });
 
+  /* ==================== الإعدادات وإدارة بيانات الدخول ==================== */
+  function openSettings() {
+    var extra = [];
+
+    // ---- قسم بيانات الدخول (تغيير الاسم وكلمة المرور) ----
+    var sec = U.section('بيانات دخول المحررين', 'lock');
+    var list = U.admins();
+
+    var selRow = U.rowEl('اختر المحرر', 'الاسم الظاهر وكلمة المرور الخاصة به');
+    var sel = U.el('select', 'uc-select');
+    sel.setAttribute('data-role', 'editor-select');
+    list.forEach(function (a) {
+      var o = U.el('option', null, (a.name || a.user) + '  (' + a.user + ')');
+      o.value = a.user;
+      sel.appendChild(o);
+    });
+    selRow.appendChild(sel);
+    sec.appendChild(selRow);
+
+    var fName = U.el('div', 'uc-field');
+    fName.innerHTML = '<span>الاسم الظاهر الجديد</span>';
+    var inName = U.el('input'); inName.type = 'text'; inName.maxLength = 40;
+    inName.setAttribute('data-role', 'editor-name');
+    fName.appendChild(inName);
+    sec.appendChild(fName);
+
+    var fPass = U.el('div', 'uc-field');
+    fPass.innerHTML = '<span>كلمة مرور جديدة (اتركها فارغة إن أردت تغيير الاسم فقط)</span>';
+    var inPass = U.el('input'); inPass.type = 'text'; inPass.placeholder = '10 خانات أو أكثر';
+    inPass.setAttribute('data-role', 'editor-pass');
+    fPass.appendChild(inPass);
+    sec.appendChild(fPass);
+
+    var fCur = U.el('div', 'uc-field');
+    fCur.innerHTML = '<span>كلمة مرورك الحالية (للتأكيد)</span>';
+    var inCur = U.el('input'); inCur.type = 'password'; inCur.autocomplete = 'current-password';
+    inCur.setAttribute('data-role', 'editor-cur');
+    fCur.appendChild(inCur);
+    sec.appendChild(fCur);
+
+    var acts = U.el('div', 'uc-row-actions');
+    var bLocal = U.btnEl('حفظ على هذا الجهاز', 'primary', 'check');
+    bLocal.setAttribute('data-role', 'save-local');
+    var bAll = U.btnEl('نشر لكل الأجهزة', '', 'wifi');
+    bAll.setAttribute('data-role', 'save-all');
+    var bCode = U.btnEl('كود config.js', 'ghost', 'copy');
+    bCode.setAttribute('data-role', 'save-code');
+    acts.appendChild(bLocal); acts.appendChild(bAll); acts.appendChild(bCode);
+    sec.appendChild(acts);
+
+    var codeBox = U.el('textarea', 'uc-code');
+    codeBox.style.display = 'none';
+    sec.appendChild(codeBox);
+
+    var note = U.el('p', 'uc-note');
+    note.innerHTML = '«حفظ على هذا الجهاز» يطبّق التغيير فوراً على هذا المتصفح. ' +
+      '«نشر لكل الأجهزة» يطبّقه على كل من يفتح الصفحة (يتطلب رمز الإعدادات). ' +
+      '«كود config.js» يمنحك الكود الدائم لإضافته إلى المستودع.';
+    sec.appendChild(note);
+
+    // إضافة محرر جديد
+    var addRow = U.rowEl('إضافة محرر جديد', 'اسم دخول بالإنجليزية + اسم ظاهر + كلمة مرور');
+    var bAdd = U.btnEl('إضافة محرر', '', 'person');
+    bAdd.setAttribute('data-role', 'add-editor');
+    addRow.appendChild(bAdd);
+    sec.appendChild(addRow);
+
+    function updateFields() {
+      var a = U.findAdmin(sel.value) || {};
+      inName.value = a.name || '';
+      inPass.value = '';
+      try { inName.placeholder = ''; } catch (e) {}
+    }
+    sel.addEventListener('change', updateFields);
+    updateFields();
+
+    function buildList(password, mode) {
+      var user = sel.value;
+      var name = inName.value.trim();
+      var pass = inPass.value.trim();
+      if (!inCur.value) { U.toast('أدخل كلمة مرورك الحالية للتأكيد', 'warn'); return null; }
+      if (pass && pass.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn'); return null; }
+      if (!name && !pass) { U.toast('لا يوجد تغيير — اكتب اسماً جديداً أو كلمة مرور جديدة', 'warn'); return null; }
+      return { user: user, name: name, pass: pass, password: password };
+    }
+
+    // التحقق من كلمة مرور المحرر الحالي ثم تنفيذ الإجراء
+    function withAuth(mode) {
+      if (!S.admin) return;
+      if (!inCur.value) { U.toast('أدخل كلمة مرورك الحالية للتأكيد', 'warn'); return; }
+      var me = U.findAdmin(S.admin.user);
+      if (!me) { U.toast('تعذّر تحديد حسابك', 'warn'); return; }
+      U.verifyPassword(inCur.value, me).then(function (ok) {
+        if (!ok) { U.toast('كلمة المرور الحالية غير صحيحة', 'warn'); return; }
+        var user = sel.value;
+        var cur = U.findAdmin(user) || {};
+        var name = inName.value.trim() || cur.name || user;
+        var pass = inPass.value.trim();
+        if (!pass) {
+          if (name === cur.name) { U.toast('لا يوجد تغيير', 'warn'); return; }
+          var copy = U.admins().map(function (a) { return a.user === user ? { user: a.user, name: name, salt: a.salt, hash: a.hash } : a; });
+          applyAdmins(copy, mode);
+          return;
+        }
+        U.changeAdmin(U.admins(), user, { name: name, password: pass }).then(function (newList) {
+          applyAdmins(newList, mode);
+        });
+      });
+    }
+
+    function applyAdmins(newList, mode) {
+      if (mode === 'code') {
+        codeBox.style.display = 'block';
+        codeBox.value = U.adminsToConfigCode(newList);
+        U.toast('انسخ الكود إلى config.js (قسم admins)', 'ok', 6000);
+        return;
+      }
+      U.saveAdminsLocal(newList);
+      if (S.admin && !U.findAdmin(S.admin.user)) {
+        U.toast('تنبيه: تم حذف/تغيير حسابك الحالي — ستحتاج الدخول من جديد', 'warn', 7000);
+      }
+      if (mode === 'all') {
+        var key = prompt('أدخل رمز الإعدادات لنشر التغيير لكل الأجهزة:', '');
+        if (key === null) { U.toast('تم الحفظ على هذا الجهاز فقط', 'warn'); return; }
+        if (key !== (cfg.settingsKey || '')) { U.toast('رمز الإعدادات غير صحيح — تم الحفظ محلياً فقط', 'warn'); return; }
+        bus.publish('cfg/admins', { k: key, list: newList, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
+        U.toast('تم نشر التغيير إلى كل الأجهزة', 'ok');
+      } else {
+        U.toast('تم حفظ التغيير على هذا الجهاز', 'ok');
+      }
+      // تحديث قائمة الاختيار
+      sel.innerHTML = '';
+      U.admins().forEach(function (a) {
+        var o = U.el('option', null, (a.name || a.user) + '  (' + a.user + ')');
+        o.value = a.user; sel.appendChild(o);
+      });
+      updateFields();
+    }
+
+    bLocal.addEventListener('click', function () { withAuth('local'); });
+    bAll.addEventListener('click', function () { withAuth('all'); });
+    bCode.addEventListener('click', function () { withAuth('code'); });
+
+    bAdd.addEventListener('click', function () {
+      var user = prompt('اسم الدخول الجديد (بالإنجليزية، مثل: editor2):', '');
+      if (!user) return;
+      if (!/^[A-Za-z0-9._-]{3,24}$/.test(user)) { U.toast('اسم الدخول يجب أن يكون بالإنجليزية بين 3 و24 خانة', 'warn', 6000); return; }
+      if (U.findAdmin(user)) { U.toast('اسم الدخول مستخدم بالفعل', 'warn'); return; }
+      var name = prompt('الاسم الظاهر له (يظهر على شاشة الاستقبال):', 'محرر');
+      if (name === null) return;
+      var pass = prompt('كلمة المرور (10 خانات أو أكثر):', '');
+      if (!pass || pass.length < 8) { U.toast('كلمة المرور قصيرة — 8 على الأقل', 'warn'); return; }
+      U.changeAdmin(U.admins(), user, { name: name || user, password: pass }).then(function (newList) {
+        function finish(mode) { applyAdmins(newList, mode); }
+        var key = prompt('رمز الإعدادات لنشر المحرر الجديد لكل الأجهزة (اتركه فارغاً لهذا الجهاز فقط):', '');
+        if (key === null || key === '') { finish('local'); return; }
+        if (key !== (cfg.settingsKey || '')) { U.toast('رمز غير صحيح — حُفظ محلياً فقط', 'warn'); finish('local'); return; }
+        finish('all');
+      });
+    });
+
+    sec.appendChild(U.el('p', 'uc-note', 'ملاحظة: تظهر قائمة المحررين هذه لمن يسجّل الدخول فقط.'));
+    extra.push(sec);
+
+    // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
+    var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
+    var epRow = U.rowEl('رابط سيرفر الإشعارات', 'لتصلك الإشعارات والتطبيق مغلق تماماً — انظر tools/push-relay');
+    var inEp = U.el('input', 'uc-select');
+    inEp.setAttribute('data-role', 'push-endpoint');
+    inEp.style.minWidth = '240px';
+    inEp.placeholder = 'https://example.workers.dev/push';
+    inEp.value = U.lsGet(U.LS_PREFIX + room + ':pushEndpoint', (cfg.push && cfg.push.endpoint) || '');
+    var bEp = U.btnEl('حفظ', '', 'check');
+    bEp.addEventListener('click', function () {
+      var url = inEp.value.trim();
+      U.lsSet(U.LS_PREFIX + room + ':pushEndpoint', url);
+      bus.publish('push/endpoint', { url: url, ts: Date.now() }, { retain: true });
+      U.toast(url ? 'تم حفظ رابط سيرفر الإشعارات' : 'تم إلغاء رابط سيرفر الإشعارات', 'ok');
+    });
+    epRow.appendChild(inEp); epRow.appendChild(bEp);
+    secP.appendChild(epRow);
+    extra.push(secP);
+
+    var sheet = U.buildSettings({
+      title: 'الإعدادات',
+      subtitle: 'بيانات الدخول، الإشعارات، وتثبيت التطبيق',
+      room: room,
+      state: {
+        sound: S.sound !== false,
+        speak: false, speakVoice: '',
+        alarmRepeat: S.alarmRepeat !== false,
+        notifyRepeat: true,
+        fontScale: 1
+      },
+      showDisplay: false,
+      onChange: function (k, v) { if (k === 'sound') { S.sound = v; U.lsSet(U.LS_PREFIX + room + ':edSound', v); } },
+      extra: extra,
+      onPush: function () { U.toast('تم تفعيل الإشعارات على هذا الجهاز', 'ok'); }
+    });
+    U.openModal(sheet);
+  }
+
   /* ==================== الواجهة ==================== */
   function wire() {
     btnPublish.addEventListener('click', publish);
@@ -368,6 +570,7 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); publish(); }
     });
     U.$('#btnClearText').addEventListener('click', function () { newsText.value = ''; updateCounter(); newsText.focus(); });
+    U.$('#btnSettings').addEventListener('click', openSettings);
 
     U.$$('.fbtn').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -405,14 +608,6 @@
     document.addEventListener('click', function () { alerter.unlock(); U.askNotify(); });
     window.addEventListener('online', function () { bus.reconnectNow(); });
     setInterval(tick, 15000);
-  }
-
-  function insertTemplate(t) {
-    var v = newsText.value;
-    if (v && !/\s$/.test(v)) v += ' ';
-    newsText.value = v + t;
-    updateCounter();
-    newsText.focus();
   }
 
   function updateCounter() {
@@ -515,7 +710,7 @@
       var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
       store.applyAck(data);
       if (data.k === 'copied' && !wasCopied) {
-        alerter.play('info');
+        if (S.sound) alerter.play('info');
         U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
         if (document.hidden) U.flashTitle('تم نسخ الخبر');
       }
@@ -539,7 +734,19 @@
       updateDisplayChip();
       return;
     }
-    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); render(); }
+    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); render(); return; }
+    if (rel === 'cfg/admins') {
+      if (isEmpty || !data || !data.list) return;
+      if (data.k !== (cfg.settingsKey || '')) return;          // رمز الإعدادات غير مطابق => تجاهل
+      U.saveAdminsLocal(data.list);
+      U.toast('تم تحديث بيانات المحررين من الإدارة' + (data.by ? ' (' + data.by + ')' : ''), 'ok', 6000);
+      return;
+    }
+    if (rel === 'push/endpoint') {
+      if (isEmpty || !data) { S.pushEndpoint = ''; return; }
+      S.pushEndpoint = data.url || '';
+      return;
+    }
   }
 
   function normOwn(author) { return S.admin && String(author || '') === String(S.admin.name); }

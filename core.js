@@ -36,6 +36,13 @@ window.URGENT = (function () {
     key:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15.5" r="4.2"/><path d="m11.2 12.4 8.3-8.4 1.5 1.5-2 2 2 2-2 2-2-2-2 2"/></svg>',
     person: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
     screen: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>',
+    close:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    info:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/></svg>',
+    gear:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    wifi:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M2.5 8.5a15 15 0 0 1 19 0"/><path d="M5.5 12a11 11 0 0 1 13 0"/><path d="M8.5 15.5a6.5 6.5 0 0 1 7 0"/><path d="M12 19h.01"/></svg>',
+    phone:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M11 18.5h2"/></svg>',
+    download:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20.5h16"/></svg>',
+    lock:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>',
     expand: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5H5.5A2 2 0 0 0 3.5 5.5V8"/><path d="M16 3.5h2.5a2 2 0 0 1 2 2V8"/><path d="M8 20.5H5.5a2 2 0 0 1-2-2V16"/><path d="M16 20.5h2.5a2 2 0 0 0 2-2V16"/></svg>',
     warn:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5"/><path d="M12 17.5h.01"/></svg>',
     send:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20.5 4l-7 16-3-6.5-6.5-1.5Z"/></svg>',
@@ -264,21 +271,55 @@ window.URGENT = (function () {
   }
 
   var speech = {
-    available: function () { return 'speechSynthesis' in window; },
-    speak: function (text) {
-      if (!this.available()) return;
+    _voices: [],
+    _selected: '',
+    available: function () {
+      try { return (typeof speechSynthesis !== 'undefined') && !!speechSynthesis; } catch (e) { return false; }
+    },
+    // تحميل قائمة الأصوات (تُحمّل بشكل غير متزامن في بعض المتصفحات)
+    loadVoices: function (cb) {
+      if (!this.available()) { try { cb && cb([]); } catch (e) {} return; }
+      var self = this;
+      function grab() {
+        try { self._voices = speechSynthesis.getVoices() || []; } catch (e) { self._voices = []; }
+        try { cb && cb(self._voices); } catch (e) {}
+      }
+      grab();
+      if (!self._voices.length) {
+        try { speechSynthesis.onvoiceschanged = grab; } catch (e) {}
+        setTimeout(grab, 700);
+        setTimeout(grab, 2000);
+      }
+    },
+    arabicVoices: function () {
+      return (this._voices || []).filter(function (v) {
+        return ((v.lang || '') + ' ' + (v.name || '')).toLowerCase().indexOf('ar') >= 0;
+      });
+    },
+    // اختيار أفضل صوت عربي: المفضَّل المحفوظ ثم ar-SA ثم أي صوت عربي
+    pick: function (saved) {
+      var list = this.arabicVoices();
+      if (!list.length) return null;
+      if (saved) {
+        for (var i = 0; i < list.length; i++) if (list[i].name === saved) return list[i];
+      }
+      for (var j = 0; j < list.length; j++) if (/ar[-_]?sa/i.test(list[j].lang || '')) return list[j];
+      for (var k = 0; k < list.length; k++) if (/^ar/i.test(list[k].lang || '')) return list[k];
+      return list[0];
+    },
+    speak: function (text, voiceName) {
+      if (!this.available()) return false;
       try {
         speechSynthesis.cancel();
         var u = new SpeechSynthesisUtterance(String(text));
-        u.lang = 'ar-SA';
+        var v = this.pick(voiceName || this._selected);
+        if (v) { u.voice = v; u.lang = v.lang || 'ar-SA'; } else { u.lang = 'ar-SA'; }
         u.rate = 0.98;
         u.pitch = 1;
-        var voices = speechSynthesis.getVoices() || [];
-        for (var i = 0; i < voices.length; i++) {
-          if ((voices[i].lang || '').toLowerCase().indexOf('ar') === 0) { u.voice = voices[i]; break; }
-        }
+        u.volume = 1;
         speechSynthesis.speak(u);
-      } catch (e) {}
+        return true;
+      } catch (e) { return false; }
     },
     stop: function () { try { speechSynthesis.cancel(); } catch (e) {} }
   };
@@ -568,6 +609,489 @@ window.URGENT = (function () {
     };
   }
 
+
+  /* ===================== تطبيق PWA + إشعارات Push ===================== */
+  var pushState = {
+    reg: null, sub: null, busy: false,
+    handlers: { onSubscription: null }
+  };
+
+  function swSupported() {
+    return ('serviceWorker' in navigator) && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  }
+
+  function registerSW() {
+    try {
+      if (!swSupported()) return Promise.resolve(null);
+    } catch (e) { return Promise.resolve(null); }
+    if (pushState.reg) return Promise.resolve(pushState.reg);
+    return navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function (reg) {
+      pushState.reg = reg;
+      // التحديث التلقائي عند وجود نسخة جديدة
+      try { reg.update(); } catch (e) {}
+      return reg;
+    }).catch(function () { return null; });
+  }
+
+  function urlB64ToUint8(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(base64);
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function notificationState() {
+    try {
+      if (typeof Notification === 'undefined' || !Notification) return 'unsupported';
+      return Notification.permission || 'default';     // default | granted | denied
+    } catch (e) { return 'unsupported'; }
+  }
+
+  function askNotifyPermission() {
+    try {
+      if (notificationState() !== 'default') return Promise.resolve(notificationState());
+      return Notification.requestPermission().then(function (p) { return p; }).catch(function () { return 'denied'; });
+    } catch (e) { return Promise.resolve('unsupported'); }
+  }
+
+  function pushSupported() {
+    return swSupported() && ('PushManager' in window) && ('Notification' in window);
+  }
+
+  function pushPublicKey() {
+    var c = config();
+    return (c.push && c.push.publicKey) ? c.push.publicKey : '';
+  }
+
+  // تفعيل الاشتراك: تسجيل SW + إذن الإشعارات + الاشتراك بالإشعارات
+  function enablePush() {
+    if (!pushSupported()) return Promise.reject(new Error('الإشعارات في الخلفية غير مدعومة في هذا المتصفح. ثبّت الصفحة على الشاشة الرئيسية (أو استخدم Chrome/Edge على الكمبيوتر).'));
+    pushState.busy = true;
+    return registerSW().then(function (reg) {
+      if (!reg) throw new Error('تعذّر تسجيل خدمة التطبيق (sw.js).');
+      return askNotifyPermission();
+    }).then(function (perm) {
+      if (perm !== 'granted') throw new Error('تم رفض إذن الإشعارات من المتصفح.');
+      return pushState.reg.pushManager.getSubscription();
+    }).then(function (existing) {
+      if (existing) { pushState.sub = existing; return existing; }
+      var key = pushPublicKey();
+      if (!key) throw new Error('مفتاح الإشعارات غير مهيأ في الإعدادات (config.js → push.publicKey).');
+      return pushState.reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8(key)
+      });
+    }).then(function (sub) {
+      pushState.busy = false;
+      pushState.sub = sub;
+      return sub;
+    });
+  }
+
+  function disablePush() {
+    return (pushState.reg ? pushState.reg.pushManager.getSubscription() : Promise.resolve(null))
+      .then(function (sub) { return sub ? sub.unsubscribe() : false; })
+      .then(function () { pushState.sub = null; return true; })
+      .catch(function () { return false; });
+  }
+
+  function pushStatus() {
+    try {
+      if (!swSupported()) return Promise.resolve({ supported: false, permission: notificationState(), subscribed: false, sub: null });
+      var get = pushState.reg ? pushState.reg.pushManager.getSubscription() : Promise.resolve(null);
+      return get.then(function (sub) {
+        pushState.sub = sub;
+        return { supported: pushSupported(), permission: notificationState(), subscribed: !!sub, sub: sub };
+      }).catch(function () {
+        return { supported: false, permission: notificationState(), subscribed: false, sub: null };
+      });
+    } catch (e) {
+      return Promise.resolve({ supported: false, permission: notificationState(), subscribed: false, sub: null });
+    }
+  }
+
+  // عرض إشعار عبر الـService Worker (يعمل في أندرويد أكثر من new Notification)
+  function showViaSW(title, body, tag) {
+    if (!pushState.reg || !navigator.serviceWorker.controller) return false;
+    try {
+      navigator.serviceWorker.controller.postMessage({ type: 'notify', title: title, body: body, tag: tag });
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ===================== إدارة بيانات المحررين (الحسابات) ===================== */
+  // القراءة: config.js (الأساس) + تعديلات محفوظة محلياً (تُطبَّق عند تطابق رمز الإعدادات)
+  function adminsKey() { return LS + resolveRoom() + ':admins-override'; }
+
+  function admins() {
+    var base = (config().admins || []).slice();
+    var ov = lsGet(adminsKey(), null);
+    if (ov && ov.list && ov.byToken === config().settingsKey) return ov.list.slice();
+    return base;
+  }
+
+  function findAdmin(user) {
+    var list = admins();
+    for (var i = 0; i < list.length; i++) if (list[i].user === user) return list[i];
+    return null;
+  }
+
+  // توليد كود config.js من قائمة الحسابات
+  function adminsToConfigCode(list, indent) {
+    var pad = indent || '    ';
+    return (list || []).map(function (a) {
+      return pad + '{\n' +
+        pad + '  user: ' + JSON.stringify(a.user) + ',\n' +
+        pad + '  name: ' + JSON.stringify(a.name || a.user) + ',\n' +
+        pad + '  salt: ' + JSON.stringify(a.salt) + ',\n' +
+        pad + '  hash: ' + JSON.stringify(a.hash) + '\n' +
+        pad + '}';
+    }).join(',\n');
+  }
+
+  // حفظ محلياً (يطبَّق على هذا الجهاز فوراً)
+  function saveAdminsLocal(list) {
+    lsSet(adminsKey(), { list: list, byToken: config().settingsKey, ts: Date.now() });
+    return true;
+  }
+
+  function resetAdminsLocal() { lsDel(adminsKey()); }
+
+  function roomKey() { return resolveRoom(); }
+
+  // تغيير كلمة مرور/اسم محرر: يعيد قائمة جديدة
+  function changeAdmin(list, user, opts) {
+    opts = opts || {};
+    var out = (list || []).slice();
+    var idx = -1, i;
+    for (i = 0; i < out.length; i++) if (out[i].user === user) idx = i;
+    var salt = makeSalt();
+    return hashPassword(opts.password || '', salt).then(function (hash) {
+      var entry = {
+        user: user,
+        name: opts.name || (idx >= 0 ? out[idx].name : user),
+        salt: salt,
+        hash: hash
+      };
+      if (idx >= 0) out[idx] = entry; else out.push(entry);
+      return out;
+    });
+  }
+
+
+  /* ===================== نوافذ (Modal) وواجهة الإعدادات ===================== */
+  var installPrompt = null;      // يُملأ عند توفّر دعوة تثبيت PWA
+
+  function initInstallCapture() {
+    try {
+      window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      installPrompt = e;
+      var b = document.getElementById('ucInstallBtn');
+      if (b) b.classList.remove('hidden');
+    });
+      window.addEventListener('appinstalled', function () {
+        installPrompt = null;
+        toast('تم تثبيت التطبيق على الجهاز', 'ok');
+      });
+    } catch (e) {}
+  }
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (window.navigator && (navigator.standalone === true)) ||
+      (document.referrer || '').indexOf('android-app://') === 0;
+  }
+  function promptInstall() {
+    if (installPrompt) {
+      var e = installPrompt;
+      installPrompt = null;
+      try { e.prompt(); } catch (err) {}
+      return true;
+    }
+    return false;
+  }
+
+  function openModal(node) {
+    var back = document.getElementById('ucModal');
+    if (!back) {
+      back = el('div', 'uc-modal-back');
+      back.id = 'ucModal';
+      back.addEventListener('click', function (e) { if (e.target === back) closeModal(); });
+      document.body.appendChild(back);
+    }
+    back.innerHTML = '';
+    back.appendChild(node);
+    back.classList.add('show');
+    document.body.classList.add('uc-modal-open');
+    return back;
+  }
+  function closeModal() {
+    var back = document.getElementById('ucModal');
+    if (back) { back.classList.remove('show'); }
+    document.body.classList.remove('uc-modal-open');
+    document.dispatchEvent(new CustomEvent('uc-modal-closed'));
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+  function sheetEl() { return el('div', 'uc-sheet'); }
+  function sheetHead(title, subtitle) {
+    var h = el('div', 'uc-sheet-head');
+    var t = el('div', 'uc-sheet-titles');
+    t.appendChild(el('h3', null, title));
+    if (subtitle) t.appendChild(el('p', null, subtitle));
+    h.appendChild(t);
+    var x = el('button', 'uc-sheet-x'); x.type = 'button'; x.innerHTML = ic('close', 20);
+    x.setAttribute('aria-label', 'إغلاق');
+    x.addEventListener('click', closeModal);
+    h.appendChild(x);
+    return h;
+  }
+  function rowEl(label, hint) {
+    var r = el('div', 'uc-row');
+    var t = el('div', 'uc-row-t');
+    t.appendChild(el('div', 'uc-row-l', label));
+    if (hint) t.appendChild(el('div', 'uc-row-h', hint));
+    r.appendChild(t);
+    return r;
+  }
+  function switchEl(on, onChange) {
+    var b = el('button', 'uc-switch' + (on ? ' on' : ''));
+    b.type = 'button';
+    b.setAttribute('role', 'switch');
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.appendChild(el('i'));
+    b.addEventListener('click', function () {
+      var now = !b.classList.contains('on');
+      b.classList.toggle('on', now);
+      b.setAttribute('aria-checked', now ? 'true' : 'false');
+      onChange(now);
+    });
+    return b;
+  }
+  function btnEl(label, cls, icon) {
+    var b = el('button', 'uc-btn ' + (cls || '')); b.type = 'button';
+    if (icon) b.innerHTML = ic(icon, 18) + label; else b.textContent = label;
+    return b;
+  }
+  function section(title, icon) {
+    var s = el('div', 'uc-sec');
+    var h = el('div', 'uc-sec-h');
+    if (icon) h.innerHTML = ic(icon, 18);
+    h.appendChild(document.createTextNode(title));
+    s.appendChild(h);
+    return s;
+  }
+
+  /**
+   * buildSettings — واجهة إعدادات جاهزة تُبنى في الصفحة
+   * opts: {
+   *   title, subtitle,
+   *   state: { sound, speak, speakVoice, alarmRepeat, alarmEvery, notifyRepeat, fontScale },
+   *   onChange(key, value),
+   *   showDisplay: true,            // إظهار قسم حجم الخط
+   *   onSpeakTest(), 
+   *   extra: [elements]             // أقسام إضافية (مثل إعدادات المحررين)
+   * }
+   */
+  function buildSettings(opts) {
+    var st = opts.state || {};
+    var sheet = sheetEl();
+    sheet.appendChild(sheetHead(opts.title || 'الإعدادات', opts.subtitle || ''));
+
+    var body = el('div', 'uc-sheet-body');
+
+    /* ---- الأقسام الإضافية أولاً (مثل بيانات دخول المحررين) ---- */
+    (opts.extra || []).forEach(function (n) { body.appendChild(n); });
+
+    /* ---- قسم الإشعارات ---- */
+    var secN = section('الإشعارات', 'bell');
+    var permRow = rowEl('إشعارات النظام', 'إشعارات تظهر خارج المتصفح (في شريط النظام)');
+    var permState = el('div', 'uc-badge');
+    var permBtn = btnEl('تفعيل', 'primary', 'bell');
+    permRow.appendChild(permState);
+    permRow.appendChild(permBtn);
+    secN.appendChild(permRow);
+
+    var bgRow = rowEl('الإشعارات والتطبيق مغلق', 'تعمل عبر سيرفر إشعارات (Web Push) — انظر تعليمات الإعداد');
+    var bgState = el('div', 'uc-badge');
+    var bgBtn = btnEl('تفعيل', 'primary', 'wifi');
+    bgRow.appendChild(bgState); bgRow.appendChild(bgBtn);
+    secN.appendChild(bgRow);
+
+    var repRow = rowEl('تكرار الإشعار ما دام الخبر غير منسوخ', 'يُعاد الإشعار كل ' + (st.alarmEvery || 30) + ' ثانية');
+    repRow.appendChild(switchEl(st.notifyRepeat !== false, function (v) { opts.onChange('notifyRepeat', v); refresh(); }));
+    secN.appendChild(repRow);
+    body.appendChild(secN);
+
+    /* ---- قسم الصوت والتنبيه ---- */
+    var secS = section('الصوت والتنبيه', 'sound');
+    var sndRow = rowEl('تنبيه صوتي عند وصول خبر', 'نغمة مميزة للأخبار العاجلة');
+    sndRow.appendChild(switchEl(st.sound !== false, function (v) { opts.onChange('sound', v); }));
+    secS.appendChild(sndRow);
+
+    var alarmRow = rowEl('تكرار التنبيه حتى يتم النسخ', 'يستمر كل ' + (st.alarmEvery || 30) + ' ثانية حتى يضغط المنفذ زر النسخ');
+    alarmRow.appendChild(switchEl(st.alarmRepeat !== false, function (v) { opts.onChange('alarmRepeat', v); }));
+    secS.appendChild(alarmRow);
+
+    var spkRow = rowEl('قراءة الخبر صوتياً', 'يُقرأ نص الخبر تلقائياً عند وصوله');
+    spkRow.appendChild(switchEl(!!st.speak, function (v) { opts.onChange('speak', v); }));
+    secS.appendChild(spkRow);
+
+    var voiceRow = rowEl('صوت القراءة', 'اختر الصوت العربي المتوفر على جهازك');
+    var sel = el('select', 'uc-select');
+    var testBtn = btnEl('تجربة', '', 'speech');
+    var slWrap = el('div', 'uc-row-actions');
+    slWrap.appendChild(sel); slWrap.appendChild(testBtn);
+    voiceRow.appendChild(slWrap);
+    secS.appendChild(voiceRow);
+    body.appendChild(secS);
+
+    function fillVoices() {
+      var list = speech.arabicVoices();
+      sel.innerHTML = '';
+      if (!list.length) {
+        var o = el('option', null, 'لا يوجد صوت عربي على هذا الجهاز'); o.value = ''; sel.appendChild(o);
+        sel.disabled = true; testBtn.disabled = true;
+        return;
+      }
+      sel.disabled = false; testBtn.disabled = false;
+      list.forEach(function (v) {
+        var o = el('option', null, v.name + '  (' + (v.lang || 'ar') + ')');
+        o.value = v.name;
+        if (st.speakVoice === v.name) o.selected = true;
+        sel.appendChild(o);
+      });
+      if (!st.speakVoice) st.speakVoice = sel.value;
+    }
+    sel.addEventListener('change', function () { st.speakVoice = sel.value; opts.onChange('speakVoice', sel.value); });
+    testBtn.addEventListener('click', function () {
+      var text = opts.speakSample || 'عاجل: وصل خبر جديد إلى غرفة التنفيذ.';
+      speech.speak(text, sel.value || st.speakVoice);
+    });
+    speech.loadVoices(fillVoices);
+    setTimeout(fillVoices, 1500);
+
+    /* ---- قسم حجم الخط ---- */
+    if (opts.showDisplay) {
+      var secD = section('حجم الخط على الشاشة', 'screen');
+      var fsRow = rowEl('حجم نص الأخبار', 'اضبطه حسب حجم شاشة غرفة التنفيذ');
+      var minus = btnEl('A−', 'ghost'); var plus = btnEl('A+', 'ghost'); var reset = btnEl('افتراضي', 'ghost');
+      var fsVal = el('span', 'uc-badge');
+      function updFs() {
+        fsVal.textContent = Math.round((st.fontScale || 1) * 100) + '%';
+        opts.onChange('fontScale', st.fontScale);
+      }
+      minus.addEventListener('click', function () { st.fontScale = Math.max(0.6, Math.round((st.fontScale - 0.05) * 100) / 100); updFs(); });
+      plus.addEventListener('click', function () { st.fontScale = Math.min(1.8, Math.round((st.fontScale + 0.05) * 100) / 100); updFs(); });
+      reset.addEventListener('click', function () { st.fontScale = (config().display && config().display.fontScale) || 0.9; updFs(); });
+      var fa = el('div', 'uc-row-actions'); fa.appendChild(minus); fa.appendChild(fsVal); fa.appendChild(plus); fa.appendChild(reset);
+      fsRow.appendChild(fa);
+      secD.appendChild(fsRow);
+      body.appendChild(secD);
+      updFs();
+    }
+
+    /* ---- قسم التطبيق ---- */
+    var secA = section('تطبيق الجوال (PWA)', 'phone');
+    var instRow = rowEl(isStandalone() ? 'التطبيق مثبَّت على هذا الجهاز' : 'تثبيت شاشة الأخبار كتطبيق',
+      isStandalone() ? '' : (swSupported() ? 'يعمل بدون متصفح، ويدعم الإشعارات والتشغيل السريع' : 'يتطلب فتح الصفحة عبر رابط https'));
+    var instBtn = btnEl('تثبيت', 'primary', 'download');
+    instBtn.addEventListener('click', function () {
+      if (isStandalone()) { toast('التطبيق مثبَّت بالفعل', 'ok'); return; }
+      if (!promptInstall()) {
+        toast('من قائمة المتصفح: «إضافة إلى الشاشة الرئيسية» (آيفون: زر المشاركة ← إضافة إلى الشاشة)', 'warn', 7000);
+      }
+    });
+    instRow.appendChild(instBtn);
+    secA.appendChild(instRow);
+
+    var swRow = rowEl('حالة خدمة التطبيق', 'مطلوبة للإشعارات في الخلفية');
+    var swState = el('div', 'uc-badge');
+    swRow.appendChild(swState);
+    secA.appendChild(swRow);
+    body.appendChild(secA);
+
+    /* ---- معلومات ---- */
+    var secI = section('معلومات', 'info');
+    var verRow = rowEl('الإصدار', 'رقم إصدار الصفحة الحالي');
+    verRow.appendChild(el('div', 'uc-badge', 'v' + (config().version || '—')));
+    secI.appendChild(verRow);
+    var roomRow = rowEl('مفتاح القناة', 'تأكد أن كل الأجهزة تستخدم نفس المفتاح');
+    roomRow.appendChild(el('div', 'uc-badge mono', String(opts.room || '').slice(0, 10) + '…'));
+    secI.appendChild(roomRow);
+    body.appendChild(secI);
+
+    sheet.appendChild(body);
+
+    function refresh() {
+      try { refreshInner(); } catch (e) {}
+    }
+    function refreshInner() {
+      // حالة إشعارات النظام
+      var ns = notificationState();
+      permState.textContent = ns === 'granted' ? 'مفعّلة' : ns === 'denied' ? 'مرفوضة من المتصفح' : 'غير مفعّلة';
+      permState.className = 'uc-badge ' + (ns === 'granted' ? 'ok' : ns === 'denied' ? 'bad' : '');
+      permBtn.classList.toggle('hidden', ns === 'granted');
+      permBtn.textContent = ns === 'denied' ? 'مرفوضة — افتح إعدادات المتصفح' : 'تفعيل';
+
+      // حالة SW
+      swState.textContent = !swSupported() ? 'غير مدعومة (تحتاج https)'
+        : (navigator.serviceWorker.controller ? 'تعمل' : 'قيد التهيئة');
+      swState.className = 'uc-badge ' + (navigator.serviceWorker.controller ? 'ok' : '');
+
+      if (typeof opts.statusRefresh === 'function') opts.statusRefresh();
+    }
+
+    permBtn.addEventListener('click', function () {
+      askNotifyPermission().then(function (p) {
+        if (p === 'granted') { toast('تم تفعيل إشعارات النظام', 'ok'); try { showViaSW('تم التفعيل', 'ستصلك إشعارات الأخبار العاجلة'); } catch (e) {} }
+        else toast('لم يتم منح الإذن — من إعدادات المتصفح: السماح بالإشعارات', 'warn', 6000);
+        refresh();
+      });
+    });
+    bgBtn.addEventListener('click', function () {
+      bgBtn.disabled = true; bgState.textContent = 'جارٍ التفعيل…';
+      enablePush().then(function (sub) {
+        bgState.textContent = 'مفعّلة'; bgState.className = 'uc-badge ok';
+        bgBtn.textContent = 'إيقاف';
+        toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
+        if (typeof opts.onPushSubscribed === 'function') opts.onPushSubscribed(sub);
+        else if (opts.onPush) opts.onPush();
+      }).catch(function (err) {
+        bgState.textContent = 'غير مفعّلة'; bgState.className = 'uc-badge bad';
+        bgBtn.textContent = 'تفعيل';
+        toast(err.message || 'تعذّر التفعيل', 'warn', 8000);
+      }).then(function () { bgBtn.disabled = false; });
+    });
+
+    if (opts.onPush) {
+      // يُستخدم من الصفحة لنشر الاشتراك في القناة
+      pushStatus().then(function (r) {
+        bgState.textContent = r.subscribed ? 'مفعّلة' : (r.supported ? 'غير مفعّلة' : 'غير مدعومة');
+        bgState.className = 'uc-badge ' + (r.subscribed ? 'ok' : '');
+        bgBtn.textContent = r.subscribed ? 'إيقاف' : 'تفعيل';
+        if (r.subscribed) opts.onPush(r.sub);
+      });
+      bgBtn.addEventListener('click', function () {
+        pushStatus().then(function (r) {
+          if (r.subscribed) {
+            disablePush().then(function () {
+              bgState.textContent = 'غير مفعّلة'; bgState.className = 'uc-badge';
+              bgBtn.textContent = 'تفعيل';
+              toast('تم إيقاف الإشعارات في الخلفية على هذا الجهاز', 'ok');
+              if (opts.onPushOff) opts.onPushOff();
+            });
+          }
+        });
+      });
+    }
+
+    refresh();
+    return sheet;
+  }
+
   /* ===================== الجلسة (دخول المحررين) ===================== */
   function createSession(room, hours) {
     var K = LS + room + ':session';
@@ -643,7 +1167,19 @@ window.URGENT = (function () {
     lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, LS_PREFIX: LS,
     // واجهة
     toast: toast, flashTitle: flashTitle, browserNotify: browserNotify, askNotify: askNotify,
+    // نوافذ وإعدادات
+    openModal: openModal, closeModal: closeModal, buildSettings: buildSettings,
+    isStandalone: isStandalone, promptInstall: promptInstall, initInstallCapture: initInstallCapture,
+    section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     createAlerter: createAlerter, speech: speech,
+    // PWA وPush
+    swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
+    enablePush: enablePush, disablePush: disablePush, pushStatus: pushStatus,
+    notificationState: notificationState, askNotifyPermission: askNotifyPermission,
+    showViaSW: showViaSW, urlB64ToUint8: urlB64ToUint8,
+    // إدارة الحسابات
+    admins: admins, findAdmin: findAdmin, saveAdminsLocal: saveAdminsLocal, resetAdminsLocal: resetAdminsLocal,
+    changeAdmin: changeAdmin, adminsToConfigCode: adminsToConfigCode, roomKey: roomKey,
     // نقل وبيانات
     createBus: createBus, loadMqtt: loadMqtt, createStore: createStore, createSession: createSession,
     // نصوص ونسخ

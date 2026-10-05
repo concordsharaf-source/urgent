@@ -13,6 +13,10 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="ui.css" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#e02424" />
+<link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root{
     --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
@@ -94,6 +98,14 @@
   .banner.err{background:rgba(239,68,68,.15);color:#fecaca;border-bottom-color:rgba(239,68,68,.3)}
   .soundbar{padding:11px 18px;font-size:13.5px;text-align:center;background:rgba(56,189,248,.15);
     color:#e0f2fe;border-bottom:1px solid rgba(56,189,248,.3);cursor:pointer;font-weight:600}
+  .alarmbar{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+    padding:10px 16px;font-size:13.5px;font-weight:700;
+    background:rgba(239,68,68,.16);color:#fecaca;border-bottom:1px solid rgba(239,68,68,.32);
+    animation:alarmPulse 2s infinite}
+  @keyframes alarmPulse{50%{background:rgba(239,68,68,.3)}}
+  .alarmbar .abtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+    color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .alarmbar .abtn:hover{background:rgba(255,255,255,.24)}
 
   .editors{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 0;max-width:1240px;margin:0 auto}
   .editors .lbl{font-size:12.5px;color:var(--dim)}
@@ -102,7 +114,7 @@
   .edchip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
 
   /* ============ قائمة الأخبار ============ */
-  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:16px;--fs:1}
+  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:15px;--fs:.9}
 
   .card{
     position:relative;
@@ -143,8 +155,8 @@
 
   .text{
     margin:0;
-    font-size:calc(clamp(19px, 1.05vw + 13.5px, 30px) * var(--fs));
-    line-height:1.95;
+    font-size:calc(clamp(16.5px, 0.95vw + 11.5px, 26px) * var(--fs));
+    line-height:1.9;
     font-weight:700;
     letter-spacing:.1px;
     white-space:pre-wrap;
@@ -223,11 +235,18 @@
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
     <button class="chip" id="btnFull" title="ملء الشاشة"><i class="ico" data-ic="expand"></i>توسيع</button>
+    <button class="chip" id="btnSettings" title="الإعدادات"><i class="ico" data-ic="gear"></i>الإعدادات</button>
     <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين"><i class="ico" data-ic="key"></i>المحررون</a>
   </div>
 </header>
 
 <div class="banner hidden" id="banner"></div>
+<div class="alarmbar hidden" id="alarmbar">
+  <span class="ico" data-ic="bell"></span>
+  <span id="alarmText">تنبيه متكرر كل 30 ثانية حتى يتم نسخ الخبر</span>
+  <button class="abtn" id="btnAlarmMute">إسكات مؤقت</button>
+  <button class="abtn" id="btnAlarmOff">إيقاف التكرار</button>
+</div>
 <div class="soundbar hidden" id="soundbar"><i class="ico" data-ic="bell"></i> اضغط في أي مكان لتفعيل صوت التنبيه</div>
 
 <div class="editors hidden" id="editors"><span class="lbl">المحررون المتصلون:</span></div>
@@ -263,6 +282,13 @@
     opName: U.lsGet(LSP + 'opName', D.operatorName || 'المنفذ') || 'المنفذ',
     sound: U.lsGet(LSP + 'sound', D.sound !== false) !== false,
     speak: U.lsGet(LSP + 'speak', !!D.speak) === true,
+    speakVoice: U.lsGet(LSP + 'speakVoice', '') || '',
+    alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
+    alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 30)) || 30,
+    alarmMutedUntil: 0,
+    notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
+    pushOn: false,
+    pushEndpoint: '',
     fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
     editors: {},
     fresh: {},
@@ -275,6 +301,7 @@
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var banner = U.$('#banner'), soundbar = U.$('#soundbar');
+  var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
   var clockEl = U.$('#clock');
   var btnSound = U.$('#btnSound'), btnSpeak = U.$('#btnSpeak');
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
@@ -291,6 +318,52 @@
     onState: onState,
     onReady: onReady
   });
+
+  /* ---------- الإعدادات (نافذة) ---------- */
+  function openSettings() {
+    var sheet = U.buildSettings({
+      title: 'إعدادات شاشة الاستقبال',
+      subtitle: 'التنبيهات، الصوت، حجم الخط، وتثبيت التطبيق',
+      room: room,
+      state: {
+        sound: S.sound, speak: S.speak, speakVoice: S.speakVoice,
+        alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery,
+        notifyRepeat: S.notifyRepeat, fontScale: S.fs
+      },
+      showDisplay: true,
+      speakSample: 'عاجل: وصل خبر جديد إلى غرفة التنفيذ.',
+      onChange: function (key, val) {
+        if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
+        else if (key === 'speak') { S.speak = val; U.lsSet(LSP + 'speak', val); syncToggles(); }
+        else if (key === 'speakVoice') { S.speakVoice = val; U.lsSet(LSP + 'speakVoice', val); }
+        else if (key === 'alarmRepeat') { S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val); updateAlarmBar(); if (val) startAlarmLoop(); }
+        else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
+        else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
+      },
+      onPush: function (sub) { onPushSub(sub); },
+      onPushOff: function () { onPushSub(null); }
+    });
+    U.openModal(sheet);
+  }
+
+  function onPushSub(sub) {
+    var topic_ = 'push/sub/display-' + devId();
+    if (sub) {
+      S.pushOn = true;
+      var j = sub.toJSON ? sub.toJSON() : sub;
+      bus.publish(topic_, { sub: j, role: 'display', name: S.opName, ts: Date.now() }, { retain: true });
+      U.toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
+    } else {
+      S.pushOn = false;
+      bus.publish(topic_, '', { retain: true });
+    }
+  }
+
+  function devId() {
+    var id = U.lsGet(LSP + 'devId', '');
+    if (!id) { id = U.randToken(10); U.lsSet(LSP + 'devId', id); }
+    return id;
+  }
 
   /* ---------- التهيئة ---------- */
   // أي تغيير في المخزن (خبر جديد/إشارة نسخ/تثبيت/حذف) => إعادة رسم مؤجلة قليلاً
@@ -319,11 +392,19 @@
     store.load();
     render();
     wire();
+    // ميزات التطبيق (لا تمنع الاتصال إن فشلت لأي سبب)
+    try { U.initInstallCapture(); } catch (e) {}
+    try { U.registerSW(); } catch (e) {}
+    try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
+    try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
     bus.connect();
     bus.startPresence();
     setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
     U.txt(clockEl, U.fmtClock(Date.now()));
     U.hydrateIcons(document);
+    try { U.initInstallCapture(); } catch (e) {}
+    try { U.registerSW(); } catch (e) {}
+    try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
     var vc = U.$('#verChip');
     if (vc) { if (cfg.version) U.txt(vc, 'v' + cfg.version); else vc.classList.add('hidden'); }
     setInterval(tick, 15000);
@@ -365,6 +446,22 @@
     });
     U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
     U.$('#btnFontMinus').addEventListener('click', function () { S.fs = clampFs(S.fs - 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
+    // شريط التنبيه المتكرر
+    U.$('#btnAlarmMute').addEventListener('click', function () {
+      S.alarmMutedUntil = Date.now() + 5 * 60e3;
+      U.toast('تم إسكات التنبيه 5 دقائق — سيُعاد تلقائياً', 'warn');
+      updateAlarmBar();
+    });
+    U.$('#btnAlarmOff').addEventListener('click', function () {
+      S.alarmRepeat = false;
+      U.lsSet(LSP + 'alarmRepeat', false);
+      updateAlarmBar();
+      U.toast('تم إيقاف تكرار التنبيه — يمكن تشغيله من الإعدادات', 'warn');
+    });
+
+    // شاشة الإعدادات
+    U.$('#btnSettings').addEventListener('click', function () { openSettings(); });
+
     U.$('#btnFull').addEventListener('click', function () {
       try {
         if (document.fullscreenElement) document.exitFullscreen();
@@ -429,6 +526,10 @@
       return;
     }
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); return; }
+    if (rel === 'push/endpoint') {
+      S.pushEndpoint = (data && data.url) ? String(data.url) : '';
+      return;
+    }
   }
 
   function onState(st, info) {
@@ -458,14 +559,84 @@
   }
 
   /* ---------- خبر جديد ---------- */
+  /* ---------- التنبيه المتكرر كل 30 ثانية حتى يتم نسخ الخبر ---------- */
+  var alarmTimer = null;
+
+  function uncopiedItems() {
+    return store.list().filter(function (it) { return !(it.ack && it.ack.kind === 'copied'); });
+  }
+
+  function updateAlarmBar() {
+    var n = uncopiedItems().length;
+    var on = S.alarmRepeat && n > 0;
+    alarmbar.classList.toggle('hidden', !on);
+    if (on) {
+      var secs = Math.round((S.alarmMutedUntil - Date.now()) / 1000);
+      U.txt(alarmText, secs > 0
+        ? 'التنبيه مُسكت مؤقتاً (' + Math.ceil(secs / 60) + ' دقيقة) — ' + n + ' خبر بانتظار النسخ'
+        : 'تنبيه متكرر كل ' + S.alarmEvery + ' ثانية حتى يتم النسخ — ' + n + ' خبر بانتظار النسخ');
+    }
+    updateTitle();
+  }
+
+  function updateTitle() {
+    var n = uncopiedItems().length;
+    var base = (cfg.channel && cfg.channel.title) || 'غرفة الأخبار';
+    document.title = (n ? '(' + n + ') تنبيه — ' : '') + base;
+  }
+
+  function fireAlarm(kind) {
+    if (S.sound && Date.now() > S.alarmMutedUntil) alerter.play('urgent');
+    if (S.speak && kind === 'new') {
+      var list = uncopiedItems();
+      if (list.length && list[0]) U.speech.speak(list[0].text, S.speakVoice);
+    }
+  }
+
+  function startAlarmLoop() {
+    if (alarmTimer) clearInterval(alarmTimer);
+    alarmTimer = setInterval(function () {
+      var list = uncopiedItems();
+      if (!S.alarmRepeat || !list.length) { updateAlarmBar(); return; }
+      // 1) تنبيه صوتي متكرر
+      fireAlarm('repeat');
+      // 2) إشعار نظام متكرر (عندما تكون الشاشة في الخلفية أو مخفية)
+      if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
+        var first = list[0];
+        var body = first ? ('بانتظار النسخ (' + list.length + '): ' + String(first.text).slice(0, 120)) : 'خبر بانتظار النسخ';
+        reNotify(body, list.length);
+      }
+      updateAlarmBar();
+    }, Math.max(10, S.alarmEvery) * 1000);
+  }
+
+  function reNotify(body, count) {
+    var title = 'خبر عاجل لم يُنسخ بعد';
+    if (!U.showViaSW(title, body, 'yt-uncopied') && 'Notification' in window && Notification.permission === 'granted') {
+      U.browserNotify(title, body);
+    }
+    if (S.pushOn && S.pushEndpoint) {
+      bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
+    }
+  }
+
   function onNewItem(item) {
     S.fresh[item.id] = Date.now();
+    S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
-    if (S.speak) U.speech.speak(item.text);
-    U.browserNotify('خبر عاجل — ' + (item.author || 'غرفة الأخبار'), item.text);
+    if (S.speak) U.speech.speak(item.text, S.speakVoice);
+    var nTitle = 'خبر عاجل — ' + (item.author || 'غرفة الأخبار');
+    if (!U.showViaSW(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id) && 'Notification' in window) {
+      U.browserNotify(nTitle, item.text);
+    }
+    if (S.pushOn && S.pushEndpoint) {
+      bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
+    }
     if (document.hidden) U.flashTitle('خبر عاجل');
     scheduleReceivedAck(item);
     render();
+    updateAlarmBar();
+    if (S.alarmRepeat) startAlarmLoop();
   }
 
   // إشعار المحرر بأن الخبر وصل إلى شاشة المنفذ
@@ -490,6 +661,8 @@
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
       alerter.play('info');
+      U.speech.stop();
+      updateAlarmBar();
       U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر' : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');
     });
   }
@@ -647,6 +820,17 @@
       if (r('new')) r('new').classList.toggle('hidden', !fresh);
     });
     renderEditors();
+  }
+
+  // أوامر من خدمة التطبيق (مثل زر «نسخ» داخل الإشعار)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.type === 'copy-first') {
+        var list = uncopiedItems();
+        if (list.length) { copyItem(list[0].id); U.toast('تم نسخ أحدث خبر عاجل من الإشعار', 'ok'); }
+      }
+    });
   }
 
   init();

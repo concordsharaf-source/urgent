@@ -1,0 +1,116 @@
+/* =========================================================================
+   ui.css — عناصر الواجهة المشتركة (النوافذ، الإعدادات، التنبيهات)
+   تُستخدم في: index.html (شاشة الاستقبال) و send.html (لوحة المحررين)
+   ========================================================================= */
+
+/* ---------- التنبيه العائم ---------- */
+.uc-toast{
+  position:fixed;bottom:22px;left:50%;transform:translate(-50%,26px);
+  background:#101a2b;color:#e8eefc;border:1px solid rgba(148,163,184,.28);
+  padding:13px 20px;border-radius:16px;font-size:14px;font-weight:600;max-width:min(92vw,560px);
+  text-align:center;box-shadow:0 22px 50px -20px rgba(0,0,0,.85);z-index:9999;
+  opacity:0;pointer-events:none;transition:opacity .22s, transform .22s;line-height:1.7;
+}
+.uc-toast.show{opacity:1;transform:translate(-50%,0)}
+.uc-toast.ok{border-color:rgba(52,211,153,.5)}
+.uc-toast.warn{border-color:rgba(251,191,36,.55);color:#fde68a}
+
+/* ---------- النافذة ---------- */
+.uc-modal-back{
+  position:fixed;inset:0;background:rgba(3,6,12,.72);backdrop-filter:blur(6px);
+  display:none;align-items:flex-end;justify-content:center;z-index:9998;padding:0;
+}
+.uc-modal-back.show{display:flex}
+body.uc-modal-open{overflow:hidden}
+
+.uc-sheet{
+  width:100%;max-width:620px;max-height:90vh;overflow:auto;
+  background:linear-gradient(180deg,#121a28,#0d1522);
+  border:1px solid rgba(148,163,184,.2);border-radius:22px 22px 0 0;
+  box-shadow:0 -20px 60px -20px rgba(0,0,0,.9);animation:ucSheetIn .26s cubic-bezier(.2,.9,.3,1);
+}
+@keyframes ucSheetIn{from{transform:translateY(28px);opacity:.6}}
+@media (min-width:720px){
+  .uc-modal-back{align-items:center;padding:24px}
+  .uc-sheet{border-radius:22px}
+}
+
+.uc-sheet-head{
+  position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;gap:12px;
+  padding:18px 20px 14px;background:linear-gradient(180deg,rgba(18,26,40,.99),rgba(18,26,40,.92));
+  border-bottom:1px solid rgba(148,163,184,.16);
+}
+.uc-sheet-titles{flex:1;min-width:0}
+.uc-sheet-head h3{margin:0;font-size:18px;font-weight:800;color:#eef2f8}
+.uc-sheet-head p{margin:5px 0 0;font-size:12.5px;color:#94a3b8;line-height:1.8}
+.uc-sheet-x{
+  width:38px;height:38px;flex:0 0 auto;border-radius:12px;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1px solid rgba(148,163,184,.22);color:#dbe3ee;
+  display:grid;place-items:center;
+}
+.uc-sheet-x:hover{background:rgba(255,255,255,.14)}
+.uc-sheet-body{padding:16px 18px 26px;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- الأقسام والصفوف ---------- */
+.uc-sec{background:rgba(255,255,255,.03);border:1px solid rgba(148,163,184,.16);border-radius:16px;padding:8px 14px 12px}
+.uc-sec-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#bae6fd;padding:10px 2px 6px}
+.uc-sec-h svg{opacity:.9}
+.uc-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid rgba(148,163,184,.1)}
+.uc-sec-h + .uc-row{border-top:none}
+.uc-row-t{flex:1;min-width:0}
+.uc-row-l{font-size:14px;font-weight:700;color:#e8eefc}
+.uc-row-h{font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.7}
+.uc-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.uc-badge{
+  font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap;
+  background:rgba(148,163,184,.14);border:1px solid rgba(148,163,184,.28);color:#cbd5e1;
+}
+.uc-badge.ok{background:rgba(52,211,153,.18);border-color:rgba(52,211,153,.5);color:#bbf7d0}
+.uc-badge.bad{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#fecaca}
+.uc-badge.mono{font-family:ui-monospace,Menlo,Consolas,monospace;direction:ltr}
+
+.uc-btn{
+  cursor:pointer;border-radius:12px;font-size:13.5px;font-weight:700;padding:10px 15px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(148,163,184,.24);color:#e2e8f0;
+  display:inline-flex;align-items:center;gap:7px;transition:.15s;
+}
+.uc-btn:hover{background:rgba(255,255,255,.14)}
+.uc-btn:disabled{opacity:.55;cursor:default}
+.uc-btn.primary{background:linear-gradient(135deg,#34d399,#0ea5e9);color:#04140f;border-color:transparent}
+.uc-btn.danger{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.44);color:#fca5a5}
+.uc-btn.ghost{background:transparent}
+.uc-btn svg{display:block}
+
+.uc-select{
+  background:#0c1421;color:#e8eefc;border:1px solid rgba(148,163,184,.24);
+  border-radius:12px;padding:9px 12px;font-size:13px;font-family:inherit;min-width:190px;max-width:100%;
+}
+.uc-select:focus{outline:none;border-color:rgba(56,189,248,.55);box-shadow:0 0 0 3px rgba(56,189,248,.12)}
+
+.uc-field{display:block;margin-bottom:12px}
+.uc-field span{display:block;font-size:12.5px;color:#94a3b8;margin-bottom:6px}
+.uc-field input,.uc-field select{
+  width:100%;padding:12px 14px;border-radius:13px;background:#0c1421;color:#e8eefc;
+  border:1px solid rgba(148,163,184,.24);font-size:14.5px;font-family:inherit;
+}
+.uc-field input:focus{outline:none;border-color:rgba(56,189,248,.55);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
+.uc-note{font-size:12.5px;color:#94a3b8;line-height:1.9;margin:6px 0 0}
+.uc-note b{color:#cbd5e1}
+.uc-code{
+  width:100%;min-height:120px;border-radius:13px;background:#0a121e;color:#a7f3d0;
+  border:1px solid rgba(148,163,184,.22);padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:12px;line-height:1.75;direction:ltr;
+}
+
+/* ---------- مفتاح تبديل ---------- */
+.uc-switch{
+  width:56px;height:30px;flex:0 0 auto;border-radius:999px;cursor:pointer;position:relative;
+  background:rgba(148,163,184,.26);border:1px solid rgba(148,163,184,.3);transition:.2s;
+}
+.uc-switch i{
+  position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;
+  background:#e2e8f0;transition:.2s;
+}
+.uc-switch.on{background:linear-gradient(135deg,#34d399,#0ea5e9);border-color:transparent}
+.uc-switch.on i{right:29px;background:#fff}
