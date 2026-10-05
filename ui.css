@@ -162,3 +162,26 @@ body.uc-modal-open{overflow:hidden}
 }
 .uc-preview{margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);
   border:1px dashed rgba(148,163,184,.3);font-size:12.5px;color:#94a3b8;text-align:center;line-height:1.8}
+
+/* ============ إدارة المحررين في الإعدادات (2.8) ============ */
+.uc-eds{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
+.uc-ed{border:1px solid rgba(148,163,184,.18);border-radius:14px;background:rgba(255,255,255,.03);padding:11px 13px}
+.uc-ed-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.uc-ed-who{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+.uc-ed-who b{font-size:14.5px;color:#e8eefc}
+.uc-ed-user{font-family:ui-monospace,Menlo,Consolas,monospace;direction:ltr;font-size:12px;color:#7f92ad;
+  background:rgba(148,163,184,.12);border-radius:999px;padding:3px 9px}
+.uc-ed-acts{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.uc-ed-acts .uc-btn{padding:7px 11px;font-size:12.5px}
+.uc-ed-form{margin-top:12px;padding-top:11px;border-top:1px dashed rgba(148,163,184,.2)}
+.uc-ed-form .uc-field{margin-bottom:10px}
+.uc-ed-form .uc-row-actions .uc-btn{padding:8px 12px;font-size:12.5px}
+.uc-gitbox{margin-top:12px;padding:12px 13px;border:1px dashed rgba(56,189,248,.35);border-radius:14px;
+  background:rgba(56,189,248,.05)}
+.uc-gitbox .uc-row-actions{align-items:center}
+.uc-gitbox .uc-note{margin:8px 0 0}
+
+.uc-saverow{padding:12px 2px 4px;border-top:1px solid rgba(148,163,184,.12);margin-top:6px}
+.uc-saverow .uc-row-l{font-size:14px;font-weight:800;color:#e2e8f0}
+.uc-saverow .uc-row-h{font-size:12.5px;color:#8fa3bd;line-height:1.8;margin-top:3px}
+.uc-saverow .uc-row-actions{margin-top:10px}

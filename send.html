@@ -364,169 +364,253 @@
   function openSettings() {
     var extra = [];
 
-    // ---- قسم بيانات الدخول (تغيير الاسم وكلمة المرور) ----
+    // ---- قسم إدارة المحررين: إضافة، إعادة تسمية، تغيير كلمات المرور ----
     var sec = U.section('بيانات دخول المحررين', 'lock');
-    var list = U.admins();
+    var draft = U.admins().map(function (a) { return { user: a.user, name: a.name, salt: a.salt, hash: a.hash }; });
+    var dirty = false;
 
-    var selRow = U.rowEl('اختر المحرر', 'الاسم الظاهر وكلمة المرور الخاصة به');
-    var sel = U.el('select', 'uc-select');
-    sel.setAttribute('data-role', 'editor-select');
-    list.forEach(function (a) {
-      var o = U.el('option', null, (a.name || a.user) + '  (' + a.user + ')');
-      o.value = a.user;
-      sel.appendChild(o);
+    var headRow = U.rowEl('قائمة المحررين', 'أضف محرراً، أعِد التسمية، أو غيّر كلمة المرور — ثم احفظ');
+    var statusBadge = U.el('div', 'uc-badge');
+    statusBadge.setAttribute('data-role', 'ed-status');
+    headRow.appendChild(statusBadge);
+    sec.appendChild(headRow);
+
+    var listBox = U.el('div', 'uc-eds');
+    listBox.setAttribute('data-role', 'ed-list');
+    sec.appendChild(listBox);
+
+    function renderList() {
+      listBox.innerHTML = '';
+      statusBadge.textContent = draft.length + ' محرر' + (dirty ? ' — تغييرات غير محفوظة' : '');
+      statusBadge.className = 'uc-badge ' + (dirty ? 'bad' : '');
+      draft.forEach(function (a) {
+        var row = U.el('div', 'uc-ed');
+        row.setAttribute('data-user', a.user);
+
+        var head = U.el('div', 'uc-ed-head');
+        var who = U.el('div', 'uc-ed-who');
+        who.appendChild(U.el('b', null, a.name || a.user));
+        who.appendChild(U.el('span', 'uc-ed-user', a.user));
+        if (S.admin && a.user === S.admin.user) who.appendChild(U.el('span', 'uc-badge ok', 'أنت'));
+        head.appendChild(who);
+
+        var acts = U.el('div', 'uc-ed-acts');
+        var bEdit = U.btnEl('تعديل', 'ghost', 'edit');
+        bEdit.setAttribute('data-act', 'edit');
+        var bDel = U.btnEl('حذف', 'danger', 'trash');
+        bDel.setAttribute('data-act', 'del');
+        acts.appendChild(bEdit); acts.appendChild(bDel);
+        head.appendChild(acts);
+        row.appendChild(head);
+
+        var form = U.el('div', 'uc-ed-form hidden');
+        var fN = U.el('div', 'uc-field');
+        fN.innerHTML = '<span>الاسم الظاهر</span>';
+        var iN = U.el('input'); iN.type = 'text'; iN.maxLength = 40; iN.value = a.name || '';
+        iN.setAttribute('data-role', 'ed-name');
+        fN.appendChild(iN);
+        form.appendChild(fN);
+
+        var fP = U.el('div', 'uc-field');
+        fP.innerHTML = '<span>كلمة مرور جديدة (اتركها فارغة إن أردت تغيير الاسم فقط)</span>';
+        var iP = U.el('input'); iP.type = 'text'; iP.placeholder = '8 خانات على الأقل';
+        iP.setAttribute('data-role', 'ed-pass');
+        fP.appendChild(iP);
+        form.appendChild(fP);
+
+        var fActs = U.el('div', 'uc-row-actions');
+        var bGen = U.btnEl('توليد كلمة مرور', 'ghost', 'key');
+        var bSave = U.btnEl('حفظ التغيير', 'primary', 'check');
+        bSave.setAttribute('data-role', 'ed-apply');
+        var bCancel = U.btnEl('إلغاء', 'ghost', 'close');
+        fActs.appendChild(bGen); fActs.appendChild(bSave); fActs.appendChild(bCancel);
+        form.appendChild(fActs);
+        row.appendChild(form);
+
+        bEdit.addEventListener('click', function () { form.classList.toggle('hidden'); if (!form.classList.contains('hidden')) iN.focus(); });
+        bCancel.addEventListener('click', function () { form.classList.add('hidden'); iP.value = ''; iN.value = a.name || ''; });
+        bGen.addEventListener('click', function () { iP.value = U.makePassword(12); });
+        bDel.addEventListener('click', function () {
+          if (draft.length <= 1) { U.toast('لا يمكن حذف آخر محرر', 'warn', 6000); return; }
+          if (S.admin && a.user === S.admin.user && !confirm('تنبيه: أنت تحذف حسابك الحالي «' + a.user + '». متابعة؟')) return;
+          if (!confirm('حذف المحرر «' + (a.name || a.user) + '» نهائياً؟')) return;
+          draft = draft.filter(function (x) { return x.user !== a.user; });
+          dirty = true; renderList();
+          U.toast('تم حذف «' + (a.name || a.user) + '» — لم يُحفظ بعد', 'warn', 6000);
+        });
+        bSave.addEventListener('click', function () {
+          var nm = iN.value.trim();
+          var pw = iP.value.trim();
+          var cur = U.findAdmin(a.user) || a;
+          if (!nm && !pw) { U.toast('لا يوجد تغيير', 'warn'); return; }
+          if (pw && pw.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn', 6000); return; }
+          var step = pw
+            ? U.changeAdmin(draft, a.user, { name: nm || cur.name || a.user, password: pw })
+            : Promise.resolve(draft.map(function (x) {
+                return x.user === a.user ? { user: x.user, name: nm, salt: x.salt, hash: x.hash } : x;
+              }));
+          step.then(function (nl) {
+            draft = nl; dirty = true; renderList();
+            U.toast(pw ? 'تم تغيير الاسم وكلمة المرور — لم يُحفظ بعد' : 'تم تغيير الاسم — لم يُحفظ بعد', 'ok', 6000);
+          });
+        });
+
+        listBox.appendChild(row);
+      });
+    }
+    renderList();
+
+    /* ---- إضافة محرر جديد ---- */
+    var addH = U.el('div', 'uc-sec-h');
+    addH.innerHTML = U.ic('person', 18) + 'إضافة محرر جديد';
+    sec.appendChild(addH);
+
+    var fU = U.el('div', 'uc-field');
+    fU.innerHTML = '<span>اسم الدخول (بالإنجليزية)</span>';
+    var inUser = U.el('input'); inUser.type = 'text'; inUser.placeholder = 'editor2';
+    inUser.style.direction = 'ltr'; inUser.setAttribute('data-role', 'new-user');
+    fU.appendChild(inUser);
+    sec.appendChild(fU);
+
+    var fN2 = U.el('div', 'uc-field');
+    fN2.innerHTML = '<span>الاسم الظاهر (يظهر على شاشة الاستقبال)</span>';
+    var inName2 = U.el('input'); inName2.type = 'text'; inName2.placeholder = 'محرر الليلة';
+    inName2.setAttribute('data-role', 'new-name');
+    fN2.appendChild(inName2);
+    sec.appendChild(fN2);
+
+    var fP2 = U.el('div', 'uc-field');
+    fP2.innerHTML = '<span>كلمة المرور (8 خانات على الأقل)</span>';
+    var inPass2 = U.el('input'); inPass2.type = 'text'; inPass2.placeholder = 'اتركها فارغة ليولّدها النظام';
+    inPass2.setAttribute('data-role', 'new-pass');
+    fP2.appendChild(inPass2);
+    sec.appendChild(fP2);
+
+    var addActs = U.el('div', 'uc-row-actions');
+    var bGen2 = U.btnEl('توليد كلمة مرور', 'ghost', 'key');
+    bGen2.setAttribute('data-role', 'new-gen');
+    var bAdd = U.btnEl('إضافة المحرر', 'primary', 'person');
+    bAdd.setAttribute('data-role', 'add-editor');
+    addActs.appendChild(bGen2); addActs.appendChild(bAdd);
+    sec.appendChild(addActs);
+
+    bGen2.addEventListener('click', function () { inPass2.value = U.makePassword(12); });
+    bAdd.addEventListener('click', function () {
+      var user = inUser.value.trim();
+      var nm = inName2.value.trim();
+      var pw = inPass2.value.trim();
+      if (!/^[A-Za-z0-9._-]{3,24}$/.test(user)) { U.toast('اسم الدخول بالإنجليزية من 3 إلى 24 خانة (حروف/أرقام/‎._-)', 'warn', 7000); return; }
+      if (draft.some(function (a) { return a.user.toLowerCase() === user.toLowerCase(); })) { U.toast('اسم الدخول مستخدم بالفعل', 'warn'); return; }
+      if (!nm) { U.toast('اكتب الاسم الظاهر', 'warn'); return; }
+      if (pw && pw.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn', 6000); return; }
+      var usePass = pw || U.makePassword(12);
+      U.changeAdmin(draft, user, { name: nm, password: usePass }).then(function (nl) {
+        draft = nl; dirty = true;
+        inUser.value = ''; inName2.value = ''; inPass2.value = '';
+        renderList();
+        U.toast('أُضيف «' + nm + '» — كلمة مروره: ' + usePass + ' (احفظها الآن — لم تُحفظ التغييرات بعد)', 'ok', 20000);
+        try { navigator.clipboard.writeText(usePass); } catch (e) {}
+      });
     });
-    selRow.appendChild(sel);
-    sec.appendChild(selRow);
 
-    var fName = U.el('div', 'uc-field');
-    fName.innerHTML = '<span>الاسم الظاهر الجديد</span>';
-    var inName = U.el('input'); inName.type = 'text'; inName.maxLength = 40;
-    inName.setAttribute('data-role', 'editor-name');
-    fName.appendChild(inName);
-    sec.appendChild(fName);
-
-    var fPass = U.el('div', 'uc-field');
-    fPass.innerHTML = '<span>كلمة مرور جديدة (اتركها فارغة إن أردت تغيير الاسم فقط)</span>';
-    var inPass = U.el('input'); inPass.type = 'text'; inPass.placeholder = '10 خانات أو أكثر';
-    inPass.setAttribute('data-role', 'editor-pass');
-    fPass.appendChild(inPass);
-    sec.appendChild(fPass);
-
-    var fCur = U.el('div', 'uc-field');
-    fCur.innerHTML = '<span>كلمة مرورك الحالية (للتأكيد)</span>';
-    var inCur = U.el('input'); inCur.type = 'password'; inCur.autocomplete = 'current-password';
-    inCur.setAttribute('data-role', 'editor-cur');
-    fCur.appendChild(inCur);
-    sec.appendChild(fCur);
-
-    var acts = U.el('div', 'uc-row-actions');
+    /* ---- حفظ التغييرات ---- */
+    var saveRow = U.el('div', 'uc-saverow');
+    saveRow.appendChild(U.el('div', 'uc-row-l', 'حفظ التغييرات'));
+    saveRow.appendChild(U.el('div', 'uc-row-h', '«نشر لكل الأجهزة» يسري فوراً — و«حفظ دائم في المستودع» يبقى للأبد لكل من يفتح الموقع'));
+    var saveActs = U.el('div', 'uc-row-actions');
     var bLocal = U.btnEl('حفظ على هذا الجهاز', 'primary', 'check');
     bLocal.setAttribute('data-role', 'save-local');
     var bAll = U.btnEl('نشر لكل الأجهزة', '', 'wifi');
     bAll.setAttribute('data-role', 'save-all');
-    var bCode = U.btnEl('كود config.js', 'ghost', 'copy');
+    var bGitOpen = U.btnEl('حفظ دائم في المستودع', 'ghost', 'download');
+    bGitOpen.setAttribute('data-role', 'save-git');
+    var bCode = U.btnEl('عرض كود config.js', 'ghost', 'copy');
     bCode.setAttribute('data-role', 'save-code');
-    acts.appendChild(bLocal); acts.appendChild(bAll); acts.appendChild(bCode);
-    sec.appendChild(acts);
+    saveActs.appendChild(bLocal); saveActs.appendChild(bAll); saveActs.appendChild(bGitOpen); saveActs.appendChild(bCode);
+    saveRow.appendChild(saveActs);
+    sec.appendChild(saveRow);
 
     var codeBox = U.el('textarea', 'uc-code');
     codeBox.style.display = 'none';
     sec.appendChild(codeBox);
 
-    var note = U.el('p', 'uc-note');
-    note.innerHTML = '«حفظ على هذا الجهاز» يطبّق التغيير فوراً على هذا المتصفح. ' +
-      '«نشر لكل الأجهزة» يطبّقه على كل الأجهزة المتصلة مباشرة (بدون أي رمز). ' +
-      'للحفظ الدائم في المستودع استخدم ' +
-      '<a href="tools/change-password.html" target="_blank" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
-    sec.appendChild(note);
+    var gitBox = U.el('div', 'uc-gitbox hidden');
+    var fT = U.el('div', 'uc-field');
+    fT.innerHTML = '<span>رمز GitHub (يُحفظ على هذا الجهاز — مرة واحدة فقط)</span>';
+    var inTok = U.el('input'); inTok.type = 'text'; inTok.placeholder = 'github_pat_...';
+    inTok.style.direction = 'ltr'; inTok.setAttribute('data-role', 'git-token');
+    inTok.value = U.ghTokenGet();
+    fT.appendChild(inTok);
+    gitBox.appendChild(fT);
+    var gitActs = U.el('div', 'uc-row-actions');
+    var bGitGo = U.btnEl('حفظ في المستودع الآن', 'primary', 'check');
+    bGitGo.setAttribute('data-role', 'save-git-now');
+    var aTok = U.el('a', 'uc-note', 'إنشاء رمز GitHub — اضغط هنا (صلاحية Contents: Read and write على مستودع urgent)');
+    aTok.href = 'https://github.com/settings/tokens?type=fine-grained';
+    aTok.target = '_blank'; aTok.rel = 'noopener';
+    aTok.style.color = '#7dd3fc';
+    gitActs.appendChild(bGitGo); gitActs.appendChild(aTok);
+    gitBox.appendChild(gitActs);
+    var gitErr = U.el('p', 'uc-note');
+    gitBox.appendChild(gitErr);
+    sec.appendChild(gitBox);
 
-    // إضافة محرر جديد
-    var addRow = U.rowEl('إضافة محرر جديد', 'اسم دخول بالإنجليزية + اسم ظاهر + كلمة مرور');
-    var bAdd = U.btnEl('إضافة محرر', '', 'person');
-    bAdd.setAttribute('data-role', 'add-editor');
-    addRow.appendChild(bAdd);
-    sec.appendChild(addRow);
-
-    function updateFields() {
-      var a = U.findAdmin(sel.value) || {};
-      inName.value = a.name || '';
-      inPass.value = '';
-      try { inName.placeholder = ''; } catch (e) {}
+    function afterSave(msg) {
+      dirty = false; renderList();
+      U.toast(msg, 'ok', 7000);
     }
-    sel.addEventListener('change', updateFields);
-    updateFields();
-
-    function buildList(password, mode) {
-      var user = sel.value;
-      var name = inName.value.trim();
-      var pass = inPass.value.trim();
-      if (!inCur.value) { U.toast('أدخل كلمة مرورك الحالية للتأكيد', 'warn'); return null; }
-      if (pass && pass.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn'); return null; }
-      if (!name && !pass) { U.toast('لا يوجد تغيير — اكتب اسماً جديداً أو كلمة مرور جديدة', 'warn'); return null; }
-      return { user: user, name: name, pass: pass, password: password };
-    }
-
-    // التحقق من كلمة مرور المحرر الحالي ثم تنفيذ الإجراء
-    function withAuth(mode) {
-      if (!S.admin) return;
-      if (!inCur.value) { U.toast('أدخل كلمة مرورك الحالية للتأكيد', 'warn'); return; }
-      var me = U.findAdmin(S.admin.user);
-      if (!me) { U.toast('تعذّر تحديد حسابك', 'warn'); return; }
-      U.verifyPassword(inCur.value, me).then(function (ok) {
-        if (!ok) { U.toast('كلمة المرور الحالية غير صحيحة', 'warn'); return; }
-        var user = sel.value;
-        var cur = U.findAdmin(user) || {};
-        var name = inName.value.trim() || cur.name || user;
-        var pass = inPass.value.trim();
-        if (!pass) {
-          if (name === cur.name) { U.toast('لا يوجد تغيير', 'warn'); return; }
-          var copy = U.admins().map(function (a) { return a.user === user ? { user: a.user, name: name, salt: a.salt, hash: a.hash } : a; });
-          applyAdmins(copy, mode);
-          return;
-        }
-        U.changeAdmin(U.admins(), user, { name: name, password: pass }).then(function (newList) {
-          applyAdmins(newList, mode);
-        });
-      });
-    }
-
-    function applyAdmins(newList, mode) {
-      if (mode === 'code') {
-        codeBox.style.display = 'block';
-        codeBox.value = U.adminsToConfigCode(newList);
-        U.toast('انسخ الكود إلى config.js (قسم admins)', 'ok', 6000);
-        return;
-      }
-      U.saveAdminsLocal(newList);
-      if (S.admin && !U.findAdmin(S.admin.user)) {
-        U.toast('تنبيه: تم حذف/تغيير حسابك الحالي — ستحتاج الدخول من جديد', 'warn', 7000);
-      }
-      if (mode === 'all') {
-        // بلا أي رمز: النشر يتم بالمفتاح الداخلي للإعدادات
-        U.publishAdmins(bus, newList, S.admin ? S.admin.name : '');
-        U.toast('تم نشر التغيير إلى كل الأجهزة', 'ok');
-      } else {
-        U.toast('تم حفظ التغيير على هذا الجهاز', 'ok');
-      }
-      // تحديث قائمة الاختيار
-      sel.innerHTML = '';
-      U.admins().forEach(function (a) {
-        var o = U.el('option', null, (a.name || a.user) + '  (' + a.user + ')');
-        o.value = a.user; sel.appendChild(o);
-      });
-      updateFields();
-    }
-
-    bLocal.addEventListener('click', function () { withAuth('local'); });
-    bAll.addEventListener('click', function () { withAuth('all'); });
-    bCode.addEventListener('click', function () { withAuth('code'); });
-
-    bAdd.addEventListener('click', function () {
-      var user = prompt('اسم الدخول الجديد (بالإنجليزية، مثل: editor2):', '');
-      if (!user) return;
-      if (!/^[A-Za-z0-9._-]{3,24}$/.test(user)) { U.toast('اسم الدخول يجب أن يكون بالإنجليزية بين 3 و24 خانة', 'warn', 6000); return; }
-      if (U.findAdmin(user)) { U.toast('اسم الدخول مستخدم بالفعل', 'warn'); return; }
-      var name = prompt('الاسم الظاهر له (يظهر على شاشة الاستقبال):', 'محرر');
-      if (name === null) return;
-      var pass = prompt('كلمة المرور (10 خانات أو أكثر):', '');
-      if (!pass || pass.length < 8) { U.toast('كلمة المرور قصيرة — 8 على الأقل', 'warn'); return; }
-      U.changeAdmin(U.admins(), user, { name: name || user, password: pass }).then(function (newList) {
-        U.publishAdmins(bus, newList, S.admin ? S.admin.name : '');
-        applyAdmins(newList, 'all');
-        U.toast('تمت إضافة المحرر ونشره لكل الأجهزة', 'ok');
+    bLocal.addEventListener('click', function () {
+      U.saveAdminsLocal(draft);
+      afterSave('تم الحفظ على هذا الجهاز');
+    });
+    bAll.addEventListener('click', function () {
+      U.saveAdminsLocal(draft);
+      U.publishAdmins(bus, draft, S.admin ? S.admin.name : '');
+      afterSave('تم النشر لكل الأجهزة فوراً');
+    });
+    bCode.addEventListener('click', function () {
+      codeBox.style.display = 'block';
+      codeBox.value = U.adminsToConfigCode(draft);
+      U.toast('انسخ الكود إلى config.js (قسم admins)', 'ok', 6000);
+    });
+    bGitOpen.addEventListener('click', function () {
+      gitBox.classList.toggle('hidden');
+      if (!gitBox.classList.contains('hidden')) inTok.focus();
+    });
+    bGitGo.addEventListener('click', function () {
+      gitErr.textContent = '';
+      var tk = inTok.value.trim();
+      if (!tk) { gitErr.textContent = 'الصق رمز GitHub أولاً.'; return; }
+      bGitGo.disabled = true; bGitGo.textContent = 'جارٍ الحفظ في المستودع…';
+      U.gitSaveAdmins(draft, tk).then(function (res) {
+        bGitGo.disabled = false; bGitGo.textContent = 'حفظ في المستودع الآن';
+        if (!res.changed) { U.toast('لا يوجد تغيير لحفظه', 'warn', 6000); return; }
+        U.saveAdminsLocal(draft);
+        U.publishAdminsReset(bus);
+        afterSave('تم الحفظ الدائم في المستودع ✅' + (res.commit ? ' (نسخة ' + res.commit + ')' : '') + ' — فرسل سينشره تلقائياً');
+      }).catch(function (e) {
+        bGitGo.disabled = false; bGitGo.textContent = 'حفظ في المستودع الآن';
+        gitErr.textContent = e.message || 'تعذّر الحفظ';
       });
     });
 
-    sec.appendChild(U.el('p', 'uc-note', 'ملاحظة: تظهر قائمة المحررين هذه لمن يسجّل الدخول فقط.'));
+    var tail = U.el('p', 'uc-note');
+    tail.innerHTML = 'هذه القائمة تظهر لمن يسجّل الدخول فقط. «حفظ على هذا الجهاز» يطبّق التغيير على متصفحك، ' +
+      '«نشر لكل الأجهزة» يطبّقه على كل الأجهزة المتصلة مباشرة بلا أي رمز، ' +
+      '«حفظ دائم في المستودع» يعدّل config.js في GitHub فيبقى لكل من يفتح الموقع. ' +
+      'وللإدارة من خارج اللوحة استخدم <a href="tools/change-password.html" target="_blank" rel="noopener" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
+    sec.appendChild(tail);
     extra.push(sec);
 
     // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
     var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
-    var epRow = U.rowEl('رابط سيرفر الإشعارات', 'لتصلك الإشعارات والتطبيق مغلق تماماً — انظر tools/push-relay');
+    var epRow = U.el('div', 'uc-saverow');
+    epRow.appendChild(U.el('div', 'uc-row-l', 'رابط سيرفر الإشعارات'));
+    epRow.appendChild(U.el('div', 'uc-row-h', 'لتصلك الإشعارات والتطبيق مغلق تماماً — انظر tools/push-relay'));
+    var epActs = U.el('div', 'uc-row-actions');
     var inEp = U.el('input', 'uc-select');
     inEp.setAttribute('data-role', 'push-endpoint');
-    inEp.style.minWidth = '240px';
+    inEp.style.flex = '1 1 260px';
     inEp.placeholder = 'https://example.workers.dev/push';
     inEp.value = U.lsGet(U.LS_PREFIX + room + ':pushEndpoint', (cfg.push && cfg.push.endpoint) || '');
     var bEp = U.btnEl('حفظ', '', 'check');
@@ -536,7 +620,7 @@
       bus.publish('push/endpoint', { url: url, ts: Date.now() }, { retain: true });
       U.toast(url ? 'تم حفظ رابط سيرفر الإشعارات' : 'تم إلغاء رابط سيرفر الإشعارات', 'ok');
     });
-    epRow.appendChild(inEp); epRow.appendChild(bEp);
+    epActs.appendChild(inEp); epActs.appendChild(bEp); epRow.appendChild(epActs);
     secP.appendChild(epRow);
     extra.push(secP);
 

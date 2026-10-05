@@ -701,6 +701,79 @@ window.URGENT = (function () {
     }).join(',\n');
   }
 
+  /* ---------- توليد كلمة مرور قوية وسهلة القراءة ---------- */
+  function makePassword(len) {
+    var n = Math.max(8, Math.min(32, len || 12));
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    var a = new Uint8Array(n);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a);
+    else for (var j = 0; j < n; j++) a[j] = Math.floor(Math.random() * 256);
+    var out = '';
+    for (var i = 0; i < n; i++) out += chars.charAt(a[i] % chars.length);
+    return out;
+  }
+
+  /* ---------- الحفظ الدائم في المستودع (GitHub Contents API) ---------- */
+  function ghTokenGet() { return lsGet(LS + 'gh-token', ''); }
+  function ghTokenSet(t) { lsSet(LS + 'gh-token', String(t || '').trim()); }
+  function ghInfo() {
+    var gh = config().github || {};
+    return { owner: gh.owner || '', repo: gh.repo || '', path: gh.path || 'config.js', branch: gh.branch || 'main' };
+  }
+  function utf8ToB64(str) { return btoa(unescape(encodeURIComponent(String(str)))); }
+  function b64ToUtf8(b64) {
+    var bin = atob(String(b64).replace(/\s/g, ''));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  // استبدال قسم admins في نص config.js بلا هدم بقية الملف
+  function replaceAdminsBlock(text, list) {
+    var startKey = text.indexOf('admins:');
+    if (startKey < 0) throw new Error('لم أجد قسم admins في config.js');
+    var open = text.indexOf('[', startKey);
+    if (open < 0) throw new Error('تنسيق config.js غير متوقع');
+    var close = text.indexOf('\n  ]', open);
+    if (close < 0) throw new Error('لم أجد نهاية قسم admins');
+    return text.slice(0, open + 1) + '\n' + adminsToConfigCode(list, '    ') + '\n  ' + text.slice(close + 3);
+  }
+  // يحفظ قائمة المحررين في config.js داخل المستودع مباشرةً
+  function gitSaveAdmins(list, token) {
+    var gh = ghInfo();
+    var tk = String(token || ghTokenGet() || '').trim();
+    if (!tk) return Promise.reject(new Error('لا يوجد رمز GitHub — الصقه أولاً'));
+    if (!gh.owner || !gh.repo) return Promise.reject(new Error('معلومات المستودع غير مهيأة في config.js'));
+    var api = 'https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/contents/' + gh.path;
+    var headers = {
+      'Authorization': 'Bearer ' + tk,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    return fetch(api + '?ref=' + encodeURIComponent(gh.branch), { headers: headers })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status === 401 ? 'الرمز غير صالح أو منتهي' : r.status === 404 ? 'لم أجد config.js في المستودع' : 'فشل قراءة الملف (' + r.status + ')');
+        return r.json();
+      })
+      .then(function (data) {
+        var current = b64ToUtf8(data.content);
+        var updated = replaceAdminsBlock(current, list);
+        if (updated === current) return { changed: false };
+        return fetch(api, {
+          method: 'PUT', headers: headers,
+          body: JSON.stringify({
+            message: 'تحديث بيانات المحررين (' + (list || []).length + ' محرر)',
+            content: utf8ToB64(updated), sha: data.sha, branch: gh.branch
+          })
+        }).then(function (r2) {
+          if (!r2.ok) throw new Error('فشل الحفظ (' + r2.status + ') — تأكد أن الرمز يملك صلاحية Contents: Read and write');
+          return r2.json();
+        }).then(function (res) {
+          ghTokenSet(tk);
+          return { changed: true, commit: (res && res.commit && res.commit.sha) ? res.commit.sha.slice(0, 7) : '' };
+        });
+      });
+  }
+
   // حفظ محلياً (يطبَّق على هذا الجهاز فوراً)
   function saveAdminsLocal(list) {
     lsSet(adminsKey(), { list: list, byToken: config().settingsKey, ts: Date.now() });
@@ -1195,6 +1268,9 @@ window.URGENT = (function () {
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
     publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
+    makePassword: makePassword,
+    ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,
+    gitSaveAdmins: gitSaveAdmins, replaceAdminsBlock: replaceAdminsBlock,
     createAlerter: createAlerter,
     // PWA وPush
     swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
