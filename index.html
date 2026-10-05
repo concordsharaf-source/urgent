@@ -309,7 +309,11 @@
     opName: U.lsGet(LSP + 'opName', D.operatorName || 'المنفذ') || 'المنفذ',
     sound: U.lsGet(LSP + 'sound', D.sound !== false) !== false,
     edgeGlow: U.lsGet(LSP + 'edgeGlow', D.edgeGlow !== false) !== false,
-    edgeSpeedKey: U.lsGet(LSP + 'edgeSpeedKey', D.edgeSpeed || 'fast') || 'fast',
+    edgeColor: U.lsGet(LSP + 'edgeColor', D.edgeColor || '#ff2d2d') || '#ff2d2d',
+    edgeWidth: clampNum(U.lsGet(LSP + 'edgeWidth', D.edgeWidth || 3.4), 1, 8),
+    edgeGlowSize: clampNum(U.lsGet(LSP + 'edgeGlowSize', D.edgeGlowSize == null ? 3.2 : D.edgeGlowSize), 0, 12),
+    edgeSpeed: clampNum(U.lsGet(LSP + 'edgeSpeed', D.edgeSpeed || 980), 200, 2600),
+    edgeBaseOpacity: clampNum(U.lsGet(LSP + 'edgeBaseOpacity', D.edgeBaseOpacity == null ? 0.34 : D.edgeBaseOpacity), 0, 1),
     alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
     alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 30)) || 30,
     alarmMutedUntil: 0,
@@ -323,6 +327,7 @@
     pruned: false
   };
   function clampFs(v) { return Math.min(1.8, Math.max(0.75, v)); }
+  function clampNum(v, lo, hi) { v = Number(v); if (!isFinite(v)) v = lo; return Math.min(hi, Math.max(lo, v)); }
 
   /* ---------- عناصر ---------- */
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
@@ -346,6 +351,107 @@
     onReady: onReady
   });
 
+  /* ---------- قسم الإطار المطوي (لون/سرعة/سماكة/توهج) ---------- */
+  function edgeSection() {
+    var c = U.collapsible('إطار التنبيه المضيء', 'frame',
+      'اللون، السرعة، السماكة والتوهج — اضغط للتعديل', { open: false });
+    var body = c.body;
+
+    // تشغيل / إيقاف
+    var onRow = U.rowEl('تشغيل الإطار', 'يظهر ما دام هناك خبر لم يُنسخ');
+    var sw = U.switchEl(S.edgeGlow !== false, function (v) {
+      S.edgeGlow = v; U.lsSet(LSP + 'edgeGlow', v); updateAlarmBar();
+      body.classList.toggle('off', !v);
+    });
+    onRow.appendChild(sw);
+    body.appendChild(onRow);
+    if (!S.edgeGlow) body.classList.add('off');
+
+    // اللون
+    var colRow = U.rowEl('اللون', 'اختر لوناً جاهزاً أو لوناً مخصصاً');
+    var picker = U.colorPicker(U.EDGE_COLORS, S.edgeColor, function (v) {
+      S.edgeColor = v; U.lsSet(LSP + 'edgeColor', v); edgeApplyStyle(); sw.on && 0;
+      if (!S.edgeGlow) { S.edgeGlow = true; U.lsSet(LSP + 'edgeGlow', true); updateAlarmBar(); }
+      preview();
+    });
+    colRow.appendChild(picker.wrap);
+    body.appendChild(colRow);
+
+    // السرعة
+    var spdRow = U.rowEl('السرعة', 'سرعة دوران الضوء على الأطراف');
+    var spd = U.slider({ min: 200, max: 2600, step: 20, value: S.edgeSpeed, unit: ' بكسل/ث', onInput: function (v) {
+      S.edgeSpeed = v; U.lsSet(LSP + 'edgeSpeed', v); edgeResize();
+    }});
+    spd.input.setAttribute('data-role', 'edge-speed');
+    spdRow.appendChild(spd.wrap);
+    body.appendChild(spdRow);
+
+    // السماكة
+    var widRow = U.rowEl('السماكة', 'سماكة الخط المضيء');
+    var wid = U.slider({ min: 1, max: 8, step: 0.2, value: S.edgeWidth, unit: 'px', onInput: function (v) {
+      S.edgeWidth = v; U.lsSet(LSP + 'edgeWidth', v); edgeApplyStyle(); edgeResize();
+    }});
+    wid.input.setAttribute('data-role', 'edge-width');
+    widRow.appendChild(wid.wrap);
+    body.appendChild(widRow);
+
+    // التوهج
+    var glRow = U.rowEl('التوهج', 'شدة انتشار الضوء حول الإطار (0 = بلا توهج)');
+    var gl = U.slider({ min: 0, max: 12, step: 0.2, value: S.edgeGlowSize, unit: '', onInput: function (v) {
+      S.edgeGlowSize = v; U.lsSet(LSP + 'edgeGlowSize', v); edgeApplyStyle();
+    }});
+    gl.input.setAttribute('data-role', 'edge-glow');
+    glRow.appendChild(gl.wrap);
+    body.appendChild(glRow);
+
+    // وضوح الخط الخفيف
+    var bRow = U.rowEl('وضوح الخط الخفيف حول الأطراف', 'الخط الهادئ الموجود دائماً على الحواف');
+    var b = U.slider({ min: 0, max: 1, step: 0.02, value: S.edgeBaseOpacity, unit: '', onInput: function (v) {
+      S.edgeBaseOpacity = v; U.lsSet(LSP + 'edgeBaseOpacity', v); edgeApplyStyle();
+    }});
+    b.input.setAttribute('data-role', 'edge-base');
+    bRow.appendChild(b.wrap);
+    body.appendChild(bRow);
+
+    // أزرار: تجربة + استرجاع الافتراضي
+    var actRow = U.el('div', 'uc-row-actions');
+    var testBtn = U.btnEl('تجربة الإطار 4 ثوانٍ', 'primary', 'frame');
+    var resetBtn = U.btnEl('استرجاع الافتراضي', 'ghost', 'check');
+    var previewBox = U.el('div', 'uc-preview', 'معاينة مباشرة: أي تعديل يظهر فوراً على أطراف الشاشة');
+    actRow.appendChild(testBtn); actRow.appendChild(resetBtn);
+    body.appendChild(actRow);
+    body.appendChild(previewBox);
+
+    var preview = function () {
+      previewBox.textContent = 'اللون ' + S.edgeColor + ' · سماكة ' + Number(S.edgeWidth).toFixed(1) +
+        'px · سرعة ' + S.edgeSpeed + ' · توهج ' + Number(S.edgeGlowSize).toFixed(1);
+    };
+    preview();
+
+    testBtn.addEventListener('click', function () {
+      var before = edge.on;
+      if (!before) edgeSet(true);
+      U.toast('معاينة الإطار — سيرجع لحالته الطبيعية بعد 4 ثوانٍ', 'ok');
+      setTimeout(function () { if (!before) edgeSet(false); else updateAlarmBar(); }, 4000);
+    });
+    resetBtn.addEventListener('click', function () {
+      var D2 = (cfg.display || {});
+      S.edgeColor = D2.edgeColor || '#ff2d2d';
+      S.edgeWidth = clampNum(D2.edgeWidth || 3.4, 1, 8);
+      S.edgeGlowSize = clampNum(D2.edgeGlowSize == null ? 3.2 : D2.edgeGlowSize, 0, 12);
+      S.edgeSpeed = clampNum(D2.edgeSpeed || 980, 200, 2600);
+      S.edgeBaseOpacity = clampNum(D2.edgeBaseOpacity == null ? 0.34 : D2.edgeBaseOpacity, 0, 1);
+      ['edgeColor', 'edgeWidth', 'edgeGlowSize', 'edgeSpeed', 'edgeBaseOpacity'].forEach(function (k) {
+        U.lsSet(LSP + k, S[k]);
+      });
+      picker.set(S.edgeColor); spd.set(S.edgeSpeed); wid.set(S.edgeWidth); gl.set(S.edgeGlowSize); b.set(S.edgeBaseOpacity);
+      edgeApplyStyle(); edgeResize(); preview();
+      U.toast('تم استرجاع القيم الافتراضية', 'ok');
+    });
+
+    return c.wrap;
+  }
+
   /* ---------- الإعدادات (نافذة) ---------- */
   function openSettings() {
     var sheet = U.buildSettings({
@@ -355,18 +461,16 @@
       state: {
         sound: S.sound,
         alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery,
-        notifyRepeat: S.notifyRepeat, fontScale: S.fs,
-        edgeGlow: S.edgeGlow, edgeSpeedKey: S.edgeSpeedKey
+        notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
       onChange: function (key, val) {
         if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
-        else if (key === 'edgeGlow') { S.edgeGlow = val; U.lsSet(LSP + 'edgeGlow', val); updateAlarmBar(); }
-        else if (key === 'edgeSpeedKey') { S.edgeSpeedKey = val; U.lsSet(LSP + 'edgeSpeedKey', val); edgeResize(); }
         else if (key === 'alarmRepeat') { S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val); updateAlarmBar(); if (val) startAlarmLoop(); }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
       },
+      extra: [edgeSection()],
       onPush: function (sub) { onPushSub(sub); },
       onPushOff: function () { onPushSub(null); }
     });
@@ -586,10 +690,49 @@
     styleEl: null, on: false, len: 0
   };
 
-  function edgeSpeed() { return EDGE_SPEEDS[S.edgeSpeedKey] || EDGE_SPEEDS.fast; }
+  function edgeSpeed() { return clampNum(S.edgeSpeed, 200, 2600); }
+
+  // تطبيق اللون والسماكة والتوهج على عناصر الإطار
+  function edgeApplyStyle() {
+    if (!edge.box) return;
+    var c = S.edgeColor || '#ff2d2d';
+    edge.box.style.setProperty('--edge-color', c);
+    if (edge.run) {
+      edge.run.style.stroke = c;
+      edge.run.style.strokeWidth = S.edgeWidth + 'px';
+    }
+    if (edge.core) {
+      edge.core.style.stroke = '#fff';
+      edge.core.style.strokeWidth = Math.max(0.8, S.edgeWidth * 0.44) + 'px';
+      edge.core.style.opacity = String(Math.min(1, 0.35 + S.edgeGlowSize / 12));
+    }
+    if (edge.base) {
+      edge.base.style.stroke = c;
+      edge.base.style.strokeWidth = Math.max(1, S.edgeWidth * 0.55) + 'px';
+      edge.base.style.opacity = String(S.edgeBaseOpacity);
+    }
+    var blur = edge.box.querySelector('feGaussianBlur');
+    if (blur) blur.setAttribute('stdDeviation', String(S.edgeGlowSize));
+    var halo = edge.box.querySelector('.ehalo');
+    if (halo) {
+      var strength = Math.min(1, S.edgeGlowSize / 8);
+      halo.style.boxShadow = 'inset 0 0 ' + Math.round(30 + strength * 40) + 'px ' + hexA(c, 0.20 + strength * 0.35) +
+        ', inset 0 0 ' + Math.round(6 + strength * 8) + 'px ' + hexA(c, 0.35 + strength * 0.4);
+      halo.style.display = S.edgeGlowSize < 0.4 ? 'none' : 'block';
+    }
+  }
+
+  // تحويل لون HEX إلى rgba بشفافية
+  function hexA(hex, a) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex));
+    if (!m) return 'rgba(255,45,45,' + a + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
 
   function edgeResize() {
     if (!edge.svg) return;
+    edgeApplyStyle();
     var w = window.innerWidth, hgt = window.innerHeight;
     var pad = 2.4;
     var attrs = {
@@ -628,6 +771,7 @@
     edge.on = on;
     edge.box.classList.toggle('on', on);
     if (on) {
+      edgeApplyStyle();
       edgeResize();
       window.addEventListener('resize', edgeResize);
       window.addEventListener('orientationchange', edgeResize);

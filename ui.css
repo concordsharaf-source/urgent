@@ -114,3 +114,51 @@ body.uc-modal-open{overflow:hidden}
 }
 .uc-switch.on{background:linear-gradient(135deg,#34d399,#0ea5e9);border-color:transparent}
 .uc-switch.on i{right:29px;background:#fff}
+
+/* ============ أقسام مطوية بزر ============ */
+.uc-coll-head{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:start;cursor:pointer;
+  background:transparent;border:none;padding:12px 4px;font-family:inherit;color:inherit;
+}
+.uc-coll-ico{display:grid;place-items:center;width:34px;height:34px;flex:0 0 auto;border-radius:11px;
+  background:rgba(56,189,248,.13);border:1px solid rgba(56,189,248,.28);color:#bae6fd}
+.uc-coll-txt{flex:1;min-width:0}
+.uc-coll-title{font-size:14px;font-weight:800;color:#eef2f8}
+.uc-coll-sub{font-size:12px;color:#94a3b8;margin-top:3px;line-height:1.7}
+.uc-coll-arrow{flex:0 0 auto;color:#94a3b8;transition:transform .22s}
+.uc-sec.open .uc-coll-arrow{transform:rotate(180deg)}
+.uc-coll-body{display:none;padding:2px 2px 8px;border-top:1px solid rgba(148,163,184,.12)}
+.uc-sec.open .uc-coll-body{display:block}
+.uc-sec.uc-collapsed{padding:2px 14px 4px}
+.uc-sec.uc-collapsed.open{padding-bottom:12px}
+
+/* ============ المنزلقات ============ */
+.uc-slider{display:flex;align-items:center;gap:10px;min-width:190px;flex:1}
+.uc-slider input[type=range]{
+  -webkit-appearance:none;appearance:none;height:6px;border-radius:99px;flex:1;
+  background:linear-gradient(90deg,#38bdf8,#34d399);outline:none;cursor:pointer;
+}
+.uc-slider input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;
+  border:2px solid #0ea5e9;box-shadow:0 3px 10px rgba(0,0,0,.5);cursor:pointer;
+}
+.uc-slider input[type=range]::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #0ea5e9;cursor:pointer;
+}
+.uc-slider-val{font-size:12.5px;font-weight:700;color:#cbd5e1;min-width:52px;text-align:center;
+  direction:ltr;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* ============ لوحة الألوان ============ */
+.uc-colors{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.uc-color{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.25);
+  padding:0;transition:transform .12s, box-shadow .12s;
+}
+.uc-color:hover{transform:scale(1.08)}
+.uc-color.active{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.28)}
+.uc-color-custom{
+  width:34px;height:34px;padding:0;border-radius:11px;border:1px solid rgba(148,163,184,.3);
+  background:#0c1421;cursor:pointer;
+}
+.uc-preview{margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);
+  border:1px dashed rgba(148,163,184,.3);font-size:12.5px;color:#94a3b8;text-align:center;line-height:1.8}

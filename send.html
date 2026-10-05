@@ -416,8 +416,9 @@
 
     var note = U.el('p', 'uc-note');
     note.innerHTML = '«حفظ على هذا الجهاز» يطبّق التغيير فوراً على هذا المتصفح. ' +
-      '«نشر لكل الأجهزة» يطبّقه على كل من يفتح الصفحة (يتطلب رمز الإعدادات). ' +
-      '«كود config.js» يمنحك الكود الدائم لإضافته إلى المستودع.';
+      '«نشر لكل الأجهزة» يطبّقه على كل الأجهزة المتصلة مباشرة (بدون أي رمز). ' +
+      'للحفظ الدائم في المستودع استخدم ' +
+      '<a href="tools/change-password.html" target="_blank" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
     sec.appendChild(note);
 
     // إضافة محرر جديد
@@ -482,10 +483,8 @@
         U.toast('تنبيه: تم حذف/تغيير حسابك الحالي — ستحتاج الدخول من جديد', 'warn', 7000);
       }
       if (mode === 'all') {
-        var key = prompt('أدخل رمز الإعدادات لنشر التغيير لكل الأجهزة:', '');
-        if (key === null) { U.toast('تم الحفظ على هذا الجهاز فقط', 'warn'); return; }
-        if (key !== (cfg.settingsKey || '')) { U.toast('رمز الإعدادات غير صحيح — تم الحفظ محلياً فقط', 'warn'); return; }
-        bus.publish('cfg/admins', { k: key, list: newList, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
+        // بلا أي رمز: النشر يتم بالمفتاح الداخلي للإعدادات
+        U.publishAdmins(bus, newList, S.admin ? S.admin.name : '');
         U.toast('تم نشر التغيير إلى كل الأجهزة', 'ok');
       } else {
         U.toast('تم حفظ التغيير على هذا الجهاز', 'ok');
@@ -513,11 +512,9 @@
       var pass = prompt('كلمة المرور (10 خانات أو أكثر):', '');
       if (!pass || pass.length < 8) { U.toast('كلمة المرور قصيرة — 8 على الأقل', 'warn'); return; }
       U.changeAdmin(U.admins(), user, { name: name || user, password: pass }).then(function (newList) {
-        function finish(mode) { applyAdmins(newList, mode); }
-        var key = prompt('رمز الإعدادات لنشر المحرر الجديد لكل الأجهزة (اتركه فارغاً لهذا الجهاز فقط):', '');
-        if (key === null || key === '') { finish('local'); return; }
-        if (key !== (cfg.settingsKey || '')) { U.toast('رمز غير صحيح — حُفظ محلياً فقط', 'warn'); finish('local'); return; }
-        finish('all');
+        U.publishAdmins(bus, newList, S.admin ? S.admin.name : '');
+        applyAdmins(newList, 'all');
+        U.toast('تمت إضافة المحرر ونشره لكل الأجهزة', 'ok');
       });
     });
 

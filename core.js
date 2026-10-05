@@ -35,6 +35,10 @@ window.URGENT = (function () {
     key:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15.5" r="4.2"/><path d="m11.2 12.4 8.3-8.4 1.5 1.5-2 2 2 2-2 2-2-2-2 2"/></svg>',
     person: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
     screen: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9.5 6 6 6-6"/></svg>',
+    palette: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.3 0 2-.9 2-1.8 0-.6-.3-1-.6-1.4-.3-.4-.5-.8-.5-1.3 0-.9.8-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-4.4-4-7.9-9-7.9Z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7.5" r="1.2"/><circle cx="14.5" cy="7.5" r="1.2"/></svg>',
+    frame:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><rect x="7" y="7" width="10" height="10" rx="2" opacity=".45"/></svg>',
+    speed:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l4.5-4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>',
     close:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     info:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/></svg>',
     gear:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
@@ -704,6 +708,28 @@ window.URGENT = (function () {
 
   function resetAdminsLocal() { lsDel(adminsKey()); }
 
+  /* ---------- كلمة مرور أداة إدارة المحررين ---------- */
+  function toolsGateOverrideKey() { return LS + resolveRoom() + ':toolsGate'; }
+
+  function toolsGate() {
+    var ov = lsGet(toolsGateOverrideKey(), null);
+    if (ov && ov.salt && ov.hash && ov.byToken === config().settingsKey) return { salt: ov.salt, hash: ov.hash };
+    var g = config().toolsGate || {};
+    return { salt: g.salt || '', hash: g.hash || '' };
+  }
+
+  function setToolsGateLocal(salt, hash) {
+    lsSet(toolsGateOverrideKey(), { salt: salt, hash: hash, byToken: config().settingsKey, ts: Date.now() });
+  }
+
+  /* ---------- نشر قائمة الحسابات لكل الأجهزة (بلا أي رمز مطلوب من المستخدم) ---------- */
+  function publishAdmins(bus, list, by) {
+    try {
+      bus.publish('cfg/admins', { k: config().settingsKey || '', list: list, by: by || '', ts: Date.now() }, { retain: true });
+      return true;
+    } catch (e) { return false; }
+  }
+
   function roomKey() { return resolveRoom(); }
 
   // تغيير كلمة مرور/اسم محرر: يعيد قائمة جديدة
@@ -829,6 +855,87 @@ window.URGENT = (function () {
     return s;
   }
 
+
+  /* ---------- قسم مطوي بزر (Disclosure) ---------- */
+  function collapsible(title, icon, subtitle, opts) {
+    opts = opts || {};
+    var wrap = el('div', 'uc-sec uc-collapsed' + (opts.open ? '' : ''));
+    var head = el('button', 'uc-coll-head');
+    head.type = 'button';
+    var hIco = el('span', 'uc-coll-ico');
+    if (icon) hIco.innerHTML = ic(icon, 18);
+    head.appendChild(hIco);
+    var hTxt = el('div', 'uc-coll-txt');
+    hTxt.appendChild(el('div', 'uc-coll-title', title));
+    if (subtitle) hTxt.appendChild(el('div', 'uc-coll-sub', subtitle));
+    head.appendChild(hTxt);
+    var arrow = el('span', 'uc-coll-arrow');
+    arrow.innerHTML = ic('chevron', 18);
+    head.appendChild(arrow);
+    wrap.appendChild(head);
+
+    var body = el('div', 'uc-coll-body');
+    wrap.appendChild(body);
+    if (opts.open) wrap.classList.add('open');
+    head.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (typeof opts.onToggle === 'function') opts.onToggle(wrap.classList.contains('open'));
+    });
+    return { wrap: wrap, body: body, head: head, setOpen: function (v) { wrap.classList.toggle('open', !!v); } };
+  }
+
+  /* ---------- مِزلاق (range) بمعاينة رقمية ---------- */
+  function slider(range) {
+    var wrap = el('div', 'uc-slider');
+    var inp = el('input');
+    inp.type = 'range';
+    inp.min = String(range.min); inp.max = String(range.max);
+    inp.step = String(range.step || 1);
+    inp.value = String(range.value);
+    var out = el('span', 'uc-slider-val');
+    function show(v) { out.textContent = v + (range.unit || ''); }
+    show(range.value);
+    inp.addEventListener('input', function () {
+      var v = Number(inp.value);
+      show(v);
+      if (range.onInput) range.onInput(v);
+    });
+    wrap.appendChild(inp);
+    wrap.appendChild(out);
+    return { wrap: wrap, input: inp, set: function (v) { inp.value = String(v); show(v); } };
+  }
+
+  /* ---------- لوحة ألوان جاهزة + لون مخصص ---------- */
+  var EDGE_COLORS = ['#ff2d2d', '#ff7a18', '#ffd400', '#22c55e', '#0ea5e9', '#8b5cf6', '#ec4899', '#ffffff'];
+  function colorPicker(colors, value, onPick) {
+    var wrap = el('div', 'uc-colors');
+    var current = value || colors[0];
+    var dots = [];
+    function sync(v) {
+      current = v;
+      dots.forEach(function (d) { d.classList.toggle('active', d.getAttribute('data-c') === v); });
+      custom.value = /^#[0-9a-f]{6}$/i.test(v) ? v : custom.value;
+    }
+    colors.forEach(function (c) {
+      var d = el('button', 'uc-color');
+      d.type = 'button';
+      d.setAttribute('data-c', c);
+      d.style.background = c;
+      d.title = c;
+      d.addEventListener('click', function () { sync(c); onPick(c); });
+      dots.push(d);
+      wrap.appendChild(d);
+    });
+    var custom = el('input', 'uc-color-custom');
+    custom.type = 'color';
+    custom.value = /^#[0-9a-f]{6}$/i.test(current) ? current : colors[0];
+    custom.title = 'لون مخصص';
+    custom.addEventListener('input', function () { sync(custom.value); onPick(custom.value); });
+    wrap.appendChild(custom);
+    sync(current);
+    return { wrap: wrap, get: function () { return current; }, set: sync };
+  }
+
   /**
    * buildSettings — واجهة إعدادات جاهزة تُبنى في الصفحة
    * opts: {
@@ -880,26 +987,6 @@ window.URGENT = (function () {
     alarmRow.appendChild(switchEl(st.alarmRepeat !== false, function (v) { opts.onChange('alarmRepeat', v); }));
     secS.appendChild(alarmRow);
 
-    var edgeRow = rowEl('إطار التنبيه المضيء', 'ضوء أحمر يدور على أطراف الشاشة بسرعة ما دام هناك خبر غير منسوخ');
-    var edgeWrap = el('div', 'uc-row-actions');
-    var edgeSel = el('select', 'uc-select');
-    edgeSel.setAttribute('data-role', 'edge-speed');
-    [['normal', 'عادي'], ['fast', 'سريع'], ['veryfast', 'سريع جداً']].forEach(function (o) {
-      var op = el('option', null, o[1]); op.value = o[0];
-      if ((st.edgeSpeedKey || 'fast') === o[0]) op.selected = true;
-      edgeSel.appendChild(op);
-    });
-    edgeSel.style.minWidth = '120px';
-    edgeSel.disabled = st.edgeGlow === false;
-    edgeSel.addEventListener('change', function () { opts.onChange('edgeSpeedKey', edgeSel.value); });
-    edgeWrap.appendChild(edgeSel);
-    var edgeSw = switchEl(st.edgeGlow !== false, function (v) {
-      edgeSel.disabled = !v;
-      opts.onChange('edgeGlow', v);
-    });
-    edgeWrap.appendChild(edgeSw);
-    edgeRow.appendChild(edgeWrap);
-    secS.appendChild(edgeRow);
     body.appendChild(secS);
 
     /* ---- قسم حجم الخط ---- */
@@ -1100,6 +1187,8 @@ window.URGENT = (function () {
     openModal: openModal, closeModal: closeModal, buildSettings: buildSettings,
     isStandalone: isStandalone, promptInstall: promptInstall, initInstallCapture: initInstallCapture,
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
+    collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
+    publishAdmins: publishAdmins, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
     createAlerter: createAlerter,
     // PWA وPush
     swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
