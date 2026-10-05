@@ -38,10 +38,10 @@ window.URGENT_CONFIG = {
       hash: "D66jfsVKDVBsNGukn4RlH8e4odaeqr8z4jfbRodubjc="
     },
     {
-      user: "kamal",
-      name: "رئيس دائرة الأخبار",
-      salt: "a6zSL1G9WFj0QlF9dusnCw==",
-      hash: "WW/Wu6xesj3NYylgpjqLbAmj5f3uCHO5I1GT54wmVpw="
+      user: "sharaf",
+      name: "مدير التحرير",
+      salt: "xjHER3COccIf3m0jMiH16w==",
+      hash: "lU7iw3/UvCjzuoRSOQprp6d+OE3iXjiZ4IvErlq4L34="
     }
   ],
 
