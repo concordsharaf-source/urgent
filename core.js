@@ -722,6 +722,14 @@ window.URGENT = (function () {
     lsSet(toolsGateOverrideKey(), { salt: salt, hash: hash, byToken: config().settingsKey, ts: Date.now() });
   }
 
+  /* ---------- أمر «حدّث من المستودع»: يلغي النسخ المحلي في كل الأجهزة ---------- */
+  function publishAdminsReset(bus) {
+    try {
+      bus.publish('cfg/admins', { reset: true, ts: Date.now() }, { retain: true });
+      return true;
+    } catch (e) { return false; }
+  }
+
   /* ---------- نشر قائمة الحسابات لكل الأجهزة (بلا أي رمز مطلوب من المستخدم) ---------- */
   function publishAdmins(bus, list, by) {
     try {
@@ -1188,7 +1196,7 @@ window.URGENT = (function () {
     isStandalone: isStandalone, promptInstall: promptInstall, initInstallCapture: initInstallCapture,
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
-    publishAdmins: publishAdmins, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
+    publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
     createAlerter: createAlerter,
     // PWA وPush
     swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,

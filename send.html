@@ -733,8 +733,14 @@
     }
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); render(); return; }
     if (rel === 'cfg/admins') {
-      if (isEmpty || !data || !data.list) return;
-      if (data.k !== (cfg.settingsKey || '')) return;          // رمز الإعدادات غير مطابق => تجاهل
+      if (isEmpty || !data) return;
+      if (data.reset) {                                        // أمر «حدّث من المستودع»
+        U.resetAdminsLocal();
+        U.toast('تم تحديث بيانات الدخول من الإدارة — سيسري ما في المستودع', 'ok', 7000);
+        return;
+      }
+      if (!data.list) return;
+      if (data.k !== (cfg.settingsKey || '')) return;          // مفتاح غير مطابق => تجاهل
       U.saveAdminsLocal(data.list);
       U.toast('تم تحديث بيانات المحررين من الإدارة' + (data.by ? ' (' + data.by + ')' : ''), 'ok', 6000);
       return;
