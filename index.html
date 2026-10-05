@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1220" />
+<meta name="description" content="محادثة فورية بسيطة: تدخل باسم حساب وترسل نصوصاً يستقبلها الطرف الآخر مباشرة من المتصفح." />
+<title>محادثة فورية | Urgent Chat</title>
+<style>
+  :root{
+    --bg:#070b16;
+    --bg2:#0b1220;
+    --card:rgba(19,27,45,.86);
+    --card-solid:#131b2d;
+    --line:rgba(148,163,184,.16);
+    --txt:#e8eefc;
+    --txt-dim:#93a3bd;
+    --mine1:#12b981;
+    --mine2:#0d8f68;
+    --peer:#1d2740;
+    --accent:#38bdf8;
+    --danger:#f87171;
+    --ok:#34d399;
+    --warn:#fbbf24;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:"Segoe UI","Noto Kufi Arabic","Noto Naskh Arabic",Tahoma,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    background:
+      radial-gradient(900px 500px at 100% -10%, rgba(56,189,248,.16), transparent 60%),
+      radial-gradient(800px 500px at -10% 110%, rgba(16,185,129,.14), transparent 60%),
+      linear-gradient(180deg,var(--bg),var(--bg2) 60%,#060a13);
+    color:var(--txt);
+    min-height:100vh;
+    min-height:100dvh;
+    overflow:hidden;
+  }
+  .hidden{display:none !important}
+
+  /* ============ شاشة الدخول ============ */
+  .screen{height:100vh;height:100dvh;display:flex;flex-direction:column}
+  .login{align-items:center;justify-content:center;padding:20px;overflow:auto}
+  .card{
+    width:100%;max-width:430px;background:var(--card);
+    border:1px solid var(--line);border-radius:24px;padding:26px 22px 20px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+    backdrop-filter:blur(14px);
+  }
+  .logo{
+    width:64px;height:64px;border-radius:20px;margin:0 auto 14px;
+    display:grid;place-items:center;font-size:32px;
+    background:linear-gradient(140deg,#1f2937,#0b1220);
+    border:1px solid var(--line);
+    box-shadow:0 10px 30px rgba(16,185,129,.22);
+  }
+  h1{font-size:23px;margin:0 0 6px;text-align:center;letter-spacing:.2px}
+  .sub{margin:0 0 20px;text-align:center;color:var(--txt-dim);font-size:13.5px;line-height:1.9}
+  .field{display:block;margin-bottom:13px}
+  .field span{display:block;font-size:12.5px;color:var(--txt-dim);margin-bottom:7px}
+  .field input{
+    width:100%;padding:13px 14px;border-radius:14px;font-size:15px;
+    background:#0d1526;color:var(--txt);border:1px solid var(--line);
+    outline:none;transition:border-color .15s,box-shadow .15s;font-family:inherit;
+  }
+  .field input:focus{border-color:rgba(56,189,248,.6);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
+  .field input::placeholder{color:#5b6b86}
+  .btn{
+    border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;
+    border-radius:14px;padding:13px 16px;transition:transform .08s,filter .15s,opacity .15s;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn.primary{
+    width:100%;color:#04140f;
+    background:linear-gradient(135deg,#34d399,#0ea5e9);
+    box-shadow:0 12px 26px rgba(16,185,129,.28);
+  }
+  .btn.primary:disabled{opacity:.55;cursor:default;box-shadow:none}
+  .hint{min-height:19px;font-size:12.5px;color:var(--danger);margin:0 2px 10px}
+  .tiny{margin:14px 2px 0;font-size:12px;color:var(--txt-dim);line-height:1.95;text-align:center}
+  .tiny b{color:var(--accent);font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.5px}
+  .steps{margin:16px 0 0;padding:12px 14px;border-radius:14px;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.18)}
+  .steps ol{margin:0;padding-inline-start:18px;font-size:12.5px;color:#b9c7dd;line-height:2}
+
+  /* ============ شاشة المحادثة ============ */
+  .topbar{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));
+    background:rgba(11,18,32,.9);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);z-index:5;
+  }
+  .peer{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+  .avatar{
+    width:42px;height:42px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+    font-weight:700;font-size:17px;color:#04140f;
+    background:linear-gradient(135deg,#67e8f9,#34d399);
+  }
+  .peer-info{min-width:0}
+  .peer-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .peer-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt-dim);margin-top:2px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#64748b;flex:0 0 auto;transition:background .2s}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+  .dot.conn{background:var(--warn);animation:pulse 1.4s infinite}
+  .dot.off{background:var(--danger)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .room-chip{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--accent);
+    background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);
+    padding:5px 9px;border-radius:999px;white-space:nowrap;
+  }
+  .icon-btn{
+    background:rgba(148,163,184,.1);border:1px solid var(--line);color:var(--txt);
+    width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:16px;
+    display:grid;place-items:center;flex:0 0 auto;transition:background .15s;
+  }
+  .icon-btn:hover{background:rgba(148,163,184,.2)}
+
+  .banner{
+    padding:9px 14px;font-size:12.5px;text-align:center;
+    background:rgba(251,191,36,.13);color:#fde68a;border-bottom:1px solid rgba(251,191,36,.22);
+  }
+  .banner.err{background:rgba(248,113,113,.13);color:#fecaca;border-bottom-color:rgba(248,113,113,.25)}
+
+  .messages{
+    flex:1;overflow-y:auto;padding:16px 12px 6px;
+    display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;
+  }
+  .messages::-webkit-scrollbar{width:8px}
+  .messages::-webkit-scrollbar-thumb{background:rgba(148,163,184,.25);border-radius:8px}
+  .empty{margin:auto;text-align:center;color:var(--txt-dim);font-size:13.5px;line-height:2;padding:20px}
+  .empty .big{font-size:40px;display:block;margin-bottom:10px;opacity:.85}
+
+  .day{align-self:center;font-size:11.5px;color:var(--txt-dim);background:rgba(148,163,184,.1);
+    padding:4px 12px;border-radius:999px;margin:6px 0}
+  .msg{max-width:78%;padding:9px 12px 7px;border-radius:16px;position:relative;
+    animation:pop .18s ease-out;word-wrap:break-word;overflow-wrap:anywhere}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .msg.mine{align-self:flex-start;background:linear-gradient(135deg,var(--mine1),var(--mine2));color:#04140f;border-bottom-right-radius:6px}
+  .msg.peer{align-self:flex-end;background:var(--peer);border:1px solid var(--line);border-bottom-left-radius:6px}
+  .msg .who{font-size:11.5px;font-weight:700;margin-bottom:3px;color:#7dd3fc}
+  .msg .text{font-size:14.8px;line-height:1.75;white-space:pre-wrap}
+  .msg .meta{display:flex;align-items:center;gap:5px;justify-content:flex-end;
+    font-size:10.5px;margin-top:3px;opacity:.75;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .msg.mine .meta{color:#03302a}
+  .msg.pending{opacity:.6}
+
+  .jump{
+    position:absolute;bottom:88px;left:50%;transform:translateX(-50%);
+    background:#0ea5e9;color:#04141f;border:none;padding:8px 16px;border-radius:999px;
+    font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.4);font-family:inherit;
+  }
+  .typing{
+    display:flex;align-items:center;gap:6px;padding:4px 18px 8px;font-size:12px;color:var(--txt-dim);
+  }
+  .tdot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.1s infinite}
+  .tdot:nth-child(2){animation-delay:.15s}
+  .tdot:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+
+  .composer{
+    display:flex;gap:8px;align-items:center;padding:10px 12px;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    background:rgba(11,18,32,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  }
+  .composer input{
+    flex:1;padding:13px 15px;border-radius:16px;background:#0d1526;color:var(--txt);
+    border:1px solid var(--line);outline:none;font-size:15px;font-family:inherit;
+  }
+  .composer input:focus{border-color:rgba(52,211,153,.5);box-shadow:0 0 0 4px rgba(52,211,153,.1)}
+  .send{
+    width:50px;height:50px;flex:0 0 auto;border-radius:16px;font-size:19px;color:#04140f;
+    background:linear-gradient(135deg,#34d399,#0ea5e9);display:grid;place-items:center;
+  }
+  .send:disabled{opacity:.5;cursor:default}
+  .chat{position:relative}
+  @media (max-width:420px){
+    .msg{max-width:86%}
+    .peer-name{font-size:14px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== شاشة الدخول ==================== -->
+<section class="screen login" id="screenLogin">
+  <div class="card">
+    <div class="logo">💬</div>
+    <h1>محادثة فورية</h1>
+    <p class="sub">اكتب اسم حسابك واسم الطرف الآخر، وستُفتح غرفة خاصة بينكما فقط — بدون تسجيل ولا سيرفر.</p>
+
+    <form id="loginForm" autocomplete="off">
+      <label class="field">
+        <span>اسم حسابي</span>
+        <input id="inputMe" type="text" placeholder="مثال: أحمد" maxlength="24" />
+      </label>
+      <label class="field">
+        <span>اسم الطرف الآخر</span>
+        <input id="inputPeer" type="text" placeholder="مثال: سارة" maxlength="24" />
+      </label>
+      <div class="hint" id="loginHint"></div>
+      <button class="btn primary" id="btnEnter" type="submit">دخول إلى المحادثة</button>
+    </form>
+
+    <div class="steps">
+      <ol>
+        <li>ابدأ أنت المحادثة واكتب رسالتك.</li>
+        <li>أرسل رابط الصفحة للطرف الآخر.</li>
+        <li>عندما يفتحه ويكتب <b style="font-family:inherit">اسمه واسمك</b> بالطريقة نفسها، يدخل نفس الغرفة ويرى كل الرسائل.</li>
+      </ol>
+    </div>
+
+    <p class="tiny">كود الغرفة الحالي: <b id="previewRoom">—</b><br />يجب أن يكتب الطرفان الأسماء بالطريقة نفسها (يتم تجاهل الهمزات والمسافات الزائدة).</p>
+  </div>
+</section>
+
+<!-- ==================== شاشة المحادثة ==================== -->
+<section class="screen chat hidden" id="screenChat">
+  <header class="topbar">
+    <button class="icon-btn" id="btnBack" title="خروج / تغيير الحساب">↩</button>
+    <div class="peer">
+      <div class="avatar" id="peerAvatar">؟</div>
+      <div class="peer-info">
+        <div class="peer-name" id="peerNameLabel">—</div>
+        <div class="peer-status">
+          <span class="dot" id="peerDot"></span>
+          <span id="peerStatusText">جارٍ الاتصال…</span>
+        </div>
+      </div>
+    </div>
+    <div class="room-chip" id="roomChip" title="كود الغرفة — تأكد أن الطرف الآخر لديه نفس الكود">#—</div>
+    <button class="icon-btn" id="btnClear" title="مسح المحادثة">🗑</button>
+  </header>
+
+  <div class="banner hidden" id="banner"></div>
+
+  <main class="messages" id="messages">
+    <div class="empty" id="emptyState">
+      <span class="big">👋</span>
+      لا توجد رسائل بعد.<br />اكتب أول رسالة وسيراها الطرف الآخر فوراً.
+    </div>
+  </main>
+
+  <button class="jump hidden" id="btnJump">رسائل جديدة ↓</button>
+
+  <div class="typing hidden" id="typing">
+    <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+    <span id="typingName">الطرف الآخر</span> يكتب…
+  </div>
+
+  <form class="composer" id="composer">
+    <input id="inputMsg" type="text" placeholder="اكتب رسالة…" autocomplete="off" maxlength="2000" />
+    <button class="btn send" id="btnSend" type="submit" title="إرسال">➤</button>
+  </form>
+</section>
+
+<script>
+/* =========================================================================
+   محادثة فورية — صفحة واحدة تعمل بالكامل من المتصفح.
+   لا سيرفر ولا قاعدة بيانات: الرسائل تُنقل عبر WebSocket إلى وسيط MQTT عام،
+   وتُحفظ آخر الرسائل في "رسالة محتجزة" (retained) ليقرأها من يدخل لاحقاً.
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  /* ---------- إعدادات ---------- */
+  var BROKERS = [
+    { url: 'wss://broker.emqx.io:8084/mqtt',   name: 'EMQX' },
+    { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' },
+    { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
+  ];
+  var TOPIC_BASE   = 'urgentchat/v1/';
+  var STORE_CFG    = 'uc_cfg_v1';
+  var STORE_MSGS   = 'uc_msgs_v1_';
+  var KEEP_MSGS    = 300;   // أقصى عدد رسائل محفوظة محلياً
+  var SEND_HISTORY = 60;    // عدد الرسائل المنشورة كسجل محتجز للطرف الآخر
+  var PRESENCE_MS  = 8000;  // نبضة "أنا متصل"
+  var PEER_TIMEOUT = 26000; // بعد هذه المدة يُعتبر الطرف غير متصل
+  var TYPING_MS    = 3000;  // مدة عرض "يكتب الآن"
+
+  /* ---------- عناصر ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var screenLogin = $('screenLogin'), screenChat = $('screenChat');
+  var inputMe = $('inputMe'), inputPeer = $('inputPeer');
+  var loginForm = $('loginForm'), loginHint = $('loginHint'), previewRoom = $('previewRoom');
+  var btnEnter = $('btnEnter');
+  var peerNameLabel = $('peerNameLabel'), peerAvatar = $('peerAvatar');
+  var peerDot = $('peerDot'), peerStatusText = $('peerStatusText');
+  var roomChip = $('roomChip'), banner = $('banner');
+  var messagesEl = $('messages'), emptyState = $('emptyState');
+  var composer = $('composer'), inputMsg = $('inputMsg'), btnSend = $('btnSend');
+  var typingEl = $('typing'), typingName = $('typingName'), btnJump = $('btnJump');
+  var btnBack = $('btnBack'), btnClear = $('btnClear');
+
+  /* ---------- حالة التطبيق ---------- */
+  var S = {
+    me: '', peer: '', room: '', broker: '',
+    client: null, connected: false, connecting: false, brokerIndex: 0,
+    msgs: [], ids: {}, pending: [], queue: [],
+    peerSeen: 0, lastTypingSent: 0, typingTimer: null, peerTypingTimer: null,
+    historySent: false, unread: 0, lastDay: ''
+  };
+
+  /* =========== أدوات مساعدة =========== */
+
+  // توحيد الاسم: تجاهل الهمزات والتشكيل والتطويل والمسافات الزائدة
+  function normName(s) {
+    return String(s || '')
+      .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+      .replace(/[أإآٱ]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  function esc(s) { return String(s == null ? '' : s); }
+
+  function uid() {
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+  }
+
+  function timeStr(ts) {
+    var d = new Date(ts);
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+
+  function dayStr(ts) {
+    var d = new Date(ts), n = new Date();
+    var same = function (a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
+    var y = new Date(n.getTime() - 86400000);
+    if (same(d, n)) return 'اليوم';
+    if (same(d, y)) return 'أمس';
+    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  // معرّف الغرفة = بصمة أسماء الطرفين مرتّبة أبجدياً + تطبيع
+  function roomKeyFor(a, b) {
+    return [normName(a), normName(b)].sort().join('|');
+  }
+
+  function hashKey(str) {
+    if (window.crypto && crypto.subtle && window.TextEncoder) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('').slice(0, 24);
+      }).catch(function () { return hashFallback(str); });
+    }
+    return Promise.resolve(hashFallback(str));
+  }
+  function hashFallback(str) {
+    var h1 = 0x811c9dc5, h2 = 0x9e3779b9, i, c;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+      h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+    }
+    return (('0000000' + h1.toString(16)).slice(-8) + ('0000000' + h2.toString(16)).slice(-8) + ('0000000' + (h1 ^ h2).toString(16)).slice(-8));
+  }
+
+  function topic(suffix) { return TOPIC_BASE + S.room + '/' + suffix; }
+
+  function topics() { return [topic('m'), topic('h'), topic('p'), topic('t')]; }
+
+  /* =========== التخزين المحلي =========== */
+  function saveCfg() {
+    try { localStorage.setItem(STORE_CFG, JSON.stringify({ me: S.me, peer: S.peer })); } catch (e) {}
+  }
+  function loadCfg() {
+    try { return JSON.parse(localStorage.getItem(STORE_CFG) || 'null'); } catch (e) { return null; }
+  }
+  function saveMsgs() {
+    try { localStorage.setItem(STORE_MSGS + S.room, JSON.stringify(S.msgs.slice(-KEEP_MSGS))); } catch (e) {}
+  }
+  function loadMsgs() {
+    try { return JSON.parse(localStorage.getItem(STORE_MSGS + S.room) || '[]') || []; } catch (e) { return []; }
+  }
+
+  /* =========== إدارة الرسائل =========== */
+  function addMsg(m, opts) {
+    opts = opts || {};
+    if (!m || !m.id || !m.text) return false;
+    if (S.ids[m.id]) return false;
+    S.ids[m.id] = true;
+    S.msgs.push(m);
+    S.msgs.sort(function (a, b) { return a.ts - b.ts; });
+    if (S.msgs.length > KEEP_MSGS) {
+      var removed = S.msgs.splice(0, S.msgs.length - KEEP_MSGS);
+      removed.forEach(function (r) { delete S.ids[r.id]; });
+    }
+    saveMsgs();
+    if (opts.quiet !== true) renderAll();
+    return true;
+  }
+
+  function renderAll() {
+    if (!S.msgs.length) {
+      messagesEl.innerHTML = '';
+      messagesEl.appendChild(emptyState);
+      emptyState.classList.remove('hidden');
+      S.lastDay = '';
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    S.lastDay = '';
+    S.msgs.forEach(function (m) {
+      var day = dayStr(m.ts);
+      if (day !== S.lastDay) {
+        S.lastDay = day;
+        var d = document.createElement('div');
+        d.className = 'day';
+        d.textContent = day;
+        frag.appendChild(d);
+      }
+      frag.appendChild(bubbleFor(m));
+    });
+    messagesEl.innerHTML = '';
+    messagesEl.appendChild(frag);
+    scrollToBottom();
+  }
+
+  function bubbleFor(m) {
+    var mine = normName(m.from) === normName(S.me);
+    var wrap = document.createElement('div');
+    wrap.className = 'msg ' + (mine ? 'mine' : 'peer') + (m.pending ? ' pending' : '');
+    wrap.setAttribute('data-id', m.id);
+
+    if (!mine) {
+      var who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = m.from;
+      wrap.appendChild(who);
+    }
+    var text = document.createElement('div');
+    text.className = 'text';
+    text.textContent = esc(m.text);          // آمن: نص فقط بدون HTML
+    wrap.appendChild(text);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    var t = document.createElement('span');
+    t.textContent = timeStr(m.ts);
+    meta.appendChild(t);
+    var state = document.createElement('span');
+    state.textContent = m.pending ? '🕓' : '✓';
+    meta.appendChild(state);
+    wrap.appendChild(meta);
+    return wrap;
+  }
+
+  function nearBottom() {
+    return (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 120;
+  }
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    S.unread = 0;
+    btnJump.classList.add('hidden');
+  }
+
+  /* =========== الصوت والتنبيهات =========== */
+  var audioCtx = null;
+  function beep() {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      [[880, 0], [1180, 0.11]].forEach(function (p) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = p[0];
+        g.gain.setValueAtTime(0.0001, t0 + p[1]);
+        g.gain.exponentialRampToValueAtTime(0.16, t0 + p[1] + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + p[1] + 0.16);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t0 + p[1]); o.stop(t0 + p[1] + 0.18);
+      });
+    } catch (e) {}
+  }
+
+  function notify(title, body) {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted' && document.hidden) {
+        var n = new Notification(title, { body: body, dir: 'rtl', lang: 'ar' });
+        setTimeout(function () { try { n.close(); } catch (e) {} }, 6000);
+      }
+    } catch (e) {}
+  }
+  function askNotify() {
+    try {
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    } catch (e) {}
+  }
+  function flashTitle(txt) {
+    try {
+      var old = document.title;
+      document.title = txt + ' | محادثة فورية';
+      document.addEventListener('visibilitychange', function h() {
+        if (!document.hidden) { document.title = old; document.removeEventListener('visibilitychange', h); }
+      });
+    } catch (e) {}
+  }
+
+  /* =========== الرسائل الصادرة =========== */
+  function sendMsg() {
+    var text = inputMsg.value.trim();
+    if (!text) return;
+    var m = { id: uid(), from: S.me, text: text, ts: Date.now() };
+    addMsg(m);                                   // تُعرض فوراً (optimistic)
+    inputMsg.value = '';
+    sendTyping(true);
+    if (S.connected) {
+      publishMsg(m);
+    } else {
+      m.pending = true;
+      S.queue.push(m);
+      renderAll();
+      setBanner(S.connecting
+        ? 'جارٍ الاتصال… ستُرسل الرسالة تلقائياً عند الاتصال.'
+        : 'لا يوجد اتصال بالشبكة — ستُرسل الرسالة تلقائياً عند عودة الاتصال.', 'warn');
+    }
+  }
+
+  function publishMsg(m) {
+    if (!S.client || !S.connected) return;
+    var payload = JSON.stringify({ id: m.id, from: m.from, text: m.text, ts: m.ts });
+    S.client.publish(topic('m'), payload, { qos: 0 });
+    publishHistory();
+  }
+
+  function flushQueue() {
+    if (!S.queue.length) return;
+    var q = S.queue.slice();
+    S.queue = [];
+    q.forEach(function (m) {
+      delete m.pending;
+      publishMsg(m);
+    });
+    renderAll();
+    setBanner(null);
+    toast('تم إرسال الرسائل المعلّقة ✔');
+  }
+
+  function publishHistory() {
+    if (!S.client || !S.connected) return;
+    var last = S.msgs.filter(function (m) { return !m.pending; }).slice(-SEND_HISTORY)
+      .map(function (m) { return { id: m.id, from: m.from, text: m.text, ts: m.ts }; });
+    S.client.publish(topic('h'), JSON.stringify(last), { qos: 0, retain: true });
+    S.historySent = true;
+  }
+
+  /* =========== الاتصال بالوسيط =========== */
+  function setBanner(txt, kind) {
+    if (!txt) { banner.classList.add('hidden'); return; }
+    banner.classList.remove('hidden');
+    banner.className = 'banner' + (kind === 'err' ? ' err' : '');
+    banner.textContent = txt;
+  }
+  function toast(txt) {
+    setBanner(txt, 'warn');
+    setTimeout(function () { if (banner.textContent === txt) setBanner(null); }, 2600);
+  }
+
+  function setConnState(st) {
+    // st: 'on' | 'conn' | 'off'
+    peerDot.className = 'dot' + (st === 'on' ? ' on' : st === 'conn' ? ' conn' : ' off');
+    if (st === 'conn') peerStatusText.textContent = 'جارٍ الاتصال…';
+    else if (st === 'off') peerStatusText.textContent = 'غير متصل — ستُعاد المحاولة';
+  }
+
+  function updatePeerStatus() {
+    var diff = Date.now() - S.peerSeen;
+    if (S.peerSeen && diff < PEER_TIMEOUT) {
+      peerDot.className = 'dot on';
+      peerStatusText.textContent = 'متصل الآن';
+    } else if (S.peerSeen) {
+      peerDot.className = 'dot';
+      var mins = Math.floor(diff / 60000);
+      peerStatusText.textContent = mins < 1 ? 'آخر ظهور: قبل لحظات' : 'آخر ظهور: قبل ' + mins + ' دقيقة';
+    } else {
+      peerDot.className = 'dot';
+      peerStatusText.textContent = S.connected ? 'بانتظار دخول الطرف الآخر…' : 'غير متصل';
+    }
+  }
+  setInterval(updatePeerStatus, 4000);
+
+  function ensureMqtt(cb) {
+    if (window.mqtt) return cb(true);
+    var urls = [
+      './mqtt.min.js',
+      'https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js',
+      'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js'
+    ];
+    var i = 0;
+    (function next() {
+      if (window.mqtt) return cb(true);
+      if (i >= urls.length) return cb(false);
+      var s = document.createElement('script');
+      s.src = urls[i++];
+      s.onload = function () { window.mqtt ? cb(true) : next(); };
+      s.onerror = next;
+      document.head.appendChild(s);
+    })();
+  }
+
+  function connect(idx) {
+    S.brokerIndex = idx;
+    if (idx >= BROKERS.length) {
+      S.connecting = false; S.connected = false;
+      setConnState('off');
+      setBanner('تعذّر الاتصال بخوادم الرسائل. تحقّق من الإنترنت، وستُعاد المحاولة بعد قليل.', 'err');
+      setTimeout(function () { connect(0); }, 12000);
+      return;
+    }
+    var b = BROKERS[idx];
+    S.connecting = true;
+    setConnState('conn');
+    setBanner('جارٍ الاتصال بالخادم (' + b.name + ')…');
+
+    var opened = false, dead = false;
+    var client;
+    try {
+      client = window.mqtt.connect(b.url, {
+        clientId: 'uc_' + Math.random().toString(16).slice(2, 12),
+        clean: true,
+        keepalive: 30,
+        connectTimeout: 9000,
+        reconnectPeriod: 4000,
+        protocolVersion: 4,
+        will: { topic: topic('p'), payload: JSON.stringify({ from: S.me, ts: 0, bye: 1 }), qos: 0, retain: false }
+      });
+    } catch (e) {
+      return connect(idx + 1);
+    }
+    S.client = client;
+
+    var guard = setTimeout(function () {
+      if (!opened) { dead = true; try { client.end(true); } catch (e) {} connect(idx + 1); }
+    }, 11000);
+
+    client.on('connect', function () {
+      opened = true; S.connecting = false; S.connected = true; S.broker = b.name;
+      clearTimeout(guard);
+      setBanner(null);
+      setConnState('on');
+      updatePeerStatus();
+      client.subscribe(topics(), { qos: 0 }, function (err) {
+        if (err) { setBanner('فشل الاشتراك في الغرفة: ' + err.message, 'err'); return; }
+        publishPresence();
+        flushQueue();
+        setTimeout(publishHistory, 1200);   // نشر السجل ليقرأه من يدخل بعدنا
+      });
+    });
+
+    client.on('message', function (t, payload) {
+      var raw = payload ? payload.toString() : '';
+      if (!raw) return;                       // رسالة محتجزة فارغة = تم تفريغ السجل
+      var d; try { d = JSON.parse(raw); } catch (e) { return; }
+      if (t === topic('m')) onIncomingMsg(d);
+      else if (t === topic('h')) onIncomingHistory(d);
+      else if (t === topic('p')) onPresence(d);
+      else if (t === topic('t')) onTyping(d);
+    });
+
+    client.on('error', function (err) {
+      if (!opened) { dead = true; clearTimeout(guard); try { client.end(true); } catch (e) {} connect(idx + 1); }
+    });
+
+    client.on('close', function () {
+      S.connected = false; S.connecting = false;
+      if (!dead && S.client === client) {
+        setConnState('conn');
+        if (S.msgs.length) setBanner('انقطع الاتصال — ستُعاد المحاولة تلقائياً…', 'warn');
+        updatePeerStatus();
+      }
+    });
+
+    client.on('offline', function () { setConnState('off'); });
+  }
+
+  /* =========== استقبال البيانات =========== */
+  function onIncomingMsg(d) {
+    if (!d || !d.id || !d.text) return;
+    if (normName(d.from) === normName(S.me) && S.ids[d.id]) return;   // نسختنا نفسها
+    var isNew = addMsg({ id: d.id, from: d.from, text: d.text, ts: d.ts || Date.now() });
+    if (!isNew) return;
+    if (normName(d.from) === normName(S.me)) return;                  // من جهاز آخر بنفس الاسم
+    beep();
+    notify(d.from, d.text);
+    if (document.hidden) flashTitle('رسالة جديدة');
+    else if (!nearBottom()) { S.unread++; btnJump.classList.remove('hidden'); btnJump.textContent = 'رسائل جديدة (' + S.unread + ') ↓'; }
+  }
+
+  function onIncomingHistory(arr) {
+    if (!Array.isArray(arr) || !arr.length) return;
+    var added = 0, hasMine = false;
+    arr.forEach(function (m) {
+      if (!m || !m.id || !m.text) return;
+      if (normName(m.from) === normName(S.me)) hasMine = true;
+      if (addMsg({ id: m.id, from: m.from, text: m.text, ts: m.ts || Date.now() }, { quiet: true })) added++;
+    });
+    if (added) renderAll();
+    // لو طرفنا عنده رسائل ليست عندنا (سجل أقدم/أكمل) نحدّث السجل المحتجز
+    if (!S.historySent) setTimeout(publishHistory, 400);
+  }
+
+  function onPresence(d) {
+    if (!d || normName(d.from) === normName(S.me)) return;
+    if (d.bye) { S.peerSeen = 0; updatePeerStatus(); return; }
+    S.peerSeen = Date.now();
+    updatePeerStatus();
+  }
+
+  function onTyping(d) {
+    if (!d || normName(d.from) === normName(S.me)) return;
+    if (!d.stop) {
+      typingName.textContent = d.from;
+      typingEl.classList.remove('hidden');
+      clearTimeout(S.peerTypingTimer);
+      S.peerTypingTimer = setTimeout(function () { typingEl.classList.add('hidden'); }, TYPING_MS);
+    } else {
+      typingEl.classList.add('hidden');
+    }
+  }
+
+  function publishPresence() {
+    if (!S.client || !S.connected) return;
+    try { S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: Date.now() }), { qos: 0 }); } catch (e) {}
+  }
+
+  function sendTyping(stop) {
+    if (!S.client || !S.connected) return;
+    var now = Date.now();
+    if (!stop && (now - S.lastTypingSent) < 2200) return;
+    S.lastTypingSent = now;
+    try { S.client.publish(topic('t'), JSON.stringify({ from: S.me, stop: stop ? 1 : 0 }), { qos: 0 }); } catch (e) {}
+  }
+
+  setInterval(publishPresence, PRESENCE_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { publishPresence(); updatePeerStatus(); } });
+
+  /* =========== الدخول والخروج =========== */
+  function updateRoomPreview() {
+    var a = inputMe.value.trim(), b = inputPeer.value.trim();
+    if (!a || !b || normName(a) === normName(b)) { previewRoom.textContent = '—'; return; }
+    hashKey(roomKeyFor(a, b)).then(function (h) { previewRoom.textContent = '#' + h.slice(0, 8); });
+  }
+  inputMe.addEventListener('input', updateRoomPreview);
+  inputPeer.addEventListener('input', updateRoomPreview);
+
+  function enterChat() {
+    var me = inputMe.value.trim(), peer = inputPeer.value.trim();
+    if (!me || !peer) { loginHint.textContent = 'اكتب الاسمين أولاً.'; return; }
+    if (normName(me) === normName(peer)) { loginHint.textContent = 'لا يمكن استخدام نفس الاسم للطرفين. اكتب اسمين مختلفين.'; return; }
+    loginHint.textContent = '';
+    btnEnter.disabled = true;
+    btnEnter.textContent = 'جارٍ الدخول…';
+
+    S.me = me; S.peer = peer;
+    hashKey(roomKeyFor(me, peer)).then(function (h) {
+      S.room = h;
+      saveCfg();
+      S.msgs = []; S.ids = {};
+      loadMsgs().forEach(function (m) { if (m && m.id) { S.ids[m.id] = true; S.msgs.push(m); } });
+      S.msgs.sort(function (a, b) { return a.ts - b.ts; });
+
+      // الواجهة
+      peerNameLabel.textContent = peer;
+      peerAvatar.textContent = peer.trim().charAt(0);
+      roomChip.textContent = '#' + h.slice(0, 8);
+      roomChip.title = 'كود الغرفة: #' + h + '\nتأكد أن الطرف الآخر يرى نفس الكود.';
+      document.title = me + ' ↔ ' + peer + ' | محادثة فورية';
+
+      screenLogin.classList.add('hidden');
+      screenChat.classList.remove('hidden');
+      renderAll();
+      setTimeout(scrollToBottom, 60);
+      btnEnter.disabled = false;
+      btnEnter.textContent = 'دخول إلى المحادثة';
+      try { inputMsg.focus(); } catch (e) {}
+      askNotify();
+
+      ensureMqtt(function (ok) {
+        if (!ok) {
+          S.connecting = false;
+          setConnState('off');
+          setBanner('تعذّر تحميل مكتبة الاتصال (تحقّق من الإنترنت ثم أعد تحميل الصفحة).', 'err');
+          return;
+        }
+        connect(0);
+      });
+    });
+  }
+
+  function leaveChat() {
+    try { if (S.client) { S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: 0, bye: 1 }), { qos: 0 }); S.client.end(true); } } catch (e) {}
+    S.client = null; S.connected = false;
+    screenChat.classList.add('hidden');
+    screenLogin.classList.remove('hidden');
+    document.title = 'محادثة فورية | Urgent Chat';
+    setBanner(null);
+    typingEl.classList.add('hidden');
+  }
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    try { if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); } } catch (err) {}
+    enterChat();
+  });
+  inputMe.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); inputPeer.focus(); } });
+  btnBack.addEventListener('click', function () {
+    if (confirm('الخروج من المحادثة؟ (الرسائل تبقى محفوظة على هذا الجهاز)')) leaveChat();
+  });
+  btnClear.addEventListener('click', function () {
+    if (!confirm('مسح كل الرسائل من هذا الجهاز فقط؟ لن تُحذف عند الطرف الآخر.')) return;
+    S.msgs = []; S.ids = {}; S.queue = [];
+    try { localStorage.removeItem(STORE_MSGS + S.room); } catch (e) {}
+    renderAll();
+    toast('تم مسح المحادثة محلياً');
+  });
+
+  /* =========== صندوق الإرسال =========== */
+  composer.addEventListener('submit', function (e) { e.preventDefault(); sendMsg(); });
+  inputMsg.addEventListener('input', function () {
+    sendTyping(false);
+    clearTimeout(S.typingTimer);
+    S.typingTimer = setTimeout(function () { sendTyping(true); }, 2600);
+  });
+
+  messagesEl.addEventListener('scroll', function () {
+    if (nearBottom()) btnJump.classList.add('hidden');
+  });
+  btnJump.addEventListener('click', function () { scrollToBottom(); });
+
+  window.addEventListener('beforeunload', function () {
+    try { if (S.client && S.connected) S.client.publish(topic('p'), JSON.stringify({ from: S.me, ts: 0, bye: 1 }), { qos: 0 }); } catch (e) {}
+  });
+
+  // إعادة المزامنة عند عودة الشبكة
+  window.addEventListener('online', function () {
+    if (!S.connected) { try { if (S.client) S.client.reconnect(); } catch (e) { connect(S.brokerIndex); } }
+  });
+
+  /* =========== التهيئة =========== */
+  var cfg = loadCfg();
+  if (cfg && cfg.me && cfg.peer) {
+    inputMe.value = cfg.me;
+    inputPeer.value = cfg.peer;
+  }
+  updateRoomPreview();
+})();
+</script>
+</body>
+</html>
