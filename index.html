@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0f1a" />
 <meta name="description" content="شاشة استقبال الأخبار العاجلة — بث مباشر من غرفة الأخبار إلى غرفة التنفيذ." />
+<meta name="robots" content="noindex, nofollow" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="اليمن اليوم" />
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
@@ -218,6 +219,7 @@
     <span class="clock" id="clock">--:--:--</span>
     <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i>الصوت</button>
     <button class="chip sep-btn" id="btnSpeak" title="قراءة الخبر بصوت مرتفع"><i class="ico" data-ic="speech"></i>القراءة</button>
+    <span class="chip" id="verChip" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث" style="cursor:default;font-family:ui-monospace,Menlo,Consolas,monospace">v2.1</span>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
     <button class="chip" id="btnFull" title="ملء الشاشة"><i class="ico" data-ic="expand"></i>توسيع</button>
@@ -322,6 +324,8 @@
     setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
     U.txt(clockEl, U.fmtClock(Date.now()));
     U.hydrateIcons(document);
+    var vc = U.$('#verChip');
+    if (vc) { if (cfg.version) U.txt(vc, 'v' + cfg.version); else vc.classList.add('hidden'); }
     setInterval(tick, 15000);
   }
 
