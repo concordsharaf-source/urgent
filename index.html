@@ -28,6 +28,7 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;min-height:100%}
   body{
+    display:flex;flex-direction:column;min-height:100vh;
     font-family:var(--font);
     color:var(--ink);
     background:
@@ -128,7 +129,7 @@
   .edchip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
 
   /* ============ قائمة الأخبار ============ */
-  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:15px;--fs:.9}
+  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:15px;--fs:.9;flex:1 1 auto;width:100%}
 
   .card{
     position:relative;
@@ -207,6 +208,16 @@
   .empty h2{margin:0 0 8px;font-size:22px;color:#e2e8f0;font-weight:800}
   .empty p{margin:0;font-size:14px;line-height:2}
 
+  .chip.ico-only{padding-inline:9px}
+  .chip.ico-only .ico{margin-inline-end:0}
+  .verfoot{
+    max-width:1240px;margin:0 auto 30px;padding:14px 20px 0;display:flex;align-items:center;gap:10px;
+    color:#64748b;font-size:12.5px;letter-spacing:.4px;
+  }
+  .verfoot::before,.verfoot::after{content:"";height:1px;flex:1;
+    background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent)}
+  .verfoot .vlbl{opacity:.9}
+  .verfoot .vnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:#94a3b8;font-weight:700}
   .hint{max-width:1240px;margin:8px auto 34px;padding:14px 20px;color:var(--dim);font-size:13px;
     text-align:center;line-height:2;border-top:1px solid rgba(255,255,255,.07)}
   .hint b{color:#cbd5e1}
@@ -243,13 +254,11 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
-    <button class="chip sep-btn" id="btnSound" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i>الصوت</button>
-    <span class="chip" id="verChip" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث" style="cursor:default;font-family:ui-monospace,Menlo,Consolas,monospace">v2.1</span>
+    <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
     <button class="chip" id="btnFull" title="ملء الشاشة"><i class="ico" data-ic="expand"></i>توسيع</button>
     <button class="chip" id="btnSettings" title="الإعدادات"><i class="ico" data-ic="gear"></i>الإعدادات</button>
-    <a class="chip link" href="send.html" target="_blank" rel="noopener" title="دخول المحررين"><i class="ico" data-ic="key"></i>المحررون</a>
   </div>
 </header>
 
@@ -291,6 +300,11 @@
   وتصل غرفة الأخبار إشارة فورية بأن الخبر تم استلامه ونسخه.<br />
   النسخ بالزر فقط — لضمان معرفة المرسل بالضبط أن الخبر تم نسخه.
 </div>
+
+<footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
+  <span class="vlbl">الإصدار</span>
+  <span class="vnum" id="verChip">v2.4</span>
+</footer>
 
 <script src="config.js"></script>
 <script src="core.js"></script>
@@ -544,7 +558,13 @@
   function applyFs() { feed.style.setProperty('--fs', String(S.fs)); }
 
   function syncToggles() {
-    btnSound.className = 'chip' + (S.sound ? ' on' : '');
+    btnSound.className = 'chip ico-only' + (S.sound ? ' on' : '');
+    btnSound.title = S.sound ? 'الصوت مفعّل — اضغط للإيقاف' : 'الصوت متوقف — اضغط للتفعيل';
+    var sic = btnSound.querySelector('.ico');
+    if (sic) {
+      var name = S.sound ? 'sound' : 'soundOff';
+      if (sic.getAttribute('data-ic') !== name) { sic.setAttribute('data-ic', name); U.hydrateIcons(btnSound); }
+    }
     soundbar.classList.toggle('hidden', !S.sound || alerter.ready());
   }
 
