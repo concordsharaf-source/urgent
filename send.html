@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.7" />
+<link rel="stylesheet" href="ui.css?v=3.8" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -297,8 +297,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=3.7"></script>
-<script src="core.js?v=3.7"></script>
+<script src="config.js?v=3.8"></script>
+<script src="core.js?v=3.8"></script>
 <script>
 (function () {
   'use strict';
@@ -696,6 +696,40 @@
     sec.appendChild(tail);
     extra.push(sec);
 
+    // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
+    var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
+    var AC = U.alertCfgLocal() || {};
+    var DD = cfg.display || {};
+    var cfgA = {
+      snd: Math.max(3, Number(AC.snd) || Number(DD.alarmEvery) || 5),
+      vis: Math.max(3, Number(AC.vis) || Number(DD.visualEvery) || 5),
+      notify: Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30)
+    };
+    function pushAlert(what) {
+      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
+      U.toast('سرى فوراً على كل شاشات الاستقبال — ' + what, 'ok', 6000);
+    }
+    secAL.appendChild(U.chipsRow('تكرار التنبيه الصوتي', 'ترن النغمة كل … ثانية حتى النسخ على كل شاشات الاستقبال',
+      [3, 5, 10, 20, 30, 60], cfgA.snd, function (v) { cfgA.snd = v; pushAlert('الصوت كل ' + v + ' ثانية'); }, 'ث'));
+    secAL.appendChild(U.chipsRow('تكرار الوميض المرئي', 'يومض إطار الشاشة وشريط التنبيه كل … ثانية حتى النسخ',
+      [3, 5, 10, 20, 30, 60], cfgA.vis, function (v) { cfgA.vis = v; pushAlert('الوميض كل ' + v + ' ثانية'); }, 'ث'));
+    secAL.appendChild(U.chipsRow('تكرار إشعار سطح المكتب', 'يظهر إشعار فوق شريط المهام كل … ثانية والصفحة مصغّرة',
+      [10, 30, 60, 120], cfgA.notify, function (v) { cfgA.notify = v; pushAlert('إشعار سطح المكتب كل ' + v + ' ثانية'); }, 'ث'));
+    var actsAL = U.el('div', 'uc-row-actions');
+    var bDefAL = U.btnEl('إرجاع الافتراضي (5 / 5 / 30)', 'ghost', 'check');
+    bDefAL.addEventListener('click', function () {
+      cfgA = { snd: 5, vis: 5, notify: 30 };
+      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
+      U.toast('تم إرجاع إعدادات التنبيه إلى الافتراضي ونشرها', 'ok', 6000);
+      U.closeModal(); openSettings();                       // إعادة بناء النافذة بالقيم الجديدة
+    });
+    actsAL.appendChild(bDefAL);
+    secAL.appendChild(actsAL);
+    secAL.appendChild(U.el('p', 'uc-note',
+      'هذه الإعدادات تُنشر الآن على كل شاشات الاستقبال — وتصل تلقائياً لأي شاشة تُفتح لاحقاً. ' +
+      'ويبقى بإمكان أي شاشة تعديلها محلياً على جهازها حتى يصلك إرسال جديد.'));
+    extra.push(secAL);
+
     // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
     var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
     var epRow = U.el('div', 'uc-saverow');
@@ -919,6 +953,11 @@
       if (!data.list) return;
       if (data.k !== (cfg.settingsKey || '')) return;          // مفتاح غير مطابق => تجاهل
       U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
+      return;
+    }
+    if (rel === 'cfg/alerts') {
+      if (isEmpty || !data) return;
+      U.saveAlertCfgLocal(data);                              // يُطبَّق بصمت بلا أي رسالة
       return;
     }
     if (rel === 'push/endpoint') {

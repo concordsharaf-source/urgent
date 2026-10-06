@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.7" />
+<link rel="stylesheet" href="ui.css?v=3.8" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -52,6 +52,14 @@
     animation:edgePulse 1.35s ease-in-out infinite}
   @keyframes edgePulse{0%,100%{opacity:.45}50%{opacity:1}}
   @media (prefers-reduced-motion:reduce){ .edge-glow .ehalo{animation:none} }
+  /* وميض التنبيه المرئي المتكرر (كل X ثانية حتى النسخ) */
+  .edge-glow.pulse .ecore{stroke-width:3}
+  .edge-glow.pulse .erun{stroke-width:4.2}
+  .edge-glow.pulse .ehalo{animation:edgeFlash .95s ease-out 2}
+  @keyframes edgeFlash{
+    0%{opacity:.4;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55)}
+    45%{opacity:1;box-shadow:inset 0 0 120px rgba(255,45,45,.92), inset 0 0 20px rgba(255,150,150,.95)}
+    100%{opacity:.5;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55)}}
 
   .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
   .ico svg{display:block}
@@ -116,6 +124,11 @@
     background:rgba(239,68,68,.16);color:#fecaca;border-bottom:1px solid rgba(239,68,68,.32);
     animation:alarmPulse 2s infinite}
   @keyframes alarmPulse{50%{background:rgba(239,68,68,.3)}}
+  .alarmbar.flash{animation:barFlash .95s ease-out 2}
+  @keyframes barFlash{
+    0%{background:rgba(239,68,68,.16);color:#fecaca}
+    45%{background:rgba(255,64,64,.6);color:#fff;box-shadow:0 0 26px rgba(255,60,60,.55)}
+    100%{background:rgba(239,68,68,.16);color:#fecaca}}
   .alarmbar .abtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
     color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   .alarmbar .abtn:hover{background:rgba(255,255,255,.24)}
@@ -297,8 +310,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.7"></script>
-<script src="core.js?v=3.7"></script>
+<script src="config.js?v=3.8"></script>
+<script src="core.js?v=3.8"></script>
 <script>
 (function () {
   'use strict';
@@ -322,6 +335,7 @@
     alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
     alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 5)) || 5,      // كل كم ثانية يرن التنبيه
     deskEvery: Number(U.lsGet(LSP + 'deskEvery', D.deskEvery || 30)) || 30,       // كل كم ثانية يتكرر إشعار سطح المكتب
+    visualEvery: Number(U.lsGet(LSP + 'visualEvery', D.visualEvery || 5)) || 5,   // كل كم ثانية يومض الإطار المرئي
     deskNotify: U.lsGet(LSP + 'deskNotify', true) !== false,     // إشعار سطح المكتب عند تصغير الصفحة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
@@ -468,7 +482,7 @@
       state: {
         sound: S.sound,
         alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery, deskNotify: S.deskNotify,
-        deskEvery: S.deskEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
+        deskEvery: S.deskEvery, visualEvery: S.visualEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
       onChange: function (key, val) {
@@ -480,6 +494,7 @@
         }
         else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); updateAlarmBar(); }
         else if (key === 'deskEvery') { S.deskEvery = Math.max(5, Number(val) || 30); U.lsSet(LSP + 'deskEvery', S.deskEvery); lastNotifyAt = 0; }
+        else if (key === 'visualEvery') { S.visualEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'visualEvery', S.visualEvery); lastVisualAt = 0; }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
         else if (key === 'deskNotify') {
@@ -545,6 +560,7 @@
     try { U.initInstallCapture(); } catch (e) {}
     try { U.registerSW(); } catch (e) {}
     try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
+    try { var ac0 = U.alertCfgLocal(); if (ac0) applyAlertCfg(ac0); } catch (e) {}
     try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
     showEditorButton();
     bus.connect();
@@ -683,6 +699,10 @@
       else if (data && data.id) store.applyPin(data, true);
       return;
     }
+    if (rel === 'cfg/alerts') {
+      if (!isEmpty && data) applyAlertCfg(data);        // إعدادات الإدارة — تُطبَّق بصمت
+      return;
+    }
     if (rel.indexOf('presence/') === 0) {
       if (!data || data.role === 'display') return;
       if (isEmpty || data.off || !data.ts) { delete S.editors[data.who]; renderEditors(); return; }
@@ -815,7 +835,7 @@
 
   /* ---------- التنبيه المتكرر كل 30 ثانية حتى يتم نسخ الخبر ---------- */
   var alarmTimer = null;
-  var ticker = null, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0;
+  var ticker = null, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0, lastVisualAt = 0;
 
   function uncopiedItems() {
     return store.list().filter(function (it) { return !(it.ack && it.ack.kind === 'copied'); });
@@ -880,7 +900,11 @@
       }
     } else { alerter.cancelAll(); }
 
-    // (2) إشعار سطح المكتب المتكرر
+    // (2) الوميض المرئي المتكرر (إطار الشاشة + شريط التنبيه)
+    var vEvery = Math.max(3, Number(S.visualEvery) || 5) * 1000;
+    if (Date.now() - lastVisualAt >= vEvery) { lastVisualAt = Date.now(); visualPulse(); }
+
+    // (3) إشعار سطح المكتب المتكرر
     if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
       var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
       if (Date.now() - lastNotifyAt >= nEvery) {
@@ -891,6 +915,47 @@
       }
     }
     updateAlarmBar();
+  }
+
+  /* وميض مرئي قوي: إطار الشاشة + شريط التنبيه (يتكرر كل S.visualEvery ثانية حتى النسخ) */
+  function visualPulse() {
+    try {
+      if (S.edgeGlow !== false && edge.box && edge.on) {
+        edge.box.classList.add('pulse');
+        clearTimeout(visualPulse._t1);
+        visualPulse._t1 = setTimeout(function () { edge.box.classList.remove('pulse'); }, 1250);
+      }
+      if (!alarmbar.classList.contains('hidden')) {
+        alarmbar.classList.add('flash');
+        clearTimeout(visualPulse._t2);
+        visualPulse._t2 = setTimeout(function () { alarmbar.classList.remove('flash'); }, 1250);
+      }
+    } catch (e) {}
+  }
+
+  /* تطبيق إعدادات التنبيه القادمة من حساب الإدارة (بلا أي رسالة) */
+  function applyAlertCfg(d) {
+    if (!d) return false;
+    var ok = false;
+    function num(v, lo, hi) { var n = Number(v); if (!isFinite(n) || n <= 0) return 0; return Math.max(lo, Math.min(hi, Math.round(n))); }
+    var s = num(d.snd, 3, 300), v2 = num(d.vis, 3, 300), n = num(d.notify, 5, 900);
+    if (s) { S.alarmEvery = s; U.lsSet(LSP + 'alarmEvery', s); ok = true; }
+    if (v2) { S.visualEvery = v2; U.lsSet(LSP + 'visualEvery', v2); ok = true; }
+    if (n) { S.deskEvery = n; U.lsSet(LSP + 'deskEvery', n); ok = true; }
+    if (ok) {
+      try { U.saveAlertCfgLocal({ snd: s || undefined, vis: v2 || undefined, notify: n || undefined }); } catch (e) {}
+      lastNotifyAt = 0; lastSoundAt = 0; lastVisualAt = 0;
+      updateAlarmBar();
+    }
+    return ok;
+  }
+
+  function visualPulseStop() {
+    try {
+      if (edge.box) edge.box.classList.remove('pulse');
+      alarmbar.classList.remove('flash');
+      clearTimeout(visualPulse._t1); clearTimeout(visualPulse._t2);
+    } catch (e) {}
   }
 
   function startAlarmLoop() {
@@ -914,6 +979,7 @@
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
+    lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
@@ -946,6 +1012,7 @@
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
       try { alerter.cancelAll(); } catch (e) {}            // إسكات التنبيه فوراً
+      try { visualPulseStop(); } catch (e) {}
       try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
       alerter.play('info');
       updateAlarmBar();

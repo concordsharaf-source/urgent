@@ -923,6 +923,27 @@ window.URGENT = (function () {
 
   function roomKey() { return resolveRoom(); }
 
+  /* ---------- إعدادات التنبيه (ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال) ----------
+     snd = تكرار التنبيه الصوتي (ثانية) · vis = تكرار الوميض المرئي (ثانية) · notify = تكرار إشعار سطح المكتب (ثانية) */
+  function alertCfgKey() { return LS + resolveRoom() + ':alertCfg'; }
+  function saveAlertCfgLocal(o) {
+    try {
+      var cur = recallAlertCfg() || {};
+      var out = { snd: cur.snd, vis: cur.vis, notify: cur.notify };
+      if (o) { if (o.snd != null) out.snd = Number(o.snd); if (o.vis != null) out.vis = Number(o.vis); if (o.notify != null) out.notify = Number(o.notify); }
+      lsSet(alertCfgKey(), out);
+      return out;
+    } catch (e) { return null; }
+  }
+  function recallAlertCfg() { try { return lsGet(alertCfgKey(), null) || null; } catch (e) { return null; } }
+  function publishAlertCfg(bus, o, by) {
+    try {
+      var out = saveAlertCfgLocal(o) || {};
+      bus.publish('cfg/alerts', { snd: out.snd, vis: out.vis, notify: out.notify, by: by || '', ts: Date.now() }, { retain: true });
+      return true;
+    } catch (e) { return false; }
+  }
+
   // تغيير كلمة مرور/اسم محرر: يعيد قائمة جديدة
   function changeAdmin(list, user, opts) {
     opts = opts || {};
@@ -1148,7 +1169,7 @@ window.URGENT = (function () {
    * buildSettings — واجهة إعدادات جاهزة تُبنى في الصفحة
    * opts: {
    *   title, subtitle,
-   *   state: { sound, alarmRepeat, alarmEvery, deskEvery, deskNotify, notifyRepeat, fontScale },
+   *   state: { sound, alarmRepeat, alarmEvery, visualEvery, deskEvery, deskNotify, notifyRepeat, fontScale },
    *   onChange(key, value),
    *   showDisplay: true,            // إظهار قسم حجم الخط
    *   onSpeakTest(), 
@@ -1191,7 +1212,7 @@ window.URGENT = (function () {
     repRow.appendChild(switchEl(st.notifyRepeat !== false, function (v) { opts.onChange('notifyRepeat', v); refresh(); }));
     secN.appendChild(repRow);
 
-    secN.appendChild(chipsRow('كل كم ثانية يتكرر إشعار سطح المكتب؟', 'يظهر الإشعار فوق شريط المهام ما دام الخبر غير منسوخ',
+    secN.appendChild(chipsRow('كل كم ثانية يتكرر إشعار سطح المكتب؟', 'يظهر الإشعار فوق شريط المهام ما دام الخبر غير منسوخ — ويُرسَل من حساب الإدارة',
       [10, 30, 60, 120], st.deskEvery || 30, function (v) { opts.onChange('deskEvery', v); }, 'ث'));
     body.appendChild(secN);
 
@@ -1206,12 +1227,18 @@ window.URGENT = (function () {
     secS.appendChild(alarmRow);
 
     /* سرعة تكرار النغمة — 5 ثوانٍ هي الافتراضية للأخبار العاجلة */
-    secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تُجدَّل مسبقاً في محرّك الصوت فتبقى ترن حتى والنافذة مصغّرة',
+    secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تعمل حتى والنافذة مصغّرة — ويُرسَل من حساب الإدارة لكل الشاشات',
       [3, 5, 10, 20, 30, 60], st.alarmEvery || 5, function (v) { opts.onChange('alarmEvery', v); }, 'ث'));
 
     body.appendChild(secS);
 
     /* ---- قسم حجم الخط ---- */
+    /* ---- قسم التنبيه المرئي (وميض الإطار) ---- */
+    var secV = section('التنبيه المرئي', 'screen');
+    secV.appendChild(chipsRow('كل كم ثانية يومض الإطار؟', 'وميض قوي على أطراف الشاشة وشريط التنبيه حتى النسخ — يُرسَل أيضاً من حساب الإدارة',
+      [3, 5, 10, 20, 30, 60], st.visualEvery || 5, function (v) { opts.onChange('visualEvery', v); }, 'ث'));
+    body.appendChild(secV);
+
     if (opts.showDisplay) {
       var secD = section('حجم الخط على الشاشة', 'screen');
       var fsRow = rowEl('حجم نص الأخبار', 'اضبطه حسب حجم شاشة غرفة التنفيذ');
@@ -1411,7 +1438,8 @@ window.URGENT = (function () {
     isStandalone: isStandalone, promptInstall: promptInstall, initInstallCapture: initInstallCapture,
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
-    publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
+    publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset,
+    publishAlertCfg: publishAlertCfg, saveAlertCfgLocal: saveAlertCfgLocal, alertCfgLocal: recallAlertCfg, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
     makePassword: makePassword, isOwner: isOwner, owners: owners,
     ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,
     gitSaveAdmins: gitSaveAdmins, replaceAdminsBlock: replaceAdminsBlock,
