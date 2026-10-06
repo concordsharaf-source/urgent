@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.5" />
+<link rel="stylesheet" href="ui.css?v=3.6" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -297,8 +297,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.5"></script>
-<script src="core.js?v=3.5"></script>
+<script src="config.js?v=3.6"></script>
+<script src="core.js?v=3.6"></script>
 <script>
 (function () {
   'use strict';
@@ -321,6 +321,7 @@
     edgeBaseOpacity: clampNum(U.lsGet(LSP + 'edgeBaseOpacity', D.edgeBaseOpacity == null ? 0.34 : D.edgeBaseOpacity), 0, 1),
     alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
     alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 30)) || 30,
+    deskNotify: U.lsGet(LSP + 'deskNotify', true) !== false,     // إشعار سطح المكتب عند تصغير الصفحة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
     pushOn: false,
@@ -465,7 +466,7 @@
       room: room,
       state: {
         sound: S.sound,
-        alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery,
+        alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery, deskNotify: S.deskNotify,
         notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
@@ -474,6 +475,11 @@
         else if (key === 'alarmRepeat') { S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val); updateAlarmBar(); if (val) startAlarmLoop(); }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
+        else if (key === 'deskNotify') {
+          S.deskNotify = val; U.lsSet(LSP + 'deskNotify', val);
+          if (val) U.askNotify();                                   // يطلب الإذن إن لم يُمنح بعد
+          else { try { U.closeDesktopNotifs(); } catch (e) {} }      // إزالة الإشعارات الظاهرة
+        }
       },
       extra: [edgeSection()],
       onPush: function (sub) { onPushSub(sub); },
@@ -612,7 +618,12 @@
       } catch (e) {}
     });
     window.addEventListener('online', function () { bus.reconnectNow(); });
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      render();
+      // عند العودة للصفحة: نُغلق إشعار «لم يُنسخ بعد» حتى لا يزعج على سطح المكتب
+      try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
+    });
     // النسخ متاح فقط عبر زر «نسخ الخبر»:
     //    نمنع تحديد النص، والنسخ/القص، وقائمة الزر الأيمن داخل قائمة الأخبار.
     var lastWarn = 0;
@@ -841,9 +852,7 @@
 
   function reNotify(body, count) {
     var title = 'خبر عاجل لم يُنسخ بعد';
-    if (!U.showViaSW(title, body, 'yt-uncopied') && 'Notification' in window && Notification.permission === 'granted') {
-      U.browserNotify(title, body);
-    }
+    if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
     }
@@ -854,9 +863,8 @@
     S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
     var nTitle = 'خبر عاجل — ' + (item.author || 'غرفة الأخبار');
-    if (!U.showViaSW(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id) && 'Notification' in window) {
-      U.browserNotify(nTitle, item.text);
-    }
+    // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
+    if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }

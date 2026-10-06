@@ -212,11 +212,34 @@ window.URGENT = (function () {
     } catch (e) {}
   }
 
-  function browserNotify(title, body) {
+  function browserNotify(title, body, tag) {
     try {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
-      var n = new Notification(title, { body: body, dir: 'rtl', lang: 'ar' });
-      setTimeout(function () { try { n.close(); } catch (e) {} }, 8000);
+      if (!('Notification' in window) || Notification.permission !== 'granted') return null;
+      var n = new Notification(title, {
+        body: body, dir: 'rtl', lang: 'ar',
+        tag: tag || 'yt-news', renotify: true,
+        requireInteraction: true,       // يبقى الإشعار ظاهراً فوق شريط المهام حتى يُغلق
+        silent: false
+      });
+      return n;
+    } catch (e) { return null; }
+  }
+
+  /* إشعار سطح المكتب: يُجرَّب أولاً عبر خدمة التطبيق (يظهر حتى لو كانت الصفحة مصغّرة)،
+     وإلا بالطريقة المباشرة. يعمل فقط عند منح إذن الإشعارات. */
+  function notifyDesktop(title, body, tag) {
+    if (showViaSW(title, body, tag)) return true;
+    return !!browserNotify(title, body, tag);
+  }
+
+  // إغلاق إشعارات سطح المكتب التي كانت تُنبّه على خبر لم يُنسخ بعد
+  function closeDesktopNotifs(tagPrefix) {
+    try {
+      var reg = pushState.reg || (navigator.serviceWorker && navigator.serviceWorker.getRegistration ? null : null);
+      if (!reg || !reg.getNotifications) return;
+      reg.getNotifications({ tag: tagPrefix || 'yt-uncopied' }).then(function (list) {
+        list.forEach(function (n) { try { n.close(); } catch (e) {} });
+      }).catch(function () {});
     } catch (e) {}
   }
   function askNotify() {
@@ -1071,6 +1094,13 @@ window.URGENT = (function () {
     bgRow.appendChild(bgState); bgRow.appendChild(bgBtn);
     secN.appendChild(bgRow);
 
+    var deskRow = rowEl('إشعار سطح المكتب عند تصغير الصفحة', 'يظهر تنبيه فوق شريط المهام عند وصول خبر والصفحة مصغّرة');
+    deskRow.appendChild(switchEl(st.deskNotify !== false, function (v) {
+      opts.onChange('deskNotify', v);
+      if (v) { try { askNotifyPermission(); } catch (e) {} }
+    }));
+    secN.appendChild(deskRow);
+
     var repRow = rowEl('تكرار الإشعار ما دام الخبر غير منسوخ', 'يُعاد الإشعار كل ' + (st.alarmEvery || 30) + ' ثانية');
     repRow.appendChild(switchEl(st.notifyRepeat !== false, function (v) { opts.onChange('notifyRepeat', v); refresh(); }));
     secN.appendChild(repRow);
@@ -1298,6 +1328,7 @@ window.URGENT = (function () {
     enablePush: enablePush, disablePush: disablePush, pushStatus: pushStatus,
     notificationState: notificationState, askNotifyPermission: askNotifyPermission,
     showViaSW: showViaSW, urlB64ToUint8: urlB64ToUint8,
+    notifyDesktop: notifyDesktop, closeDesktopNotifs: closeDesktopNotifs,
     // إدارة الحسابات
     admins: admins, findAdmin: findAdmin, saveAdminsLocal: saveAdminsLocal, resetAdminsLocal: resetAdminsLocal,
     changeAdmin: changeAdmin, adminsToConfigCode: adminsToConfigCode, roomKey: roomKey,
