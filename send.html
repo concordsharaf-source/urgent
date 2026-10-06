@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.4" />
+<link rel="stylesheet" href="ui.css?v=3.5" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -297,8 +297,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=3.4"></script>
-<script src="core.js?v=3.4"></script>
+<script src="config.js?v=3.5"></script>
+<script src="core.js?v=3.5"></script>
 <script>
 (function () {
   'use strict';
@@ -912,15 +912,13 @@
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); render(); return; }
     if (rel === 'cfg/admins') {
       if (isEmpty || !data) return;
-      if (data.reset) {                                        // أمر «حدّث من المستودع»
+      if (data.reset) {                                        // أمر «حدّث من المستودع» (بلا أي رسالة)
         U.resetAdminsLocal();
-        U.toast('تم تحديث بيانات الدخول من الإدارة — سيسري ما في المستودع', 'ok', 7000);
         return;
       }
       if (!data.list) return;
       if (data.k !== (cfg.settingsKey || '')) return;          // مفتاح غير مطابق => تجاهل
-      U.saveAdminsLocal(data.list);
-      U.toast('تم تحديث بيانات المحررين من الإدارة' + (data.by ? ' (' + data.by + ')' : ''), 'ok', 6000);
+      U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
       return;
     }
     if (rel === 'push/endpoint') {
