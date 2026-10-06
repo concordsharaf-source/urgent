@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css" />
+<link rel="stylesheet" href="ui.css?v=3.3" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -299,8 +299,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js"></script>
-<script src="core.js"></script>
+<script src="config.js?v=3.3"></script>
+<script src="core.js?v=3.3"></script>
 <script>
 (function () {
   'use strict';
@@ -666,7 +666,7 @@
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
-      U.txt(connText, 'متصل — ' + (info.broker || ''));
+      U.txt(connText, 'متصل');
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       U.txt(connText, 'جارٍ الاتصال…');

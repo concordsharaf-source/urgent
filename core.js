@@ -575,7 +575,9 @@ window.URGENT = (function () {
       if (!swSupported()) return Promise.resolve(null);
     } catch (e) { return Promise.resolve(null); }
     if (pushState.reg) return Promise.resolve(pushState.reg);
-    return navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function (reg) {
+    // معامل الإصدار يجبر المتصفح على تثبيت نسخة جديدة من الـSW عند كل تحديث
+    var swVer = (config().version || '0') + '.' + (config().build || '0');
+    return navigator.serviceWorker.register('./sw.js?v=' + swVer, { scope: './' }).then(function (reg) {
       pushState.reg = reg;
       // التحديث التلقائي عند وجود نسخة جديدة
       try { reg.update(); } catch (e) {}
