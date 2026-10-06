@@ -49,6 +49,12 @@ window.URGENT_CONFIG = {
       name: "رئيس دائرة الأخبار",
       salt: "y5+QTaw0fMUjFN+Ct/IfHw==",
       hash: "HFAgNnD0zeqCvXct0DjsE56mLsbHBW/czECI21LmnsQ="
+    },
+    {
+      user: "hammadi",
+      name: "IT",
+      salt: "K8RzLl1PNv0p+D9X4Y4syg==",
+      hash: "Knv9d1MsW5zQkIwwybhiSI4Nf/LJk1rZ21zDWS3Gt9s="
     }
   ],
 
