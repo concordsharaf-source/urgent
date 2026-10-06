@@ -80,7 +80,10 @@
   /* ============ الشريط العلوي (مطابق لشاشة الاستقبال) ============ */
   .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
     padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.86));
-    backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09)}
+    backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09);
+    transition:transform .26s ease, box-shadow .26s ease}
+  /* يختفي مع النزول ويعود مع الصعود (لتوفير مساحة الشاشة على الجوال) */
+  .topbar.tb-hide{transform:translateY(-125%);box-shadow:none}
   .brand{display:flex;align-items:center;gap:12px;min-width:0}
   .logo{width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;background:#fff;object-fit:contain;padding:3px;
     box-shadow:0 10px 26px -12px rgba(224,36,36,.85);border:1px solid rgba(255,255,255,.22)}
@@ -113,6 +116,25 @@
   .chip .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
   .chip .dot.wait{background:var(--warn)}
   .chip .dot.off{background:#ef4444}
+
+  /* ============ وضع الجوال: شريط مختصر ============ */
+  @media (max-width:760px){
+    .topbar{padding:6px 9px;gap:7px;row-gap:7px}
+    .logo{width:34px;height:34px;border-radius:10px;padding:2px}
+    .brand{gap:7px}
+    .brand h1{font-size:14.5px;letter-spacing:0}
+    .brand p{display:none}
+    .grow{display:none}                     /* يسمح بتراصف العناصر في صفّين فقط */
+    .conn{padding:6px 8px;gap:0;border-radius:999px}
+    #connText,#displayText{display:none}     /* نقطة الحالة تكفي: خضراء=متصلة حمراء=غير متصلة */
+    .conn .dot{width:9px;height:9px}
+    .clock{padding:6px 8px;font-size:12px;border-radius:10px}
+    .chip{padding:6px 8px;font-size:12px;gap:5px;border-radius:10px}
+    .chip .ico svg{width:16px;height:16px}
+    .chip.ico-only{padding-inline:6px}
+    .chip .ptxt{display:none}
+    .wrap{padding:10px 9px 24px;gap:11px}
+  }
 
   /* ============ تذييل الإصدار (مطابق لشاشة الاستقبال) ============ */
   .verfoot{max-width:1080px;margin:0 auto 30px;padding:14px 20px 0;display:flex;align-items:center;gap:10px;
@@ -220,16 +242,16 @@
     </div>
     <div class="grow"></div>
 
-    <div class="conn" id="chipDisplay" title="حالة شاشة المنفذ">
+    <div class="conn" id="chipDisplay" title="حالة شاشة المنفذ" aria-label="حالة شاشة المنفذ">
       <span class="dot off" id="displayDot"></span><span id="displayText">شاشة المنفذ: غير متصلة</span>
     </div>
-    <div class="conn" id="chipConn" title="حالة الاتصال بخادم البث">
+    <div class="conn" id="chipConn" title="حالة الاتصال بخادم البث" aria-label="حالة الاتصال بخادم البث">
       <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
     </div>
 
     <div class="controls">
       <span class="clock" id="clock">--:--:--</span>
-      <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span> بانتظار النسخ</button>
+      <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span><span class="ptxt"> بانتظار النسخ</span></button>
       <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
       <a class="chip ico-only" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
       <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
@@ -337,6 +359,20 @@
     try { U.registerSW(); } catch (e) {}
     S.sound = U.lsGet(U.LS_PREFIX + room + ':edSound', true) !== false;
     S.alarmRepeat = true;
+    // إخفاء الشريط مع النزول وإظهاره مع الصعود (مهم على الجوال)
+    (function () {
+      var bar = document.querySelector('.topbar');
+      if (!bar) return;
+      var last = window.pageYOffset || document.documentElement.scrollTop || 0;
+      window.addEventListener('scroll', function () {
+        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+        if (Math.abs(y - last) < 6) return;
+        if (y > 56 && y > last) bar.classList.add('tb-hide');
+        else bar.classList.remove('tb-hide');
+        last = y;
+      }, { passive: true });
+    })();
+
     var clockEl = U.$('#clock');
     if (clockEl) {
       U.txt(clockEl, U.fmtClock(Date.now()));
