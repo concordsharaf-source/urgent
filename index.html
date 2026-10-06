@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.6" />
+<link rel="stylesheet" href="ui.css?v=3.7" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -297,8 +297,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.6"></script>
-<script src="core.js?v=3.6"></script>
+<script src="config.js?v=3.7"></script>
+<script src="core.js?v=3.7"></script>
 <script>
 (function () {
   'use strict';
@@ -320,7 +320,8 @@
     edgeSpeed: clampNum(U.lsGet(LSP + 'edgeSpeed', D.edgeSpeed || 980), 200, 2600),
     edgeBaseOpacity: clampNum(U.lsGet(LSP + 'edgeBaseOpacity', D.edgeBaseOpacity == null ? 0.34 : D.edgeBaseOpacity), 0, 1),
     alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
-    alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 30)) || 30,
+    alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 5)) || 5,      // كل كم ثانية يرن التنبيه
+    deskEvery: Number(U.lsGet(LSP + 'deskEvery', D.deskEvery || 30)) || 30,       // كل كم ثانية يتكرر إشعار سطح المكتب
     deskNotify: U.lsGet(LSP + 'deskNotify', true) !== false,     // إشعار سطح المكتب عند تصغير الصفحة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
@@ -467,12 +468,18 @@
       state: {
         sound: S.sound,
         alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery, deskNotify: S.deskNotify,
-        notifyRepeat: S.notifyRepeat, fontScale: S.fs
+        deskEvery: S.deskEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
       onChange: function (key, val) {
         if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
-        else if (key === 'alarmRepeat') { S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val); updateAlarmBar(); if (val) startAlarmLoop(); }
+        else if (key === 'alarmRepeat') {
+          S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val);
+          if (val) { lastSoundAt = 0; startAlarmLoop(); } else { try { alerter.cancelAll(); } catch (e) {} }
+          updateAlarmBar();
+        }
+        else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); updateAlarmBar(); }
+        else if (key === 'deskEvery') { S.deskEvery = Math.max(5, Number(val) || 30); U.lsSet(LSP + 'deskEvery', S.deskEvery); lastNotifyAt = 0; }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
         else if (key === 'deskNotify') {
@@ -598,12 +605,14 @@
     // شريط التنبيه المتكرر
     U.$('#btnAlarmMute').addEventListener('click', function () {
       S.alarmMutedUntil = Date.now() + 5 * 60e3;
+      try { alerter.cancelAll(); } catch (e) {}            // إسكات النغمة المجدولة فوراً
       U.toast('تم إسكات التنبيه 5 دقائق — سيُعاد تلقائياً', 'warn');
       updateAlarmBar();
     });
     U.$('#btnAlarmOff').addEventListener('click', function () {
       S.alarmRepeat = false;
       U.lsSet(LSP + 'alarmRepeat', false);
+      try { alerter.cancelAll(); } catch (e) {}
       updateAlarmBar();
       U.toast('تم إيقاف تكرار التنبيه — يمكن تشغيله من الإعدادات', 'warn');
     });
@@ -621,6 +630,8 @@
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) return;
       render();
+      lastNotifyAt = 0;
+      if (!bus.isAlive()) { try { bus.reconnectNow(); } catch (e) {} }   // مزامنة فورية عند العودة
       // عند العودة للصفحة: نُغلق إشعار «لم يُنسخ بعد» حتى لا يزعج على سطح المكتب
       try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
     });
@@ -804,6 +815,7 @@
 
   /* ---------- التنبيه المتكرر كل 30 ثانية حتى يتم نسخ الخبر ---------- */
   var alarmTimer = null;
+  var ticker = null, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0;
 
   function uncopiedItems() {
     return store.list().filter(function (it) { return !(it.ack && it.ack.kind === 'copied'); });
@@ -816,9 +828,16 @@
     alarmbar.classList.toggle('hidden', !on);
     if (on) {
       var secs = Math.round((S.alarmMutedUntil - Date.now()) / 1000);
-      U.txt(alarmText, secs > 0
+      // تنبيه المنفذ إن كانت إشعارات المتصفح غير مفعّلة (لن يظهر شيء والنافذة مصغّرة)
+      var warnPerm = '';
+      try {
+        if (S.deskNotify !== false && window.Notification && Notification.permission !== 'granted') {
+          warnPerm = ' — فعّل إشعارات المتصفح (السماح) ليظهر التنبيه والنافذة مصغّرة';
+        }
+      } catch (e) {}
+      U.txt(alarmText, (secs > 0
         ? 'التنبيه مُسكت مؤقتاً (' + Math.ceil(secs / 60) + ' دقيقة) — ' + n + ' خبر بانتظار النسخ'
-        : 'تنبيه متكرر كل ' + S.alarmEvery + ' ثانية حتى يتم النسخ — ' + n + ' خبر بانتظار النسخ');
+        : 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' حتى يتم النسخ — ' + n + ' خبر بانتظار النسخ') + warnPerm);
     }
     updateTitle();
   }
@@ -829,25 +848,54 @@
     document.title = (n ? '(' + n + ') تنبيه — ' : '') + base;
   }
 
+  function secWord(v) { return (Number(v) === 5 ? '5 ثوانٍ' : String(v) + ' ثانية'); }
+
   function fireAlarm() {
     if (S.sound && Date.now() > S.alarmMutedUntil) alerter.play('urgent');
   }
 
-  function startAlarmLoop() {
-    if (alarmTimer) clearInterval(alarmTimer);
-    alarmTimer = setInterval(function () {
-      var list = uncopiedItems();
-      if (!S.alarmRepeat || !list.length) { updateAlarmBar(); return; }
-      // 1) تنبيه صوتي متكرر
-      fireAlarm('repeat');
-      // 2) إشعار نظام متكرر (عندما تكون الشاشة في الخلفية أو مخفية)
-      if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
+  /* ---------- حلقة التنبيه (تعمل حتى والنافذة مصغّرة) ----------
+     1) الصوت: النغمات تُجدَّل مقدماً داخل محرّك الصوت (WebAudio) في محرّك الصوت نفسه،
+        لذلك تبقى ترن كل S.alarmEvery ثانية حتى لو خفّض المتصفح دقّة مؤقتات الصفحة.
+     2) إشعار سطح المكتب: يتكرر كل S.deskEvery ثانية عبر خدمة التطبيق (فوق شريط المهام).
+     3) تحديث تلقائي: فحص دوري لاتصال البث وإعادة الاتصال فوراً إن انقطع. */
+  function alarmTick() {
+    // (3) صيانة الاتصال — كل 10 ثوانٍ
+    if (Date.now() - lastHealthAt > 10000) {
+      lastHealthAt = Date.now();
+      if (!bus.isAlive()) { try { bus.reconnectNow(); } catch (e) {} }
+    }
+    var list = uncopiedItems();
+    var active = S.alarmRepeat && list.length > 0 && Date.now() > S.alarmMutedUntil;
+    if (!active) { alerter.cancelAll(); updateAlarmBar(); return; }
+
+    // (1) الصوت
+    var everyMs = Math.max(3, Number(S.alarmEvery) || 5) * 1000;
+    if (S.sound) {
+      // أفق الجدولة: أطول عند التصغير (3 دقائق) حتى لا تتأثر النغمة بأي تعطيل للنافذة
+      var ok = alerter.keepEvery(everyMs, document.hidden ? 180000 : 90000);
+      if (!ok && Date.now() - lastSoundAt >= everyMs) {   // احتياطي: الصوت لم يُفتح بعد (يحتاج نقرة واحدة)
+        lastSoundAt = Date.now();
+        fireAlarm();
+      }
+    } else { alerter.cancelAll(); }
+
+    // (2) إشعار سطح المكتب المتكرر
+    if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
+      var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
+      if (Date.now() - lastNotifyAt >= nEvery) {
+        lastNotifyAt = Date.now();
         var first = list[0];
         var body = first ? ('بانتظار النسخ (' + list.length + '): ' + String(first.text).slice(0, 120)) : 'خبر بانتظار النسخ';
         reNotify(body, list.length);
       }
-      updateAlarmBar();
-    }, Math.max(10, S.alarmEvery) * 1000);
+    }
+    updateAlarmBar();
+  }
+
+  function startAlarmLoop() {
+    if (ticker) return;                                  // الحلقة تعمل دائماً (كل ثانية)
+    ticker = U.createTicker(alarmTick, 1000);            // مؤقّت داخل Worker: أقل تأثراً بتصغير النافذة
   }
 
   function reNotify(body, count) {
@@ -865,6 +913,7 @@
     var nTitle = 'خبر عاجل — ' + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
+    lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
@@ -896,6 +945,8 @@
       var a = { id: id, k: 'copied', b: S.opName, ts: Date.now(), n: ok ? '' : 'manual' };
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
+      try { alerter.cancelAll(); } catch (e) {}            // إسكات التنبيه فوراً
+      try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
       alerter.play('info');
       updateAlarmBar();
       U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر' : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');

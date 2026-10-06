@@ -246,9 +246,17 @@ window.URGENT = (function () {
     try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
   }
 
-  /* ===================== الصوت والقراءة ===================== */
+  /* ===================== الصوت والتنبيه ===================== */
+  /**
+   * createAlerter — نغمات التنبيه عبر محرّك الصوت (WebAudio).
+   * الميزة المهمة: keepEvery() تُجدول النغمات مقدماً داخل محرّك الصوت نفسه،
+   * فتبقى ترن كل X ثانية حتى لو خفّض المتصفح دقّة المؤقتات في نافذة مصغّرة.
+   */
   function createAlerter() {
     var ctx = null, unlocked = false;
+    var nodes = [];        // كل النغمات المُشغّلة/المجدولة (لإسكات فوري عند النسخ)
+    var nextAt = 0;        // موعد الدفعة القادمة بزمن محرّك الصوت
+    var lastGap = 0;       // الفاصل المُجدول حالياً (لتغيير السرعة فوراً)
 
     function ensure() {
       if (ctx) return ctx;
@@ -260,7 +268,7 @@ window.URGENT = (function () {
     function unlock() {
       var c = ensure();
       if (!c) return;
-      if (c.state === 'suspended') c.resume();
+      try { if (c.state === 'suspended') c.resume(); } catch (e) {}
       unlocked = c.state === 'running';
       // تشغيل نغمة صامتة لفتح الصوت في بعض المتصفحات
       try {
@@ -270,7 +278,8 @@ window.URGENT = (function () {
       } catch (e) {}
     }
     function tone(freq, at, dur, vol) {
-      var c = ctx, o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + at;
+      var c = ctx; if (!c) return null;
+      var o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + at;
       o.type = 'triangle';
       o.frequency.setValueAtTime(freq, t0);
       g.gain.setValueAtTime(0.0001, t0);
@@ -278,24 +287,84 @@ window.URGENT = (function () {
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       o.connect(g); g.connect(c.destination);
       o.start(t0); o.stop(t0 + dur + 0.02);
+      nodes.push(o);
+      if (nodes.length > 300) nodes.shift();
+      o.onended = function () { var i = nodes.indexOf(o); if (i > -1) nodes.splice(i, 1); };
+      return o;
+    }
+    function burst(at, kind) {
+      try {
+        if (kind === 'urgent') {
+          tone(932, at, 0.30, 0.24); tone(1244, at + 0.16, 0.30, 0.22);
+          tone(932, at + 0.44, 0.28, 0.22); tone(1568, at + 0.62, 0.42, 0.20);
+        } else if (kind === 'error') {
+          tone(392, at, 0.22, 0.20); tone(294, at + 0.18, 0.30, 0.18);
+        } else {
+          tone(880, at, 0.16, 0.16); tone(1174, at + 0.14, 0.22, 0.14);
+        }
+      } catch (e) {}
     }
     function play(kind) {
       var c = ensure();
       if (!c) return;
-      if (c.state === 'suspended') { c.resume(); }
-      if (!ctx) return;
-      try {
-        if (kind === 'urgent') {
-          tone(932, 0, 0.30, 0.24); tone(1244, 0.16, 0.30, 0.22);
-          tone(932, 0.44, 0.28, 0.22); tone(1568, 0.62, 0.42, 0.20);
-        } else if (kind === 'error') {
-          tone(392, 0, 0.22, 0.20); tone(294, 0.18, 0.30, 0.18);
-        } else {
-          tone(880, 0, 0.16, 0.16); tone(1174, 0.14, 0.22, 0.14);
-        }
-      } catch (e) {}
+      try { if (c.state === 'suspended') c.resume(); } catch (e) {}
+      burst(0.02, kind);
     }
-    return { unlock: unlock, play: play, ready: function () { return !!(ctx && ctx.state === 'running'); } };
+    /* جدولة مسبقة: يبقى التنبيه يرن كل everyMs حتى آخر horizonMs (افتراضياً 90 ثانية)
+       بلا حاجة إلى أي مؤقّت في الصفحة — تعمل والنافذة مصغّرة أو في الخلفية. */
+    function keepEvery(everyMs, horizonMs) {
+      var c = ensure();
+      if (!c) return false;
+      try { if (c.state === 'suspended') c.resume(); } catch (e) {}
+      if (c.state !== 'running') return false;
+      var now = c.currentTime;
+      var until = now + (horizonMs || 90000) / 1000;
+      var gap = Math.max(3, Number(everyMs) || 5000) / 1000;
+      var guard = 0;
+      // تغيّرت السرعة من الإعدادات؟ نلغي الجدولة القديمة ونعيد التخطيط فوراً
+      if (lastGap && gap !== lastGap) { cancelAll(); now = c.currentTime; until = now + (horizonMs || 90000) / 1000; }
+      lastGap = gap;
+      if (!nextAt || nextAt < now) nextAt = now + 0.2;
+      while (nextAt <= until && guard++ < 80) { burst(nextAt - now, 'urgent'); nextAt += gap; }
+      return true;
+    }
+    /* إسكات فوري: إيقاف كل نغمة تعمل الآن أو مجدولة */
+    function cancelAll() {
+      nextAt = 0;
+      var list = nodes.slice();
+      nodes.length = 0;
+      list.forEach(function (n) { try { n.stop(0); } catch (e) {} });
+    }
+    return {
+      unlock: unlock, play: play, keepEvery: keepEvery, cancelAll: cancelAll,
+      scheduled: function () { return nodes.length; },
+      ready: function () { return !!(ctx && ctx.state === 'running'); }
+    };
+  }
+
+  /* ===================== مؤقّت مقاوم للتصغير =====================
+     مؤقّت داخل خيط Worker (أقل تأثراً بتعطيل مؤقتات النوافذ المصغّرة)
+     مع احتياطي setInterval إن لم يتوفر Worker. */
+  function createTicker(onTick, ms) {
+    ms = Math.max(200, Number(ms) || 1000);
+    var w = null, id = null;
+    try {
+      var src = 'var t=null;self.onmessage=function(e){if(e.data==="start"){clearInterval(t);' +
+                't=setInterval(function(){postMessage(1)},' + ms + ');}else{clearInterval(t);}};';
+      w = new Worker(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+      w.onmessage = function () { try { onTick(); } catch (e) {} };
+      w.onerror = function () {};
+      w.postMessage('start');
+    } catch (e) { w = null; }
+    if (!w) id = setInterval(function () { try { onTick(); } catch (e) {} }, ms);
+    return {
+      viaWorker: !!w,
+      stop: function () {
+        try { if (w) { w.postMessage('stop'); w.terminate(); } } catch (e) {}
+        w = null;
+        if (id) { clearInterval(id); id = null; }
+      }
+    };
   }
 
   /* ===================== ناقل الرسائل (MQTT عبر WebSocket) ===================== */
@@ -372,7 +441,7 @@ window.URGENT = (function () {
         c = window.mqtt.connect(b.url, {
           clientId: 'ucn_' + Math.random().toString(16).slice(2, 12),
           clean: true,
-          keepalive: 30,
+          keepalive: 120,        // أطول: يحفظ الاتصال أثناء تصغير النافذة
           connectTimeout: 9000,
           reconnectPeriod: 4000,
           protocolVersion: 4,
@@ -968,6 +1037,23 @@ window.URGENT = (function () {
     if (icon) b.innerHTML = ic(icon, 18) + label; else b.textContent = label;
     return b;
   }
+  /* صف اختيار من أزرار صغيرة (مثل: 5 / 10 / 30 ثانية) */
+  function chipsRow(label, hint, values, current, onPick, suffix) {
+    var r = rowEl(label, hint);
+    var box = el('div', 'uc-row-actions uc-chips');
+    var btns = [];
+    (values || []).forEach(function (v) {
+      var b = btnEl(String(v) + (suffix || ''), Number(v) === Number(current) ? 'primary' : 'ghost');
+      b.addEventListener('click', function () {
+        btns.forEach(function (o) { o.className = 'uc-btn ' + (o === b ? 'primary' : 'ghost'); });
+        onPick(v);
+      });
+      btns.push(b); box.appendChild(b);
+    });
+    r.appendChild(box);
+    return r;
+  }
+
   function section(title, icon) {
     var s = el('div', 'uc-sec');
     var h = el('div', 'uc-sec-h');
@@ -1062,7 +1148,7 @@ window.URGENT = (function () {
    * buildSettings — واجهة إعدادات جاهزة تُبنى في الصفحة
    * opts: {
    *   title, subtitle,
-   *   state: { sound, speak, speakVoice, alarmRepeat, alarmEvery, notifyRepeat, fontScale },
+   *   state: { sound, alarmRepeat, alarmEvery, deskEvery, deskNotify, notifyRepeat, fontScale },
    *   onChange(key, value),
    *   showDisplay: true,            // إظهار قسم حجم الخط
    *   onSpeakTest(), 
@@ -1101,9 +1187,12 @@ window.URGENT = (function () {
     }));
     secN.appendChild(deskRow);
 
-    var repRow = rowEl('تكرار الإشعار ما دام الخبر غير منسوخ', 'يُعاد الإشعار كل ' + (st.alarmEvery || 30) + ' ثانية');
+    var repRow = rowEl('تكرار الإشعار ما دام الخبر غير منسوخ', 'يُعاد الإشعار كل ' + (st.deskEvery || 30) + ' ثانية');
     repRow.appendChild(switchEl(st.notifyRepeat !== false, function (v) { opts.onChange('notifyRepeat', v); refresh(); }));
     secN.appendChild(repRow);
+
+    secN.appendChild(chipsRow('كل كم ثانية يتكرر إشعار سطح المكتب؟', 'يظهر الإشعار فوق شريط المهام ما دام الخبر غير منسوخ',
+      [10, 30, 60, 120], st.deskEvery || 30, function (v) { opts.onChange('deskEvery', v); }, 'ث'));
     body.appendChild(secN);
 
     /* ---- قسم الصوت والتنبيه ---- */
@@ -1112,9 +1201,13 @@ window.URGENT = (function () {
     sndRow.appendChild(switchEl(st.sound !== false, function (v) { opts.onChange('sound', v); }));
     secS.appendChild(sndRow);
 
-    var alarmRow = rowEl('تكرار التنبيه حتى يتم النسخ', 'يستمر كل ' + (st.alarmEvery || 30) + ' ثانية حتى يضغط المنفذ زر النسخ');
+    var alarmRow = rowEl('تكرار التنبيه حتى يتم النسخ', 'يستمر كل ' + (st.alarmEvery || 5) + ' ثانية حتى يضغط المنفذ زر النسخ');
     alarmRow.appendChild(switchEl(st.alarmRepeat !== false, function (v) { opts.onChange('alarmRepeat', v); }));
     secS.appendChild(alarmRow);
+
+    /* سرعة تكرار النغمة — 5 ثوانٍ هي الافتراضية للأخبار العاجلة */
+    secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تُجدَّل مسبقاً في محرّك الصوت فتبقى ترن حتى والنافذة مصغّرة',
+      [3, 5, 10, 20, 30, 60], st.alarmEvery || 5, function (v) { opts.onChange('alarmEvery', v); }, 'ث'));
 
     body.appendChild(secS);
 
@@ -1322,7 +1415,8 @@ window.URGENT = (function () {
     makePassword: makePassword, isOwner: isOwner, owners: owners,
     ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,
     gitSaveAdmins: gitSaveAdmins, replaceAdminsBlock: replaceAdminsBlock,
-    createAlerter: createAlerter,
+    createAlerter: createAlerter, createTicker: createTicker,
+    chipsRow: chipsRow,
     // PWA وPush
     swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
     enablePush: enablePush, disablePush: disablePush, pushStatus: pushStatus,
