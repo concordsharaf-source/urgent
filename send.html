@@ -28,7 +28,8 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0}
   body{
-    font-family:var(--font);color:var(--ink);min-height:100vh;
+    display:flex;flex-direction:column;min-height:100vh;
+    font-family:var(--font);color:var(--ink);
     background:
       radial-gradient(1000px 480px at 85% -10%, rgba(224,36,36,.18), transparent 60%),
       radial-gradient(800px 420px at 5% 0%, rgba(56,189,248,.10), transparent 60%),
@@ -76,31 +77,53 @@
   .btn.danger:hover{background:rgba(239,68,68,.26)}
   .back-link{display:block;text-align:center;margin-top:16px;color:#93c5fd;font-size:13px;text-decoration:none}
 
-  /* ============ الشريط العلوي ============ */
-  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-    padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.85));
+  /* ============ الشريط العلوي (مطابق لشاشة الاستقبال) ============ */
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.86));
     backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09)}
-  .brand{display:flex;align-items:center;gap:11px;min-width:0}
-  .brand .logo{width:50px;height:50px;border-radius:14px;flex:0 0 auto;display:block;
-    background:#fff;padding:3px;object-fit:contain;border:1px solid rgba(255,255,255,.2)}
-  .brand h1{margin:0;font-size:18px;font-weight:800}
-  .brand p{margin:2px 0 0;font-size:12px;color:var(--dim)}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .logo{width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;background:#fff;object-fit:contain;padding:3px;
+    box-shadow:0 10px 26px -12px rgba(224,36,36,.85);border:1px solid rgba(255,255,255,.22)}
+  .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.2px}
+  .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
   .grow{flex:1 1 auto}
+
+  .conn{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+    padding:8px 13px;border-radius:999px}
+  .conn .dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+  .conn .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16)}
+  .conn .dot.wait{background:var(--warn);animation:blink 1.3s infinite}
+  .conn .dot.off{background:#ef4444}
+  @keyframes blink{50%{opacity:.3}}
+  #chipDisplay.on{color:#bbf7d0;border-color:rgba(52,211,153,.32)}
+
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .clock{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:#cbd5e1;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:9px 13px;border-radius:12px;direction:ltr}
   .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);color:#dbe3ee;
-    padding:9px 13px;border-radius:12px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
-    transition:.15s;text-decoration:none}
-  .chip:hover{background:rgba(255,255,255,.13)}
-  .chip.on{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.4);color:#bbf7d0}
+    padding:9px 13px;border-radius:12px;font-size:13.5px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px;text-decoration:none}
+  .chip:hover{background:rgba(255,255,255,.12)}
+  .chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe}
   .chip.alert{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fecaca;animation:blink 1.8s infinite}
+  .chip.ico-only{padding-inline:9px}
+  .chip.ico-only .ico{margin-inline-end:0}
   .chip .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
   .chip .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
   .chip .dot.wait{background:var(--warn)}
   .chip .dot.off{background:#ef4444}
-  @keyframes blink{50%{opacity:.55}}
+
+  /* ============ تذييل الإصدار (مطابق لشاشة الاستقبال) ============ */
+  .verfoot{max-width:1080px;margin:0 auto 30px;padding:14px 20px 0;display:flex;align-items:center;gap:10px;
+    color:#64748b;font-size:12.5px;letter-spacing:.4px}
+  .verfoot::before,.verfoot::after{content:"";height:1px;flex:1;
+    background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent)}
+  .verfoot .vnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:#94a3b8;font-weight:700}
 
 
   /* ============ التغليف ============ */
-  .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:16px}
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:16px;flex:1 1 auto;width:100%}
 
   .composer{padding:18px}
   .composer .lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-bottom:9px;font-weight:700}
@@ -197,18 +220,21 @@
     </div>
     <div class="grow"></div>
 
-    <button class="chip" id="chipDisplay" title="حالة شاشة المنفذ">
+    <div class="conn" id="chipDisplay" title="حالة شاشة المنفذ">
       <span class="dot off" id="displayDot"></span><span id="displayText">شاشة المنفذ: غير متصلة</span>
-    </button>
-    <button class="chip" id="chipConn" title="حالة الاتصال بخادم البث">
+    </div>
+    <div class="conn" id="chipConn" title="حالة الاتصال بخادم البث">
       <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
-    </button>
-    <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span> بانتظار النسخ</button>
-    <button class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></button>
-    <span class="chip" id="verChip" title="إصدار الصفحة" style="cursor:default;font-family:ui-monospace,Menlo,Consolas,monospace">v2.1</span>
-    <a class="chip" href="index.html" target="_blank" rel="noopener" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i>الشاشة</a>
-    <button class="chip" id="btnSettings" title="الإعدادات وبيانات الدخول"><i class="ico" data-ic="gear"></i>الإعدادات</button>
-    <button class="chip" id="btnLogout" title="خروج"><i class="ico" data-ic="exit"></i>خروج</button>
+    </div>
+
+    <div class="controls">
+      <span class="clock" id="clock">--:--:--</span>
+      <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span> بانتظار النسخ</button>
+      <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
+      <a class="chip ico-only" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
+      <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
+      <button class="chip ico-only" id="btnLogout" aria-label="خروج" title="خروج"><i class="ico" data-ic="exit"></i></button>
+    </div>
   </header>
 
   <main class="wrap">
@@ -242,6 +268,11 @@
       <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
     </div>
   </main>
+
+<footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
+  <span class="vlbl">الإصدار</span>
+  <span class="vnum" id="verChip">v3.0</span>
+</footer>
 </section>
 
 <script src="config.js"></script>
@@ -306,6 +337,11 @@
     try { U.registerSW(); } catch (e) {}
     S.sound = U.lsGet(U.LS_PREFIX + room + ':edSound', true) !== false;
     S.alarmRepeat = true;
+    var clockEl = U.$('#clock');
+    if (clockEl) {
+      U.txt(clockEl, U.fmtClock(Date.now()));
+      setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
+    }
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
