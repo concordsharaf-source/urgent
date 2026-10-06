@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.3" />
+<link rel="stylesheet" href="ui.css?v=3.4" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -253,7 +253,7 @@
       <span class="clock" id="clock">--:--:--</span>
       <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span><span class="ptxt"> بانتظار النسخ</span></button>
       <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
-      <a class="chip ico-only" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
+      <a class="chip ico-only" id="linkDisplay" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
       <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
       <button class="chip ico-only" id="btnLogout" aria-label="خروج" title="خروج"><i class="ico" data-ic="exit"></i></button>
     </div>
@@ -297,8 +297,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=3.3"></script>
-<script src="core.js?v=3.3"></script>
+<script src="config.js?v=3.4"></script>
+<script src="core.js?v=3.4"></script>
 <script>
 (function () {
   'use strict';
@@ -372,6 +372,12 @@
         last = y;
       }, { passive: true });
     })();
+
+    // رابط شاشة الاستقبال يحمل نفس معرّف الغرفة حتى يعمل الطرفان على القناة نفسها
+    try {
+      var ld = U.$('#linkDisplay');
+      if (ld && room) ld.href = 'index.html#r=' + encodeURIComponent(room);
+    } catch (e) {}
 
     var clockEl = U.$('#clock');
     if (clockEl) {

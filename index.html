@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.3" />
+<link rel="stylesheet" href="ui.css?v=3.4" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -106,6 +106,9 @@
   .chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe}
   .chip.off{opacity:.55}
   .chip.link{color:#bae6fd;border-color:rgba(56,189,248,.35)}
+  /* زر العودة للتحرير: يظهر للمحررين فقط، بلون مميّز */
+  .chip.editor-only{background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.45);color:#e0f2fe}
+  .chip.editor-only:hover{background:rgba(56,189,248,.28)}
 
   /* ============ شرائط الحالة ============ */
   .alarmbar{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
@@ -249,6 +252,7 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
+    <a class="chip ico-only editor-only hidden" id="btnToEditor" href="send.html" aria-label="العودة إلى لوحة التحرير" title="العودة إلى لوحة التحرير"><i class="ico" data-ic="back"></i></a>
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
@@ -299,8 +303,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.3"></script>
-<script src="core.js?v=3.3"></script>
+<script src="config.js?v=3.4"></script>
+<script src="core.js?v=3.4"></script>
 <script>
 (function () {
   'use strict';
@@ -535,6 +539,7 @@
     try { U.registerSW(); } catch (e) {}
     try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
     try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
+    showEditorButton();
     bus.connect();
     bus.startPresence();
     setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
@@ -543,6 +548,20 @@
     var vc = U.$('#verChip');
     if (vc) { if (cfg.version) U.txt(vc, 'v' + cfg.version); else vc.classList.add('hidden'); }
     setInterval(tick, 15000);
+  }
+
+  /* ---------- زر العودة للتحرير: للمحررين المسجّلين على هذا الجهاز فقط ---------- */
+  function showEditorButton() {
+    try {
+      var btn = U.$('#btnToEditor');
+      if (!btn) return;
+      var sess = U.lsGet(U.LS_PREFIX + room + ':session', null);
+      if (!sess || !sess.user) return;                              // زائر عادي => لا يظهر شيء
+      if (sess.exp && sess.exp < Date.now()) return;                // جلسة منتهية
+      if (!U.findAdmin(sess.user)) return;                          // حساب لم يعد موجوداً
+      btn.href = 'send.html#r=' + encodeURIComponent(room);   // نفس القناة
+      btn.classList.remove('hidden');
+    } catch (e) {}
   }
 
   function applyFs() { feed.style.setProperty('--fs', String(S.fs)); }

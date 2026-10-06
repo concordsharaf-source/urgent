@@ -24,6 +24,7 @@ window.URGENT = (function () {
   /* ===================== أيقونات SVG (بدل الإيموجي: تظهر بنفس الشكل على كل الأجهزة) ===================== */
   var ICONS = {
     copy:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h8.5A1.5 1.5 0 0 1 15 5v.5"/></svg>',
+    back:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.5v6.2a4.6 4.6 0 0 1-4.6 4.6H5"/><path d="m9 11.5-4 3.8 4 3.9"/></svg>',
     edit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.6 3.4a2.1 2.1 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5Z"/></svg>',
     pin:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V22"/><path d="M9 4h6v6.6l2 3.4H7l2-3.4Z"/></svg>',
     trash:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17"/><path d="M8.5 6.5V4h7v2.5"/><path d="M6 6.5 7 20h10l1-13.5"/><path d="M10.5 10.5v6M13.5 10.5v6"/></svg>',
