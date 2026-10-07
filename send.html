@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.0" />
+<link rel="stylesheet" href="ui.css?v=4.1" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -203,6 +203,12 @@
     border:1px solid rgba(255,255,255,.18);
     box-shadow:0 16px 34px -22px rgba(224,36,36,.8);
     transition:background .5s ease}
+  /* بطاقة الملاحظة: زرقاء مثل شاشة المنفذ — وتتحول رمادية عند الاستلام */
+  .item.note{background:linear-gradient(135deg,#2563eb,#1d4ed8 62%,#152a63);
+    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(37,99,235,.9)}
+  .item.note .itop .tag{background:rgba(0,0,0,.32)}
+  .item.note .livedot{background:#bfdbfe}
+  .item.note .itext{color:#fff}
   .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
   .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
@@ -337,8 +343,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.0"></script>
-<script src="core.js?v=4.0"></script>
+<script src="config.js?v=4.1"></script>
+<script src="core.js?v=4.1"></script>
 <script>
 (function () {
   'use strict';
@@ -951,18 +957,18 @@
     var text = U.cleanNewsText(newText);
     if (!text) { U.toast('لا يمكن حفظ نص فارغ', 'warn'); return; }
     if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
-    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now() };
-    store.applyNews(upd);
-    bus.publish('news/' + id, upd, { retain: true });
+    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now(), n: it.note ? 1 : 0 };
+    if (it.note) store.applyNote(upd); else store.applyNews(upd);
+    bus.publish((it.note ? 'note/' : 'news/') + id, upd, { retain: true });
     S.editing = null;
     S.draft = null;
     render();
-    U.toast('تم تحديث الخبر', 'ok');
+    U.toast(it.note ? 'تم تحديث الملاحظة' : 'تم تحديث الخبر', 'ok');
   }
 
   function actPin(id) {
     var it = store.get(id);
-    if (!it) return;
+    if (!it || it.note) return;
     if (it.pin) {
       store.applyPin({ id: id }, false);
       bus.publish('pin/' + id, '', { retain: true });
@@ -979,13 +985,14 @@
   function actDelete(id) {
     var it = store.get(id);
     if (!it) return;
-    if (!confirm('حذف هذا الخبر من شاشة المنفذ ومن كل الأجهزة؟')) return;
+    if (!confirm((it.note ? 'حذف هذه الملاحظة' : 'حذف هذا الخبر') + ' من شاشة المنفذ ومن كل الأجهزة؟')) return;
     wipe(id);
-    U.toast('تم حذف الخبر', 'ok');
+    U.toast(it.note ? 'تم حذف الملاحظة' : 'تم حذف الخبر', 'ok');
   }
 
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
+    bus.publish('note/' + id, '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -995,7 +1002,7 @@
 
   function actCopy(id) {
     var it = store.get(id);
-    if (!it) return;
+    if (!it || it.note) return;
     U.copyText(it.text).then(function (ok) {
       U.toast(ok ? 'تم نسخ نص الخبر' : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
     });
@@ -1017,17 +1024,37 @@
       }
       return;
     }
+    if (rel.indexOf('note/') === 0) {
+      var nid = rel.slice(5);
+      if (isEmpty) { store.remove(nid); render(); return; }       // ملاحظة محذوفة من جهاز آخر
+      if (!data || !data.t) return;
+      var resN = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (resN && resN.isNew) {
+        S.shownIds[resN.item.id] = Date.now();
+        if (!normOwn(data.a)) {
+          if (S.sound) alerter.play('info');
+          if (document.hidden) U.flashTitle('ملاحظة جديدة');
+        }
+      }
+      render();
+      return;
+    }
     if (rel.indexOf('ack/') === 0) {
       if (isEmpty) return;
-      if (data && S.notesSent[data.id]) {                       // إشارة تخصّ ملاحظة أرسلناها
-        if (data.k === 'got') {
+      var wasNote = data && S.notesSent[data.id];
+      var prevNote = store.get(data.id);
+      var wasGot = prevNote && prevNote.ack && prevNote.ack.kind === 'got';
+      store.applyAck(data);                                      // يُحدِّث البطاقة (أزرق ⇒ رمادي عند الاستلام)
+      if (wasNote) {                                             // إشارة تخصّ ملاحظة أرسلناها
+        if (data.k === 'got' && !wasGot) {
           setNoteStatus('تم استلام الملاحظة على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
           U.toast('المنفذ استلم الملاحظة', 'ok');
           if (S.sound) alerter.play('info');
         } else if (data.k === 'received') {
           setNoteStatus('وصلت الملاحظة إلى الشاشة — بانتظار الاستلام', '');
         }
-        return;                                                 // لا تُعرض ضمن أخبار اللوحة
+        render();
+        return;
       }
       var prev = store.get(data.id);
       var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
@@ -1134,7 +1161,8 @@
     // الإحصاءات
     statsBox.innerHTML = '';
     [['total', 'إجمالي الأخبار', 'gray'], ['copied', 'تم نسخها', 'green'], ['received', 'وصلت ولم تُنسخ', 'blue'],
-     ['pending', 'لم تصل بعد', 'red'], ['pinned', 'مثبّتة', 'gray']].forEach(function (x) {
+     ['pending', 'لم تصل بعد', 'red'], ['pinned', 'مثبّتة', 'gray'],
+     ['notesPending', 'ملاحظات بانتظار الاستلام', 'blue'], ['notesDone', 'ملاحظات مُستلمة', 'gray']].forEach(function (x) {
       var d = U.el('div', 'stat ' + x[2]);
       d.appendChild(U.el('div', 'n', String(st[x[0]])));
       d.appendChild(U.el('div', 't', x[1]));
@@ -1143,9 +1171,15 @@
 
     var list = items.filter(function (it) {
       var kind = it.ack ? it.ack.kind : null;
-      if (S.filter === 'pending' && kind) return false;                 // لم يصل بعد
-      if (S.filter === 'uncopied' && kind === 'copied') return false;    // لم يُنسخ بعد (يشمل من وصل)
-      if (S.filter === 'copied' && kind !== 'copied') return false;
+      if (it.note) {                                                     // الملاحظات: تنتهي بالاستلام
+        if (S.filter === 'pending' && kind) return false;
+        if (S.filter === 'uncopied' && kind === 'got') return false;
+        if (S.filter === 'copied' && kind !== 'got') return false;
+      } else {
+        if (S.filter === 'pending' && kind) return false;                 // لم يصل بعد
+        if (S.filter === 'uncopied' && kind === 'copied') return false;    // لم يُنسخ بعد (يشمل من وصل)
+        if (S.filter === 'copied' && kind !== 'copied') return false;
+      }
       if (S.search && it.text.toLowerCase().indexOf(S.search.toLowerCase()) < 0) return false;
       return true;
     });
@@ -1172,19 +1206,21 @@
   function buildItem(it) {
     var n = U.el('article', 'item');
     n.setAttribute('data-id', it.id);
-    var copied = it.ack && it.ack.kind === 'copied';
-    if (copied) n.classList.add('copied');
-    if (it.pin) n.classList.add('pinned');
+    var isNote = !!it.note;
+    var copied = isNote ? !!(it.ack && it.ack.kind === 'got') : !!(it.ack && it.ack.kind === 'copied');
+    if (isNote) n.classList.add('note');                       // أزرق
+    if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
+    if (it.pin && !isNote) n.classList.add('pinned');
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
 
     var top = U.el('div', 'itop');
     var tag = U.el('span', 'tag');
-    tag.innerHTML = '<i class="livedot"></i>عاجل';
+    tag.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || ''));
     top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
     if (it.editedAt) top.appendChild(U.el('span', 'mini', 'محدَّث ' + U.fmtTime(it.editedAt)));
-    if (it.pin) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
+    if (it.pin && !isNote) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
     top.appendChild(U.el('span', 'mini', U.rel(it.ts)));
     n.appendChild(top);
 
@@ -1214,11 +1250,11 @@
     // حالة الخبر
     if (copied) {
       var p = U.el('span', 'pill ok big');
-      U.setIconText(p, 'check', 'تم نسخه من المنفذ — ' + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
+      U.setIconText(p, 'check', (isNote ? 'تم استلامه من المنفذ — ' : 'تم نسخه من المنفذ — ') + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
       bottom.appendChild(p);
     } else if (it.ack && it.ack.kind === 'received') {
       var p2 = U.el('span', 'pill info big');
-      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + ' — بانتظار النسخ');
+      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + (isNote ? ' — بانتظار الاستلام' : ' — بانتظار النسخ'));
       bottom.appendChild(p2);
     } else if (bus.state() === 'connected') {
       var p3 = U.el('span', 'pill warn big');
@@ -1243,7 +1279,11 @@
     var bDel = U.el('button', 'ibtn');
     bDel.innerHTML = U.ic('trash') + 'حذف';
     bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
-    acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
+    if (isNote) {
+      acts.appendChild(bEdit); acts.appendChild(bDel);        // الملاحظة: تعديل وحذف فقط
+    } else {
+      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
+    }
     bottom.appendChild(acts);
     n.appendChild(bottom);
     return n;
