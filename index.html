@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.1" />
+<link rel="stylesheet" href="ui.css?v=4.2" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -132,6 +132,31 @@
   .alarmbar .abtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
     color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   .alarmbar .abtn:hover{background:rgba(255,255,255,.24)}
+
+  /* ===== أرشيف الأيام (خانة لكل يوم، منسدلة بزر إغلاق) ===== */
+  .archive{margin:26px 0 10px;display:flex;flex-direction:column;gap:10px}
+  .arch-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#cbd5e1;
+    padding:0 4px 2px;border-bottom:1px dashed rgba(148,163,184,.28)}
+  .arch-h .cnt{font-size:12.5px;font-weight:700;color:var(--dim);margin-inline-start:auto}
+  .day{border:1px solid rgba(148,163,184,.22);border-radius:16px;background:rgba(148,163,184,.06);overflow:hidden}
+  .day-head{width:100%;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;
+    background:transparent;border:none;color:#e2e8f0;font:inherit;font-weight:800;font-size:15px;text-align:right}
+  .day-head:hover{background:rgba(148,163,184,.10)}
+  .day-head .car{margin-inline-start:auto;display:inline-flex;transition:transform .25s ease;opacity:.8}
+  .day.open .day-head .car{transform:rotate(180deg)}
+  .day-head .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
+    background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.3);color:#e2e8f0}
+  .day-body{display:none;padding:0 12px 12px;border-top:1px solid rgba(148,163,184,.16)}
+  .day.open .day-body{display:block;animation:dayOpen .3s ease-out}
+  @keyframes dayOpen{from{opacity:0;transform:translateY(-8px)}}
+  /* بطاقات الأرشيف: أصغر قليلاً لتسهيل المراجعة */
+  .day-body .card{border-radius:16px;padding:14px 16px 12px;box-shadow:none}
+  .day-body .card .text{font-size:calc(clamp(14px, 0.7vw + 10px, 20px) * var(--fs))}
+  .day-body .copy-btn,.day-body .recv-btn{padding:9px 18px;font-size:14.5px;min-height:40px}
+  .day-close{width:100%;margin-top:12px;padding:11px;border-radius:12px;cursor:pointer;font:inherit;
+    font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
+    border:1px solid rgba(148,163,184,.3)}
+  .day-close:hover{background:rgba(148,163,184,.22)}
 
   .editors{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 0;max-width:1240px;margin:0 auto}
   .editors .lbl{font-size:12.5px;color:var(--dim)}
@@ -331,6 +356,12 @@
     <h2>بانتظار الأخبار…</h2>
     <p>هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
   </div>
+  <!-- أرشيف الأيام السابقة: خانة لكل يوم وتاريخها تُفتح بالضغط -->
+  <section class="archive hidden" id="archive">
+    <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
+      <span class="cnt" id="archCount"></span></div>
+    <div id="archDays"></div>
+  </section>
 </main>
 
 <footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
@@ -338,8 +369,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.1"></script>
-<script src="core.js?v=4.1"></script>
+<script src="config.js?v=4.2"></script>
+<script src="core.js?v=4.2"></script>
 <script>
 (function () {
   'use strict';
@@ -386,6 +417,7 @@
   var connDot = U.$('#connDot'), connText = U.$('#connText');
 
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
+  var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var clockEl = U.$('#clock');
   var btnSound = U.$('#btnSound');
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
@@ -1304,6 +1336,9 @@
 
   /* ---------- العرض ---------- */
   var nodes = {};
+  var dayNodes = {};                 // يوم ⇒ صندوقه في الأرشيف
+  var openDays = {};                 // الأيام المفتوحة حالياً
+  var curToday = U.dayKeyOf(Date.now());
 
   function render() {
     var items = store.list();
@@ -1314,8 +1349,11 @@
       if (!want[id]) { nodes[id].remove(); delete nodes[id]; delete S.fresh[id]; }
     });
 
+    /* ---- اليوم الحالي: كما كان (بالترتيب) ---- */
+    var g = U.groupByDay(items);
+    curToday = g.todayKey;
     var prev = null;
-    items.forEach(function (it) {
+    g.todayItems.forEach(function (it) {
       var node = nodes[it.id];
       if (!node) { node = buildCard(it); nodes[it.id] = node; }
       updateCard(node, it);
@@ -1326,9 +1364,85 @@
       prev = node;
     });
 
+    /* ---- الأيام السابقة: خانة لكل يوم قابلة للفتح والإغلاق ---- */
+    renderArchive(g);
+
     emptyBox.classList.toggle('hidden', items.length > 0);
     if (!items.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
     if (items.length) updateHeaderCount(items);
+  }
+
+  function buildDay(key) {
+    var wrap = U.el('div', 'day');
+    wrap.setAttribute('data-day', key);
+    var head = U.el('button', 'day-head');
+    head.type = 'button';
+    head.innerHTML = U.ic('inbox', 18) + '<span class="dlabel"></span><span class="pill"></span>' +
+      '<span class="car">' + U.ic('chevron', 18) + '</span>';
+    wrap.appendChild(head);
+    var body = U.el('div', 'day-body');
+    var list = U.el('div', 'day-list');
+    body.appendChild(list);
+    var close = U.el('button', 'day-close');
+    close.type = 'button';
+    close.textContent = 'إغلاق القائمة';
+    close.setAttribute('data-day-close', key);
+    body.appendChild(close);
+    wrap.appendChild(body);
+    var d = { wrap: wrap, head: head, body: body, list: list, label: head.querySelector('.dlabel'), pill: head.querySelector('.pill') };
+    head.addEventListener('click', function () { toggleDay(key); });
+    close.addEventListener('click', function () { setDay(key, false); });
+    return d;
+  }
+
+  function setDay(key, open) {
+    openDays[key] = !!open;
+    var d = dayNodes[key];
+    if (!d) return;
+    d.wrap.classList.toggle('open', !!open);
+    U.txt(d.pill || d.head.querySelector('.pill'), open ? 'إغلاق' : ((d.count || 0) + ' خبر'));
+  }
+  function toggleDay(key) { setDay(key, !openDays[key]); }
+
+  function renderArchive(g) {
+    // احذف صناديق الأيام التي لم تعد تحتوي شيئاً
+    Object.keys(dayNodes).forEach(function (k) {
+      if (g.byDay[k]) return;
+      try { dayNodes[k].wrap.remove(); } catch (e) {}
+      delete dayNodes[k];
+      delete openDays[k];
+    });
+
+    g.days.forEach(function (k, idx) {
+      var d = dayNodes[k];
+      if (!d) { d = dayNodes[k] = buildDay(k); archDays.appendChild(d.wrap); }
+      else {
+        var expected = archDays.children[idx];
+        if (expected !== d.wrap) archDays.insertBefore(d.wrap, expected || null);
+      }
+      var list = g.byDay[k].slice().sort(function (a, b) { return b.ts - a.ts; });
+      d.count = list.length;
+      U.txt(d.label, U.dayLabel(k));
+      U.txt(d.pill, openDays[k] ? 'إغلاق' : (list.length + ' خبر'));
+      d.wrap.classList.toggle('open', !!openDays[k]);
+
+      var prv = null;
+      list.forEach(function (it) {
+        var node = nodes[it.id];
+        if (!node) { node = buildCard(it); nodes[it.id] = node; }
+        updateCard(node, it);
+        if (prv !== node) {
+          var exp = prv ? prv.nextSibling : d.list.firstChild;
+          if (exp !== node) d.list.insertBefore(node, exp);
+        }
+        prv = node;
+      });
+    });
+
+    archBox.classList.toggle('hidden', g.days.length === 0);
+    var total = 0;
+    g.days.forEach(function (k) { total += g.byDay[k].length; });
+    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر سابق') : '');
   }
 
   function updateHeaderCount(items) {
@@ -1456,6 +1570,8 @@
 
   function tick() {
     var now = Date.now();
+    // تغيّر اليوم (منتصف الليل) ⇒ نُعيد الترتيب: أخبار الأمس تنزل للأرشيف
+    if (U.dayKeyOf(now) !== curToday) { curToday = U.dayKeyOf(now); try { render(); } catch (e) {} }
     store.list().forEach(function (it) {
       var node = nodes[it.id];
       if (!node) return;

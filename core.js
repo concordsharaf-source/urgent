@@ -90,6 +90,46 @@ window.URGENT = (function () {
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
+  /* ===================== الأرشيف اليومي ===================== */
+  var AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  var AR_WDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  /* مفتاح اليوم المحلي (YYYY-MM-DD) */
+  function dayKeyOf(ts) {
+    var d = new Date(Number(ts) || Date.now());
+    return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+  }
+  function dayFromKey(k) {
+    var p = String(k || '').split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  /* اسم اليوم بالعربية: اليوم / أمس — الأحد 5 أكتوبر 2025 */
+  function dayLabel(k) {
+    var d = dayFromKey(k);
+    var today = dayKeyOf(Date.now()), yest = dayKeyOf(Date.now() - 86400e3);
+    var full = AR_WDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + AR_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    if (k === today) return 'اليوم — ' + full;
+    if (k === yest) return 'أمس — ' + full;
+    return full;
+  }
+  function dayShort(k) {
+    var d = dayFromKey(k);
+    return d.getDate() + ' ' + AR_MONTHS[d.getMonth()];
+  }
+  /* تقسيم قائمة إلى: أخبار اليوم + مجموعات الأيام السابقة */
+  function groupByDay(items) {
+    var today = dayKeyOf(Date.now());
+    var out = { todayKey: today, todayItems: [], days: [], byDay: {} };
+    (items || []).forEach(function (it) {
+      var k = dayKeyOf(it.ts);
+      if (k === today) { out.todayItems.push(it); return; }
+      if (!out.byDay[k]) { out.byDay[k] = []; out.days.push(k); }
+      out.byDay[k].push(it);
+    });
+    out.days.sort(function (a, b) { return a < b ? 1 : (a > b ? -1 : 0); });   // الأحدث أولاً
+    return out;
+  }
+
   function fmtTime(ts) { var d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function fmtClock(ts) { var d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
   function fmtDate(ts) { var d = new Date(ts); return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear(); }
@@ -1671,6 +1711,7 @@ window.URGENT = (function () {
     // إدارة الحسابات
     admins: admins, findAdmin: findAdmin, saveAdminsLocal: saveAdminsLocal, resetAdminsLocal: resetAdminsLocal,
     changeAdmin: changeAdmin, adminsToConfigCode: adminsToConfigCode, roomKey: roomKey,
+    dayKeyOf: dayKeyOf, dayLabel: dayLabel, dayShort: dayShort, groupByDay: groupByDay,
     // نقل وبيانات
     createBus: createBus, loadMqtt: loadMqtt, createStore: createStore, createSession: createSession,
     // نصوص ونسخ

@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.1" />
+<link rel="stylesheet" href="ui.css?v=4.2" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -235,6 +235,30 @@
     padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
   .ibtn:hover{background:rgba(255,255,255,.24)}
   .ibtn.solid{background:#fff;color:#b91c1c;border-color:#fff}
+  /* ===== أرشيف الأيام: خانة لكل يوم، تُفتح بالضغط وتُغلق بزر أسفلها ===== */
+  .archive{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+  .arch-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#cbd5e1;
+    padding:0 4px 6px;border-bottom:1px dashed var(--line)}
+  .arch-h .cnt{font-size:12.5px;font-weight:700;color:var(--dim);margin-inline-start:auto}
+  .day{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden}
+  .day-head{width:100%;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;
+    background:transparent;border:none;color:#e2e8f0;font:inherit;font-weight:800;font-size:14.5px;text-align:right}
+  .day-head:hover{background:rgba(148,163,184,.08)}
+  .day-head .car{margin-inline-start:auto;display:inline-flex;transition:transform .25s ease;opacity:.8}
+  .day.open .day-head .car{transform:rotate(180deg)}
+  .day-head .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
+    background:rgba(148,163,184,.16);border:1px solid rgba(148,163,184,.28)}
+  .day-body{display:none;padding:0 12px 12px;border-top:1px solid var(--line)}
+  .day.open .day-body{display:block;animation:dayOpen .3s ease-out}
+  @keyframes dayOpen{from{opacity:0;transform:translateY(-8px)}}
+  .day-list{display:flex;flex-direction:column;gap:10px;padding-top:12px}
+  .day-body .item{border-radius:15px;padding:13px 15px 11px;box-shadow:none}
+  .day-body .itext{font-size:16px}
+  .day-close{width:100%;margin-top:12px;padding:11px;border-radius:12px;cursor:pointer;font:inherit;
+    font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
+    border:1px solid rgba(148,163,184,.28)}
+  .day-close:hover{background:rgba(148,163,184,.22)}
+
   .empty{text-align:center;padding:46px 20px;color:var(--dim);background:var(--panel);
     border:1px dashed var(--line);border-radius:18px;font-size:14px;line-height:2}
   .empty .big{font-size:44px;display:block;margin-bottom:10px}
@@ -332,6 +356,13 @@
     <!-- الأخبار -->
     <div class="feed" id="feed"></div>
 
+    <!-- أرشيف الأيام السابقة -->
+    <section class="archive hidden" id="archive">
+      <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
+        <span class="cnt" id="archCount"></span></div>
+      <div id="archDays"></div>
+    </section>
+
     <div class="danger-zone">
       <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
     </div>
@@ -343,8 +374,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.1"></script>
-<script src="core.js?v=4.1"></script>
+<script src="config.js?v=4.2"></script>
+<script src="core.js?v=4.2"></script>
 <script>
 (function () {
   'use strict';
@@ -389,6 +420,8 @@
   var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
   var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
   var feed = U.$('#feed'), statsBox = U.$('#stats');
+  var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
+  var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
   var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
@@ -1184,23 +1217,86 @@
       return true;
     });
 
+    /* تقسيم: أخبار اليوم في الأعلى — والأيام السابقة في الأرشيف المنطوي */
+    var g = U.groupByDay(list);
+    curToday = g.todayKey;
+    if (S.search) g.days.forEach(function (k) { openDays[k] = true; });   // نتائج البحث: افتح أيامها تلقائياً
+    var todayList = g.todayItems;
+
     feed.innerHTML = '';
-    if (!list.length) {
+    if (!todayList.length) {
       var e = U.el('div', 'empty');
       var bigIcon = U.el('span', ''); bigIcon.innerHTML = U.ic('inbox', 42); e.appendChild(bigIcon);
-      e.appendChild(document.createTextNode(items.length
-        ? 'لا توجد أخبار مطابقة للفلتر الحالي.'
-        : 'لم تُرسل أي أخبار بعد. اكتب الخبر في الأعلى واضغط «إرسال عاجل».'));
+      e.appendChild(document.createTextNode(!list.length
+        ? (items.length ? 'لا توجد أخبار مطابقة للفلتر الحالي.' : 'لم تُرسل أي أخبار بعد. اكتب الخبر في الأعلى واضغط «إرسال عاجل».')
+        : (g.days.length ? 'لا نتائج في أخبار اليوم — النتائج في صناديق الأيام بالأسفل.' : 'أخبار اليوم فارغة.')));
       feed.appendChild(e);
     } else {
-      list.forEach(function (it) { feed.appendChild(buildItem(it)); });
+      todayList.forEach(function (it) { feed.appendChild(buildItem(it)); });
     }
+    renderArchive(g);
 
     updateDisplayChip();
     updatePendingChip();
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
     btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
+  }
+
+  /* ---------- أرشيف الأيام (خانة لكل يوم) ---------- */
+  function buildDay(key) {
+    var wrap = U.el('div', 'day');
+    wrap.setAttribute('data-day', key);
+    var head = U.el('button', 'day-head');
+    head.type = 'button';
+    head.innerHTML = U.ic('inbox', 18) + '<span class="dlabel"></span><span class="pill"></span>' +
+      '<span class="car">' + U.ic('chevron', 18) + '</span>';
+    wrap.appendChild(head);
+    var body = U.el('div', 'day-body');
+    var list = U.el('div', 'day-list');
+    body.appendChild(list);
+    var close = U.el('button', 'day-close');
+    close.type = 'button';
+    close.textContent = 'إغلاق القائمة — طيّ هذا اليوم';
+    close.addEventListener('click', function () { setDay(key, false); });
+    body.appendChild(close);
+    wrap.appendChild(body);
+    var d = { wrap: wrap, head: head, body: body, list: list, label: head.querySelector('.dlabel'), pill: head.querySelector('.pill') };
+    head.addEventListener('click', function () { setDay(key, !openDays[key]); });
+    return d;
+  }
+  function setDay(key, open) {
+    openDays[key] = !!open;
+    var d = dayNodes[key];
+    if (!d) return;
+    d.wrap.classList.toggle('open', !!open);
+    U.txt(d.pill, open ? 'إغلاق' : ((d.count || 0) + ' خبر'));
+  }
+  function renderArchive(g) {
+    Object.keys(dayNodes).forEach(function (k) {
+      if (g.byDay[k]) return;
+      try { dayNodes[k].wrap.remove(); } catch (e) {}
+      delete dayNodes[k]; delete openDays[k];
+    });
+    g.days.forEach(function (k, idx) {
+      var d = dayNodes[k];
+      if (!d) { d = dayNodes[k] = buildDay(k); archDays.appendChild(d.wrap); }
+      else {
+        var expected = archDays.children[idx];
+        if (expected !== d.wrap) archDays.insertBefore(d.wrap, expected || null);
+      }
+      var items2 = g.byDay[k].slice().sort(function (a, b) { return b.ts - a.ts; });
+      d.count = items2.length;
+      U.txt(d.label, U.dayLabel(k));
+      d.wrap.classList.toggle('open', !!openDays[k]);
+      U.txt(d.pill, openDays[k] ? 'إغلاق' : (items2.length + ' خبر'));
+      d.list.innerHTML = '';
+      items2.forEach(function (it) { d.list.appendChild(buildItem(it)); });
+    });
+    archBox.classList.toggle('hidden', g.days.length === 0);
+    var total = 0;
+    g.days.forEach(function (k) { total += g.byDay[k].length; });
+    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر') : '');
   }
 
   function buildItem(it) {
@@ -1292,6 +1388,7 @@
   // تحديث دوري خفيف (بدون إعادة بناء القائمة حتى لا يُفقد تحديد النص)
   function tick() {
     var now = Date.now();
+    if (U.dayKeyOf(now) !== curToday) { curToday = U.dayKeyOf(now); try { queueRender(); } catch (e) {} }
     Object.keys(S.shownIds).forEach(function (k) { if (now - S.shownIds[k] > 12000) delete S.shownIds[k]; });
     if (S.displayLatestTs) S.displayOnline = (now - S.displayLatestTs) < U.ONLINE_TTL;
     updateDisplayChip();
