@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.2" />
+<link rel="stylesheet" href="ui.css?v=4.3" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -258,6 +258,8 @@
     font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
     border:1px solid rgba(148,163,184,.28)}
   .day-close:hover{background:rgba(148,163,184,.22)}
+  .arch-empty{padding:16px 15px;border:1px dashed var(--line);border-radius:14px;
+    text-align:center;color:var(--dim);font-size:13px;font-weight:600;background:rgba(148,163,184,.04)}
 
   .empty{text-align:center;padding:46px 20px;color:var(--dim);background:var(--panel);
     border:1px dashed var(--line);border-radius:18px;font-size:14px;line-height:2}
@@ -357,7 +359,7 @@
     <div class="feed" id="feed"></div>
 
     <!-- أرشيف الأيام السابقة -->
-    <section class="archive hidden" id="archive">
+    <section class="archive" id="archive">
       <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
         <span class="cnt" id="archCount"></span></div>
       <div id="archDays"></div>
@@ -374,8 +376,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.2"></script>
-<script src="core.js?v=4.2"></script>
+<script src="config.js?v=4.3"></script>
+<script src="core.js?v=4.3"></script>
 <script>
 (function () {
   'use strict';
@@ -1293,10 +1295,18 @@
       d.list.innerHTML = '';
       items2.forEach(function (it) { d.list.appendChild(buildItem(it)); });
     });
-    archBox.classList.toggle('hidden', g.days.length === 0);
+    /* القسم ظاهر دائماً: إن لم توجد أيام سابقة نُظهر تنبيهاً واضحاً */
+    if (!g.days.length) {
+      if (!archDays.querySelector('.arch-empty')) {
+        archDays.innerHTML = '<div class="arch-empty">لا توجد أخبار من أيام سابقة بعد — كل خبر يمرّ عليه يوم كامل ينتقل تلقائياً إلى هنا في خانة يومه وتاريخه.</div>';
+      }
+    } else {
+      var ae = archDays.querySelector('.arch-empty');
+      if (ae) ae.remove();
+    }
     var total = 0;
     g.days.forEach(function (k) { total += g.byDay[k].length; });
-    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر') : '');
+    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر') : 'فارغ حالياً');
   }
 
   function buildItem(it) {
