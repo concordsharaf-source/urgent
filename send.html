@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.4" />
+<link rel="stylesheet" href="ui.css?v=4.5" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -173,7 +173,6 @@
   .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
   .note-status.ok{color:#6ee7b7}
   .note-status.warn{color:#fcd34d}
-  .note-hint{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.9}
 
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
@@ -337,8 +336,6 @@
             <button class="btn ghost tiny" id="btnNoteCancel" type="button">إغلاق</button>
           </div>
           <div class="note-status" id="noteStatus"></div>
-          <div class="note-hint">تظهر الملاحظة على شاشة المنفذ بخلفية <b>زرقاء</b> ونص أبيض، مع التنبيه المرئي والصوتي نفسه،
-            ويبقى زر <b>«استلام الملاحظة»</b> ظاهراً حتى يستلمها المنفذ ثم تتحول البطاقة إلى الرمادي.</div>
         </div>
       </div>
     </div>
@@ -376,8 +373,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.4"></script>
-<script src="core.js?v=4.4"></script>
+<script src="config.js?v=4.5"></script>
+<script src="core.js?v=4.5"></script>
 <script>
 (function () {
   'use strict';
