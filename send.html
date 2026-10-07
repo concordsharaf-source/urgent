@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.9" />
+<link rel="stylesheet" href="ui.css?v=4.0" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -152,6 +152,29 @@
   .composer textarea{min-height:92px;line-height:1.9;font-size:16px;font-weight:600}
   .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px}
   .counter{font-size:12.5px;color:var(--dim);margin-inline-start:auto}
+  /* ============ زر الملاحظات واللوحة المنسدلة ============ */
+  .note-wrap{margin-top:14px;border-top:1px dashed rgba(148,163,184,.28);padding-top:13px}
+  .note-btn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:14px;
+    padding:12px 22px;font-size:15.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
+    box-shadow:0 14px 28px -16px rgba(37,99,235,1);transition:.15s}
+  .note-btn:hover{filter:brightness(1.07)}
+  .note-btn .ico{margin-inline-end:0}
+  .note-btn.open{background:linear-gradient(135deg,#1d4ed8,#172554)}
+  .note-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
+  .note-panel.open{max-height:420px;opacity:1;margin-top:12px}
+  .note-panel textarea{width:100%;min-height:96px;border-radius:14px;border:1px solid rgba(59,130,246,.45);
+    background:rgba(37,99,235,.10);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
+    line-height:1.9;resize:vertical;outline:none}
+  .note-panel textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
+  .note-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .note-send{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:13px;
+    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(37,99,235,1)}
+  .note-send:hover{filter:brightness(1.07)}
+  .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
+  .note-status.ok{color:#6ee7b7}
+  .note-status.warn{color:#fcd34d}
+  .note-hint{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.9}
+
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
   .send-btn:hover{filter:brightness(1.06)}
@@ -269,6 +292,23 @@
         <button class="btn ghost tiny" id="btnClearText" type="button">مسح</button>
         <button class="send-btn" id="btnPublish" type="button">إرسال عاجل</button>
       </div>
+
+      <!-- الملاحظات: زر أزرق ينسدل منه حقل كتابة الملاحظة -->
+      <div class="note-wrap">
+        <button class="note-btn" id="btnNote" type="button"><i class="ico" data-ic="edit"></i>ملاحظات</button>
+        <div class="note-panel" id="notePanel">
+          <textarea id="noteText" placeholder="اكتب ملاحظة تظهر على شاشة المنفذ بالأزرق…"></textarea>
+          <div class="note-actions">
+            <span class="counter" id="noteCounter">0 كلمة</span>
+            <button class="btn ghost tiny" id="btnNoteClear" type="button">مسح</button>
+            <button class="note-send" id="btnNoteSend" type="button">إرسال الملاحظة</button>
+            <button class="btn ghost tiny" id="btnNoteCancel" type="button">إغلاق</button>
+          </div>
+          <div class="note-status" id="noteStatus"></div>
+          <div class="note-hint">تظهر الملاحظة على شاشة المنفذ بخلفية <b>زرقاء</b> ونص أبيض، مع التنبيه المرئي والصوتي نفسه،
+            ويبقى زر <b>«استلام الملاحظة»</b> ظاهراً حتى يستلمها المنفذ ثم تتحول البطاقة إلى الرمادي.</div>
+        </div>
+      </div>
     </div>
 
     <!-- الإحصاءات -->
@@ -297,8 +337,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=3.9"></script>
-<script src="core.js?v=3.9"></script>
+<script src="config.js?v=4.0"></script>
+<script src="core.js?v=4.0"></script>
 <script>
 (function () {
   'use strict';
@@ -309,6 +349,7 @@
   var LSP = U.LS_PREFIX + room + ':';
 
   var S = {
+    notesSent: {},                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
     filter: 'all',
@@ -339,6 +380,8 @@
   var loginForm = U.$('#loginForm'), inUser = U.$('#inUser'), inPass = U.$('#inPass');
   var loginErr = U.$('#loginErr'), btnLogin = U.$('#btnLogin');
   var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
+  var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
+  var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
   var feed = U.$('#feed'), statsBox = U.$('#stats');
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
@@ -430,6 +473,43 @@
     session.clear();
     bus.end();
     location.reload();
+  });
+
+  /* ==================== الملاحظات (زر أزرق ينسدل منه حقل الكتابة) ==================== */
+  function noteWords() {
+    var t = noteText.value.trim();
+    var n = t ? t.split(/\s+/).filter(Boolean).length : 0;
+    U.txt(noteCounter, n + ' كلمة' + (t.length ? ' — ' + t.length + ' حرف' : ''));
+  }
+  function noteOpen(open) {
+    notePanel.classList.toggle('open', !!open);
+    btnNote.classList.toggle('open', !!open);
+    if (open) setTimeout(function () { try { noteText.focus(); } catch (e) {} }, 180);
+  }
+  function setNoteStatus(msg, kind) {
+    noteStatus.textContent = msg || '';
+    noteStatus.className = 'note-status' + (kind ? ' ' + kind : '');
+  }
+  function sendNote() {
+    var t = noteText.value.trim();
+    if (!t) { U.toast('اكتب نص الملاحظة أولاً', 'warn'); noteText.focus(); return; }
+    if (t.length > 600) { U.toast('الملاحظة طويلة — الحد 600 حرف', 'warn', 6000); return; }
+    var id = 'nt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var item = { id: id, t: t, a: S.admin ? S.admin.name : 'المحرر', ts: Date.now() };
+    var live = bus.publish('note/' + id, item, { retain: true });
+    S.notesSent[id] = true;
+    noteText.value = ''; noteWords();
+    setNoteStatus(live ? 'أُرسلت الملاحظة (' + U.fmtTime(item.ts) + ') — بانتظار استلام المنفذ' : 'سيرسلها النظام تلقائياً عند عودة الاتصال', live ? '' : 'warn');
+    U.toast('أُرسلت الملاحظة إلى شاشة المنفذ', 'ok');
+    if (S.sound) alerter.play('info');
+  }
+  btnNote.addEventListener('click', function () { noteOpen(!notePanel.classList.contains('open')); });
+  U.$('#btnNoteSend').addEventListener('click', function (e) { e.preventDefault(); sendNote(); });
+  U.$('#btnNoteClear').addEventListener('click', function () { noteText.value = ''; noteWords(); noteText.focus(); });
+  U.$('#btnNoteCancel').addEventListener('click', function () { noteOpen(false); });
+  noteText.addEventListener('input', noteWords);
+  noteText.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendNote(); }
   });
 
   /* ==================== الإعدادات وإدارة بيانات الدخول ==================== */
@@ -939,6 +1019,16 @@
     }
     if (rel.indexOf('ack/') === 0) {
       if (isEmpty) return;
+      if (data && S.notesSent[data.id]) {                       // إشارة تخصّ ملاحظة أرسلناها
+        if (data.k === 'got') {
+          setNoteStatus('تم استلام الملاحظة على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
+          U.toast('المنفذ استلم الملاحظة', 'ok');
+          if (S.sound) alerter.play('info');
+        } else if (data.k === 'received') {
+          setNoteStatus('وصلت الملاحظة إلى الشاشة — بانتظار الاستلام', '');
+        }
+        return;                                                 // لا تُعرض ضمن أخبار اللوحة
+      }
       var prev = store.get(data.id);
       var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
       store.applyAck(data);

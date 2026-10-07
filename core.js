@@ -662,12 +662,13 @@ window.URGENT = (function () {
       emit('change', {});
     }
 
-    function applyNews(raw) {
+    function applyNews(raw, forceNote) {
       if (!raw || !raw.id || !raw.t) return null;
       var id = String(raw.id);
       var isNew = !items[id];
       var it = items[id] || (items[id] = { id: id, ack: null, pin: null });
       ids[id] = true;
+      if (forceNote || raw.n) it.note = true;               // ملاحظة (بطاقة زرقاء) بدل خبر عاجل
       it.text = String(raw.t);
       it.author = raw.a ? String(raw.a) : 'المحرر';
       it.ts = Number(raw.ts) || Date.now();
@@ -734,10 +735,15 @@ window.URGENT = (function () {
     }
 
     function stats() {
-      var s = { total: 0, copied: 0, received: 0, pending: 0, pinned: 0 };
+      var s = { total: 0, copied: 0, received: 0, pending: 0, pinned: 0, notes: 0, notesPending: 0, notesDone: 0 };
       packed().forEach(function (i) {
         s.total++;
         if (i.pin) s.pinned++;
+        if (i.note) {
+          s.notes++;
+          if (i.ack && i.ack.kind === 'got') s.notesDone++; else s.notesPending++;
+          return;                                            // الملاحظات لا تُحسب ضمن «الأخبار»
+        }
         if (i.ack && i.ack.kind === 'copied') s.copied++;
         else if (i.ack && i.ack.kind === 'received') s.received++;
         else s.pending++;
@@ -747,6 +753,7 @@ window.URGENT = (function () {
 
     return {
       on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
+      applyNote: function (raw) { return applyNews(raw, true); },
       remove: remove, clearAll: clearAll, list: list, stats: stats, save: save, load: load,
       get: function (id) { return items[id]; },
       has: function (id) { return !!ids[id]; },

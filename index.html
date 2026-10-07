@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.9" />
+<link rel="stylesheet" href="ui.css?v=4.0" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -152,6 +152,33 @@
     box-shadow:0 22px 44px -20px rgba(224,36,36,.62), inset 0 1px 0 rgba(255,255,255,.14);
     transition:background .5s ease, box-shadow .5s ease, border-color .5s ease;
   }
+  /* بطاقة الملاحظة (زرقاء بدل الحمراء) — وتصير رمادية عند الاستلام */
+  .card.note{
+    background:linear-gradient(135deg,#2563eb,#1d4ed8 62%,#152a63);
+    box-shadow:0 22px 44px -20px rgba(37,99,235,.7), inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  .card.note .tag{background:rgba(0,0,0,.32)}
+  .card.note .livedot{background:#bfdbfe}
+  .card.note.fresh::after{box-shadow:0 0 0 0 rgba(191,219,254,.55);animation:ring 1.5s ease-out 3}
+  .card.note .copy-btn{color:#1d4ed8}
+  .recv-btn{
+    background:#fff;color:#1d4ed8;border:none;border-radius:14px;font-weight:800;font-size:17px;
+    padding:13px 28px;min-height:50px;cursor:pointer;
+    box-shadow:0 12px 24px -12px rgba(0,0,0,.7);transition:.15s;
+  }
+  .recv-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
+  .recv-btn:active{transform:translateY(0) scale(.99)}
+
+  /* وميض الملاحظة (أزرق) */
+  .edge-glow.note .ehalo{animation:edgePulse 1.35s ease-in-out infinite}
+  .alarmbar.note{background:rgba(37,99,235,.22);color:#dbeafe;border-bottom-color:rgba(59,130,246,.45);animation:barNote 2s infinite}
+  @keyframes barNote{50%{background:rgba(37,99,235,.34)}}
+  .alarmbar.note.flash{animation:barFlashNote .95s ease-out 2}
+  @keyframes barFlashNote{
+    0%{background:rgba(37,99,235,.22);color:#dbeafe}
+    45%{background:rgba(59,130,246,.66);color:#fff;box-shadow:0 0 26px rgba(59,130,246,.6)}
+    100%{background:rgba(37,99,235,.22);color:#dbeafe}}
+
   .card.copied{
     background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.14);
@@ -311,8 +338,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.9"></script>
-<script src="core.js?v=3.9"></script>
+<script src="config.js?v=4.0"></script>
+<script src="core.js?v=4.0"></script>
 <script>
 (function () {
   'use strict';
@@ -700,6 +727,8 @@
 
     // نقرة على زر النسخ داخل أي بطاقة
     feed.addEventListener('click', function (e) {
+      var rbtn = e.target.closest ? e.target.closest('[data-recv]') : null;
+      if (rbtn) { receiveNote(rbtn.getAttribute('data-recv')); return; }
       var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
       if (btn) { copyItem(btn.getAttribute('data-copy')); }
     });
@@ -714,6 +743,15 @@
       if (!data.t) return;
       var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
       if (res && res.isNew) onNewItem(res.item);
+      return;
+    }
+    if (rel.indexOf('note/') === 0) {
+      var nid = rel.slice(5);
+      if (isEmpty) { store.remove(nid); render(); updateAlarmBar(); return; }   // ملاحظة محذوفة
+      if (!data || !data.id) data = { id: nid, t: '', ts: Date.now() };
+      if (!data.t) return;
+      var nres = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts });
+      if (nres && nres.isNew) onNewItem(nres.item);
       return;
     }
     if (rel.indexOf('ack/') === 0) {
@@ -867,14 +905,41 @@
   var alarmTimer = null;
   var ticker = null, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0, lastVisualAt = 0;
 
-  function uncopiedItems() {
-    return store.list().filter(function (it) { return !(it.ack && it.ack.kind === 'copied'); });
+  function isPending(it) {
+    if (!it) return false;
+    if (it.note) return !(it.ack && it.ack.kind === 'got');       // الملاحظة معلّقة حتى الاستلام
+    return !(it.ack && it.ack.kind === 'copied');                 // الخبر معلّق حتى النسخ
+  }
+  function uncopiedItems() { return store.list().filter(isPending); }
+  function pendingCounts() {
+    var c = { news: 0, notes: 0, total: 0 };
+    store.list().forEach(function (it) {
+      if (!isPending(it)) return;
+      if (it.note) c.notes++; else c.news++;
+      c.total++;
+    });
+    return c;
+  }
+  function pendingWords(c) {
+    var p = [];
+    if (c.news) p.push(c.news + ' خبر بانتظار النسخ');
+    if (c.notes) p.push(c.notes + ' ملاحظة بانتظار الاستلام');
+    return p.join(' و ') || 'لا شيء بانتظار النسخ';
+  }
+  function pendingUntil(c) {
+    if (c.news && c.notes) return 'حتى يتم النسخ والاستلام';
+    if (c.notes) return 'حتى يتم استلام الملاحظة';
+    return 'حتى يتم النسخ';
   }
 
   function updateAlarmBar() {
-    var n = uncopiedItems().length;
+    var c = pendingCounts();
+    var n = c.total;
     var on = S.alarmRepeat && n > 0;
+    var onlyNotes = c.notes > 0 && c.news === 0;
     edgeSet(on && S.edgeGlow !== false);       // إضاءة أطراف الشاشة
+    if (edge.box) edge.box.classList.toggle('note', onlyNotes);
+    alarmbar.classList.toggle('note', onlyNotes);
     alarmbar.classList.toggle('hidden', !on);
     if (on) {
       var secs = Math.round((S.alarmMutedUntil - Date.now()) / 1000);
@@ -886,8 +951,8 @@
         }
       } catch (e) {}
       U.txt(alarmText, (secs > 0
-        ? 'التنبيه مُسكت مؤقتاً (' + Math.ceil(secs / 60) + ' دقيقة) — ' + n + ' خبر بانتظار النسخ'
-        : 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' حتى يتم النسخ — ' + n + ' خبر بانتظار النسخ') + warnPerm);
+        ? 'التنبيه مُسكت مؤقتاً (' + Math.ceil(secs / 60) + ' دقيقة) — ' + pendingWords(c)
+        : 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' ' + pendingUntil(c) + ' — ' + pendingWords(c)) + warnPerm);
     }
     updateTitle();
   }
@@ -942,8 +1007,10 @@
       if (Date.now() - lastNotifyAt >= nEvery) {
         lastNotifyAt = Date.now();
         var first = list[0];
-        var body = first ? ('بانتظار النسخ (' + list.length + '): ' + String(first.text).slice(0, 120)) : 'خبر بانتظار النسخ';
-        reNotify(body, list.length);
+        var c2 = pendingCounts();
+        var what = (c2.notes && !c2.news) ? 'بانتظار الاستلام' : 'بانتظار النسخ';
+        var body = first ? (what + ' (' + list.length + '): ' + String(first.text).slice(0, 120)) : what;
+        reNotify(body, list.length, first && first.note);
       }
     }
     updateAlarmBar();
@@ -1018,6 +1085,10 @@
       '@keyframes fxpulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.75)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}}',
       '.fb{flex:1;overflow:auto;background:rgba(255,255,255,.06);border-radius:10px;padding:10px 12px}',
       '.fb.urgent{background:#dc2626}',
+      '.fb.note{background:#1d4ed8}',
+      '.fx.nnote{border-color:#1d4ed8}',
+      '.fx.nnote.flash{animation:fxflashn .95s ease-out 2}',
+      '@keyframes fxflashn{0%{border-color:#1d4ed8;box-shadow:0 0 0 rgba(37,99,235,0)}45%{border-color:#60a5fa;box-shadow:0 0 26px rgba(37,99,235,.8)}100%{border-color:#1d4ed8}}',
       '.ft{font-size:20px;font-weight:800;line-height:1.6;white-space:pre-wrap;word-break:break-word}',
       '.fm{margin-top:8px;font-size:12.5px;opacity:.9}',
       '.fbar{font-size:12.5px;font-weight:700;background:rgba(239,68,68,.24);color:#fecaca;border-radius:8px;padding:6px 10px;text-align:center}',
@@ -1044,8 +1115,10 @@
       var bc = doc.getElementById('fxCopy');
       if (bc) bc.addEventListener('click', function () {
         var list = uncopiedItems();
-        if (!list.length) { U.toast('لا أخبار بانتظار النسخ', 'warn'); return; }
-        copyItem(list[0].id, doc);                       // النسخ من النافذة العائمة نفسها
+        if (!list.length) { U.toast('لا شيء بانتظار النسخ أو الاستلام', 'warn'); return; }
+        var top = list[0];
+        if (top.note) receiveNote(top.id);              // ملاحظة ⇒ استلام
+        else copyItem(top.id, doc);                     // خبر ⇒ نسخ من النافذة العائمة نفسها
       });
       var bo = doc.getElementById('fxOpen');
       if (bo) bo.addEventListener('click', function () { try { window.focus(); } catch (e) {} });
@@ -1061,24 +1134,29 @@
           bar = pipDoc.getElementById('fxBar'), cp = pipDoc.getElementById('fxCopy'),
           body = pipDoc.getElementById('fxBody'), wrap = pipDoc.getElementById('fxWrap');
       if (it) {
+        var c3 = pendingCounts();
         U.txt(t, String(it.text || ''));
-        U.txt(m, (it.author || 'غرفة الأخبار') + ' — ' + U.fmtTime(it.ts) + (list.length > 1 ? '  •  و' + (list.length - 1) + ' خبر آخر' : ''));
+        U.txt(m, (it.author || 'غرفة الأخبار') + ' — ' + U.fmtTime(it.ts) + (list.length > 1 ? '  •  و' + (list.length - 1) + ' أخرى' : ''));
         U.txt(c, '(' + list.length + ')');
-        U.txt(bar, 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' — ' + list.length + ' خبر بانتظار النسخ');
+        U.txt(bar, 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' — ' + pendingWords(c3));
         bar.classList.remove('hidden');
-        body.classList.add('urgent');
-        if (cp) cp.classList.remove('hidden');
+        body.classList.toggle('urgent', !it.note);
+        body.classList.toggle('note', !!it.note);
+        if (cp) { cp.textContent = it.note ? 'استلام الملاحظة' : 'نسخ الخبر'; cp.classList.remove('hidden'); }
       } else {
-        U.txt(t, 'لا أخبار بانتظار النسخ');
-        U.txt(m, 'كل الأخبار نُسخت ✔');
+        U.txt(t, 'لا شيء بانتظار النسخ أو الاستلام');
+        U.txt(m, 'كل الأخبار نُسخت وكل الملاحظات مُستلمة ✔');
         U.txt(c, '');
         bar.classList.add('hidden');
         body.classList.remove('urgent');
         if (cp) cp.classList.add('hidden');
       }
+      if (cp) { if (it) cp.classList.remove('hidden'); else cp.classList.add('hidden'); }
+      if (bar) bar.classList.toggle('hidden', !it);
       if (wrap) {
         var fresh = it && S.fresh[it.id] && (Date.now() - S.fresh[it.id] < 20000);
         wrap.classList.toggle('fresh', !!fresh);
+        wrap.classList.toggle('nnote', !!(it && it.note));
       }
     } catch (e) {}
   }
@@ -1130,8 +1208,8 @@
     ticker = U.createTicker(alarmTick, 1000);            // مؤقّت داخل Worker: أقل تأثراً بتصغير النافذة
   }
 
-  function reNotify(body, count) {
-    var title = 'خبر عاجل لم يُنسخ بعد';
+  function reNotify(body, count, isNote) {
+    var title = isNote ? 'ملاحظة لم تُستلم بعد' : 'خبر عاجل لم يُنسخ بعد';
     if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
@@ -1142,7 +1220,7 @@
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
-    var nTitle = 'خبر عاجل — ' + (item.author || 'غرفة الأخبار');
+    var nTitle = (item.note ? 'ملاحظة — ' : 'خبر عاجل — ') + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
@@ -1151,7 +1229,7 @@
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
-    if (document.hidden) U.flashTitle('خبر عاجل');
+    if (document.hidden) U.flashTitle(item.note ? 'ملاحظة جديدة' : 'خبر عاجل');
     scheduleReceivedAck(item);
     render();
     updateAlarmBar();
@@ -1189,6 +1267,23 @@
     });
   }
 
+  /* ---------- استلام الملاحظة (بدل النسخ) ---------- */
+  function receiveNote(id) {
+    var it = store.get(id);
+    if (!it || !it.note) { if (it) copyItem(id); return; }
+    if (it.ack && it.ack.kind === 'got') return;                 // مُستلمة سابقاً
+    var a = { id: id, k: 'got', b: S.opName, ts: Date.now() };
+    store.applyAck(a);
+    bus.publish('ack/' + id, a, { retain: true });
+    try { alerter.cancelAll(); } catch (e) {}
+    try { visualPulseStop(); } catch (e) {}
+    if (!uncopiedItems().length) { try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {} }
+    if (pipDoc) { try { updateFloat(); } catch (e) {} }
+    alerter.play('info');
+    updateAlarmBar();
+    U.toast('تم استلام الملاحظة وإبلاغ المحرر', 'ok');
+  }
+
   /* ---------- حذف الأخبار القديمة ---------- */
   function pruneOld() {
     if (S.pruned) return;
@@ -1200,6 +1295,7 @@
   }
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
+    bus.publish('note/' + id, '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1236,8 +1332,7 @@
   }
 
   function updateHeaderCount(items) {
-    var st = store.stats();
-    var pending = st.pending + st.received;
+    var pending = pendingCounts().total;
     document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
   }
 
@@ -1246,8 +1341,8 @@
     card.setAttribute('data-id', it.id);
 
     var top = U.el('div', 'card-top');
-    var tag = U.el('span', 'tag');
-    tag.innerHTML = '<i class="livedot"></i>عاجل';
+    var tag = U.el('span', 'tag'); tag.setAttribute('data-role', 'tag');
+    tag.innerHTML = '<i class="livedot"></i>' + (it.note ? 'ملاحظة' : 'عاجل');
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || 'غرفة الأخبار'));
     top.appendChild(U.el('span', 'sep', '•'));
@@ -1268,7 +1363,9 @@
     var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
     var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy');
     copy.innerHTML = U.ic('copy', 20) + 'نسخ الخبر';
-    actions.appendChild(recopy); actions.appendChild(copy);
+    var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
+    recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
+    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
     bottom.appendChild(actions);
     card.appendChild(bottom);
     return card;
@@ -1288,11 +1385,38 @@
     r('new').classList.toggle('hidden', !fresh);
 
     var ack = it.ack;
-    var copied = ack && ack.kind === 'copied';
-    card.classList.toggle('copied', !!copied);
+    var isNote = !!it.note;
+    var copied = isNote ? !!(ack && ack.kind === 'got') : !!(ack && ack.kind === 'copied');
+    card.classList.toggle('note', isNote);                 // أزرق للملاحظة
+    card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
     card.classList.toggle('pinned', !!it.pin);
+    var tg = r('tag');
+    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
+    r('pin').classList.toggle('hidden', !it.pin || isNote);
+    r('edited').classList.toggle('hidden', !it.editedAt || isNote);
 
-    var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy');
+    var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy'), recvBtn = r('recv');
+    if (isNote) {
+      copyBtn.classList.add('hidden');
+      recopyBtn.classList.add('hidden');
+      if (copied) {
+        stat.className = 'stat copied';
+        U.setIconText(stat, 'check', 'تم استلام الملاحظة بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
+        recvBtn.classList.add('hidden');
+      } else {
+        if (ack && ack.kind === 'received') {
+          stat.className = 'stat received';
+          U.setIconText(stat, 'inbox', 'وصلت إلى الشاشة — بانتظار الاستلام');
+        } else {
+          stat.className = 'stat pending';
+          U.setIconText(stat, 'clock', 'ملاحظة بانتظار الاستلام — اضغط زر «استلام الملاحظة»');
+        }
+        recvBtn.setAttribute('data-recv', it.id);
+        recvBtn.classList.remove('hidden');
+      }
+      return;
+    }
+    recvBtn.classList.add('hidden');
     if (copied) {
       stat.className = 'stat copied';
       U.setIconText(stat, 'check', 'تم النسخ بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
