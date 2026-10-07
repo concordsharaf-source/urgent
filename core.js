@@ -24,6 +24,7 @@ window.URGENT = (function () {
   /* ===================== أيقونات SVG (بدل الإيموجي: تظهر بنفس الشكل على كل الأجهزة) ===================== */
   var ICONS = {
     copy:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h8.5A1.5 1.5 0 0 1 15 5v.5"/></svg>',
+    pip:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="11.5" y="11.5" width="7" height="6" rx="1.4" fill="currentColor" stroke="none" opacity=".45"/></svg>',
     back:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4.5v6.2a4.6 4.6 0 0 1-4.6 4.6H5"/><path d="m9 11.5-4 3.8 4 3.9"/></svg>',
     edit:   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.6 3.4a2.1 2.1 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5Z"/></svg>',
     pin:    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V22"/><path d="M9 4h6v6.6l2 3.4H7l2-3.4Z"/></svg>',
@@ -247,6 +248,26 @@ window.URGENT = (function () {
   }
 
   /* ===================== الصوت والتنبيه ===================== */
+  /* أصوات التنبيه الجاهزة (تُولَّد داخل المتصفح — بلا ملفات صوت) */
+  var ALERT_SOUNDS = [
+    { id: 'classic', label: 'رنين عاجل' },
+    { id: 'siren', label: 'سايرن إنذار' },
+    { id: 'beeps', label: 'صفير متقطع' },
+    { id: 'bell', label: 'جرس' },
+    { id: 'horn', label: 'بوق' },
+    { id: 'soft', label: 'نغمة هادئة' },
+    { id: 'custom', label: 'نغمة مخصصة (mp3)' }
+  ];
+  function soundLabel(id) {
+    for (var i = 0; i < ALERT_SOUNDS.length; i++) if (ALERT_SOUNDS[i].id === id) return ALERT_SOUNDS[i].label;
+    return ALERT_SOUNDS[0].label;
+  }
+  function customSoundKey() { return LS + resolveRoom() + ':customSound'; }
+  function customSoundLocal() { try { return lsGet(customSoundKey(), '') || ''; } catch (e) { return ''; } }
+  function setCustomSoundLocal(dataURL) {
+    try { if (dataURL) lsSet(customSoundKey(), dataURL); else lsDel(customSoundKey()); return true; } catch (e) { return false; }
+  }
+
   /**
    * createAlerter — نغمات التنبيه عبر محرّك الصوت (WebAudio).
    * الميزة المهمة: keepEvery() تُجدول النغمات مقدماً داخل محرّك الصوت نفسه،
@@ -257,6 +278,10 @@ window.URGENT = (function () {
     var nodes = [];        // كل النغمات المُشغّلة/المجدولة (لإسكات فوري عند النسخ)
     var nextAt = 0;        // موعد الدفعة القادمة بزمن محرّك الصوت
     var lastGap = 0;       // الفاصل المُجدول حالياً (لتغيير السرعة فوراً)
+    var kind = 'classic';  // نوع الصوت المختار
+    var vol = 1;           // مستوى الصوت (0.05 — 1)
+    var buf = null;        // النغمة المخصصة (mp3) بعد فكّ الضغط
+    var bufName = '';
 
     function ensure() {
       if (ctx) return ctx;
@@ -270,45 +295,90 @@ window.URGENT = (function () {
       if (!c) return;
       try { if (c.state === 'suspended') c.resume(); } catch (e) {}
       unlocked = c.state === 'running';
-      // تشغيل نغمة صامتة لفتح الصوت في بعض المتصفحات
       try {
         var o = c.createOscillator(), g = c.createGain();
         g.gain.value = 0.0001; o.connect(g); g.connect(c.destination);
         o.start(); o.stop(c.currentTime + 0.02);
       } catch (e) {}
     }
-    function tone(freq, at, dur, vol) {
+    function gainOf(v) { return Math.max(0.02, Math.min(1, (v == null ? 0.2 : v) * vol)); }
+
+    /* نغمة واحدة: freq → freqTo (اختياري) مع نوع موجة */
+    function tone(freq, at, dur, v, type, freqTo) {
       var c = ctx; if (!c) return null;
       var o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + at;
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(freq, t0);
+      o.type = type || 'triangle';
+      try { o.frequency.setValueAtTime(freq, t0); } catch (e) {}
+      if (freqTo) { try { o.frequency.linearRampToValueAtTime(freqTo, t0 + dur); } catch (e) {} }
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(vol || 0.22, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(gainOf(v), t0 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       o.connect(g); g.connect(c.destination);
       o.start(t0); o.stop(t0 + dur + 0.02);
       nodes.push(o);
-      if (nodes.length > 300) nodes.shift();
+      if (nodes.length > 400) nodes.shift();
       o.onended = function () { var i = nodes.indexOf(o); if (i > -1) nodes.splice(i, 1); };
       return o;
     }
-    function burst(at, kind) {
+    /* النغمة المخصصة: تُشغَّل من مخزن الصوت (يعمل حتى والنافذة مصغّرة) */
+    function bufferAt(at, v) {
+      var c = ctx; if (!c || !buf) return null;
+      var src = c.createBufferSource(), g = c.createGain(), t0 = c.currentTime + at;
+      src.buffer = buf;
+      g.gain.setValueAtTime(gainOf(v == null ? 0.9 : v), t0);
+      src.connect(g); g.connect(c.destination);
+      try { src.start(t0); } catch (e) { return null; }
+      nodes.push(src);
+      src.onended = function () { var i = nodes.indexOf(src); if (i > -1) nodes.splice(i, 1); };
+      return src;
+    }
+    function presetBurst(at, kind2) {
+      switch (kind2) {
+        case 'urgent': break;
+        default: break;
+      }
+      switch (kind) {
+        case 'siren':
+          tone(1250, at, 0.42, 0.26, 'sawtooth', 620);
+          tone(1250, at + 0.46, 0.42, 0.26, 'sawtooth', 620);
+          tone(1250, at + 0.92, 0.42, 0.24, 'sawtooth', 620);
+          break;
+        case 'beeps':
+          for (var i = 0; i < 7; i++) tone(1450, at + i * 0.19, 0.12, 0.3, 'square');
+          break;
+        case 'bell':
+          tone(1318, at, 1.1, 0.3, 'sine');
+          tone(1760, at + 0.03, 0.9, 0.18, 'sine');
+          tone(1318, at + 1.15, 1.1, 0.26, 'sine');
+          break;
+        case 'horn':
+          tone(196, at, 0.55, 0.32, 'sawtooth');
+          tone(147, at + 0.6, 0.7, 0.32, 'sawtooth');
+          break;
+        case 'soft':
+          tone(659, at, 0.3, 0.18, 'sine');
+          tone(880, at + 0.26, 0.45, 0.16, 'sine');
+          break;
+        default: /* classic — رنين عاجل */
+          tone(932, at, 0.30, 0.24);
+          tone(1244, at + 0.16, 0.30, 0.22);
+          tone(932, at + 0.44, 0.28, 0.22);
+          tone(1568, at + 0.62, 0.42, 0.20);
+      }
+    }
+    function burst(at, kind2) {
       try {
-        if (kind === 'urgent') {
-          tone(932, at, 0.30, 0.24); tone(1244, at + 0.16, 0.30, 0.22);
-          tone(932, at + 0.44, 0.28, 0.22); tone(1568, at + 0.62, 0.42, 0.20);
-        } else if (kind === 'error') {
-          tone(392, at, 0.22, 0.20); tone(294, at + 0.18, 0.30, 0.18);
-        } else {
-          tone(880, at, 0.16, 0.16); tone(1174, at + 0.14, 0.22, 0.14);
-        }
+        if (kind2 === 'info') { tone(880, at, 0.16, 0.16); tone(1174, at + 0.14, 0.22, 0.14); return; }
+        if (kind2 === 'error') { tone(392, at, 0.22, 0.20); tone(294, at + 0.18, 0.30, 0.18); return; }
+        if (kind === 'custom') { if (buf) bufferAt(at, 0.9); else presetBurst(at, kind2); return; }
+        presetBurst(at, kind2);
       } catch (e) {}
     }
-    function play(kind) {
+    function play(kind2) {
       var c = ensure();
       if (!c) return;
       try { if (c.state === 'suspended') c.resume(); } catch (e) {}
-      burst(0.02, kind);
+      burst(0.02, kind2);
     }
     /* جدولة مسبقة: يبقى التنبيه يرن كل everyMs حتى آخر horizonMs (افتراضياً 90 ثانية)
        بلا حاجة إلى أي مؤقّت في الصفحة — تعمل والنافذة مصغّرة أو في الخلفية. */
@@ -317,26 +387,58 @@ window.URGENT = (function () {
       if (!c) return false;
       try { if (c.state === 'suspended') c.resume(); } catch (e) {}
       if (c.state !== 'running') return false;
+      if (kind === 'custom' && !buf) return false;          // لا نغمة مخصصة بعد => لا جدولة
       var now = c.currentTime;
       var until = now + (horizonMs || 90000) / 1000;
       var gap = Math.max(3, Number(everyMs) || 5000) / 1000;
       var guard = 0;
-      // تغيّرت السرعة من الإعدادات؟ نلغي الجدولة القديمة ونعيد التخطيط فوراً
       if (lastGap && gap !== lastGap) { cancelAll(); now = c.currentTime; until = now + (horizonMs || 90000) / 1000; }
       lastGap = gap;
       if (!nextAt || nextAt < now) nextAt = now + 0.2;
       while (nextAt <= until && guard++ < 80) { burst(nextAt - now, 'urgent'); nextAt += gap; }
       return true;
     }
-    /* إسكات فوري: إيقاف كل نغمة تعمل الآن أو مجدولة */
     function cancelAll() {
       nextAt = 0;
       var list = nodes.slice();
       nodes.length = 0;
       list.forEach(function (n) { try { n.stop(0); } catch (e) {} });
     }
+    /* تغيير نوع الصوت / المستوى — يُعاد التخطيط فوراً */
+    function setSound(id) {
+      var nk = id || 'classic';
+      if (nk !== kind) { cancelAll(); lastGap = 0; nextAt = 0; }   // يُطبَّق فوراً على الجدولة
+      kind = nk;
+      return kind;
+    }
+    function setVolume(v) { vol = Math.max(0.05, Math.min(1, Number(v) || 1)); return vol; }
+    /* تحميل نغمة مخصصة من رابط بيانات (mp3/wav) وفكّ ضغطها للجدولة المسبقة */
+    function setCustomFromDataURL(dataURL) {
+      var c = ensure();
+      if (!c || !dataURL) return Promise.resolve(false);
+      function decode(ab) {
+        return new Promise(function (res) {
+          try {
+            var r = c.decodeAudioData(ab, function (b) { buf = b; bufName = ''; res(true); }, function () { res(false); });
+            if (r && typeof r.then === 'function') r.then(function (b) { buf = b; res(true); }, function () { res(false); });
+          } catch (e) { res(false); }
+        });
+      }
+      try {
+        if (typeof dataURL === 'string' && dataURL.indexOf('data:') === 0) {
+          var bin = atob(dataURL.split(',')[1] || '');
+          var arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          return decode(arr.buffer);
+        }
+        return fetch(dataURL).then(function (r) { return r.arrayBuffer(); }).then(decode).catch(function () { return false; });
+      } catch (e) { return Promise.resolve(false); }
+    }
     return {
       unlock: unlock, play: play, keepEvery: keepEvery, cancelAll: cancelAll,
+      setSound: setSound, setVolume: setVolume, setCustomFromDataURL: setCustomFromDataURL,
+      sound: function () { return kind; }, volume: function () { return vol; },
+      hasCustom: function () { return !!buf; },
       scheduled: function () { return nodes.length; },
       ready: function () { return !!(ctx && ctx.state === 'running'); }
     };
@@ -929,8 +1031,14 @@ window.URGENT = (function () {
   function saveAlertCfgLocal(o) {
     try {
       var cur = recallAlertCfg() || {};
-      var out = { snd: cur.snd, vis: cur.vis, notify: cur.notify };
-      if (o) { if (o.snd != null) out.snd = Number(o.snd); if (o.vis != null) out.vis = Number(o.vis); if (o.notify != null) out.notify = Number(o.notify); }
+      var out = { snd: cur.snd, vis: cur.vis, notify: cur.notify, type: cur.type, vol: cur.vol };
+      if (o) {
+        if (o.snd != null) out.snd = Number(o.snd);
+        if (o.vis != null) out.vis = Number(o.vis);
+        if (o.notify != null) out.notify = Number(o.notify);
+        if (o.type != null) out.type = String(o.type);
+        if (o.vol != null) out.vol = Math.max(0.05, Math.min(1, Number(o.vol)));
+      }
       lsSet(alertCfgKey(), out);
       return out;
     } catch (e) { return null; }
@@ -939,7 +1047,7 @@ window.URGENT = (function () {
   function publishAlertCfg(bus, o, by) {
     try {
       var out = saveAlertCfgLocal(o) || {};
-      bus.publish('cfg/alerts', { snd: out.snd, vis: out.vis, notify: out.notify, by: by || '', ts: Date.now() }, { retain: true });
+      bus.publish('cfg/alerts', { snd: out.snd, vis: out.vis, notify: out.notify, type: out.type, vol: out.vol, by: by || '', ts: Date.now() }, { retain: true });
       return true;
     } catch (e) { return false; }
   }
@@ -1064,7 +1172,7 @@ window.URGENT = (function () {
     var box = el('div', 'uc-row-actions uc-chips');
     var btns = [];
     (values || []).forEach(function (v) {
-      var b = btnEl(String(v) + (suffix || ''), Number(v) === Number(current) ? 'primary' : 'ghost');
+      var b = btnEl(String(v) + (suffix || ''), String(v) === String(current) ? 'primary' : 'ghost');
       b.addEventListener('click', function () {
         btns.forEach(function (o) { o.className = 'uc-btn ' + (o === b ? 'primary' : 'ghost'); });
         onPick(v);
@@ -1169,7 +1277,7 @@ window.URGENT = (function () {
    * buildSettings — واجهة إعدادات جاهزة تُبنى في الصفحة
    * opts: {
    *   title, subtitle,
-   *   state: { sound, alarmRepeat, alarmEvery, visualEvery, deskEvery, deskNotify, notifyRepeat, fontScale },
+   *   state: { sound, soundType, vol, alarmRepeat, alarmEvery, visualEvery, deskEvery, deskNotify, notifyRepeat, pipAuto, fontScale },
    *   onChange(key, value),
    *   showDisplay: true,            // إظهار قسم حجم الخط
    *   onSpeakTest(), 
@@ -1226,6 +1334,84 @@ window.URGENT = (function () {
     alarmRow.appendChild(switchEl(st.alarmRepeat !== false, function (v) { opts.onChange('alarmRepeat', v); }));
     secS.appendChild(alarmRow);
 
+    /* نوع الصوت — يظهر في شاشة الاستقبال (التي تمرّر opts.alerter) */
+    if (opts.alerter) {
+    var soundList = ALERT_SOUNDS.slice();
+    var nameRow = rowEl('نوع صوت التنبيه', 'اختر الصوت من القائمة أو ارفع نغمة مخصصة (mp3)');
+    var nameBox = el('div', 'uc-row-actions uc-chips');
+    var nameBtns = [];
+    function markSound(id) {
+      nameBtns.forEach(function (o) { o.className = 'uc-btn ' + (o.getAttribute('data-snd') === id ? 'primary' : 'ghost'); });
+    }
+    soundList.forEach(function (s) {
+      var b = btnEl(s.label, String(s.id) === String(st.soundType) ? 'primary' : 'ghost');
+      b.setAttribute('data-snd', s.id);
+      b.addEventListener('click', function () {
+        markSound(s.id);
+        opts.onChange('soundType', s.id);
+        if (opts.alerter) { try { opts.alerter.setSound(s.id); opts.alerter.play('urgent'); } catch (e) {} }
+      });
+      nameBtns.push(b); nameBox.appendChild(b);
+    });
+    nameRow.appendChild(nameBox);
+    secS.appendChild(nameRow);
+
+    /* مستوى الصوت */
+    var volRow = rowEl('مستوى الصوت', 'ارفع الصوت للحد الأقصى في غرفة التنفيذ');
+    var volS = slider({ min: 10, max: 100, step: 5, value: Math.round((st.vol == null ? 1 : st.vol) * 100), unit: '٪',
+      onInput: function (v) { opts.onChange('vol', v / 100); } });
+    volRow.appendChild(volS.wrap);
+    secS.appendChild(volRow);
+
+    /* النغمة المخصصة (mp3) */
+    var cuRow = rowEl('نغمة مخصصة من ملفك', 'ملف صوتي صغير (mp3/wav — أقل من 1.5 ميجابايت)');
+    var cuActs = el('div', 'uc-row-actions');
+    var cuFile = el('input');
+    cuFile.type = 'file'; cuFile.accept = 'audio/*';
+    cuFile.setAttribute('data-role', 'custom-sound');
+    cuFile.style.maxWidth = '230px';
+    var cuState = el('span', 'uc-badge');
+    cuState.textContent = customSoundLocal() ? 'نغمة محفوظة ✔' : 'لا يوجد ملف';
+    var cuDel = btnEl('حذف', 'ghost', 'trash');
+    cuDel.setAttribute('data-role', 'custom-sound-del');
+    cuActs.appendChild(cuFile); cuActs.appendChild(cuState); cuActs.appendChild(cuDel);
+    cuRow.appendChild(cuActs);
+    secS.appendChild(cuRow);
+
+    cuFile.addEventListener('change', function () {
+      var f = cuFile.files && cuFile.files[0];
+      if (!f) return;
+      if (f.size > 1.5 * 1024 * 1024) { toast('الملف كبير — الحد 1.5 ميجابايت', 'warn', 6000); cuFile.value = ''; return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        var url = String(fr.result || '');
+        setCustomSoundLocal(url);
+        cuState.textContent = 'نغمة محفوظة ✔';
+        if (opts.onCustomSound) { try { opts.onCustomSound(url); } catch (e) {} }
+        if (opts.alerter) {
+          opts.alerter.setCustomFromDataURL(url).then(function (ok) {
+            if (!ok) { toast('تعذّر قراءة الملف الصوتي — جرّب mp3 آخر', 'warn', 6000); return; }
+            opts.onChange('soundType', 'custom');
+            markSound('custom');
+            opts.alerter.setSound('custom');
+            opts.alerter.play('urgent');
+            toast('تم حفظ النغمة المخصصة وتشغيلها', 'ok', 6000);
+          });
+        }
+      };
+      fr.readAsDataURL(f);
+    });
+    cuDel.addEventListener('click', function () {
+      setCustomSoundLocal('');
+      cuState.textContent = 'لا يوجد ملف';
+      cuFile.value = '';
+      if (opts.onCustomSound) { try { opts.onCustomSound(''); } catch (e) {} }
+      if (st.soundType === 'custom') { opts.onChange('soundType', 'classic'); markSound('classic'); }
+      toast('تم حذف النغمة المخصصة', 'ok');
+    });
+
+    }   // نهاية صفوف الصوت الخاصة بشاشة الاستقبال
+
     /* سرعة تكرار النغمة — 5 ثوانٍ هي الافتراضية للأخبار العاجلة */
     secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تعمل حتى والنافذة مصغّرة — ويُرسَل من حساب الإدارة لكل الشاشات',
       [3, 5, 10, 20, 30, 60], st.alarmEvery || 5, function (v) { opts.onChange('alarmEvery', v); }, 'ث'));
@@ -1256,6 +1442,28 @@ window.URGENT = (function () {
       secD.appendChild(fsRow);
       body.appendChild(secD);
       updFs();
+    }
+
+    /* ---- قسم النافذة العائمة (فوق كل التطبيقات) ---- */
+    if (opts.showPip) {
+      var secP2 = section('النافذة العائمة فوق كل التطبيقات', 'pip');
+      var pipRow = rowEl('نافذة صغيرة تبقى ظاهرة فوق كل البرامج',
+        opts.pipSupported
+          ? 'تعمل في كروم/إيدج على الكمبيوتر — تظهر فيها الأخبار العاجلة مع زر النسخ'
+          : 'المتصفح الحالي لا يدعمها — استخدم Chrome أو Edge، أو ثبّت النافذة بأداة PowerToys (Win+Ctrl+T)');
+      var pipBadge = el('div', 'uc-badge' + (opts.pipSupported ? ' ok' : ' bad'));
+      pipBadge.textContent = opts.pipSupported ? 'مدعومة ✔' : 'غير مدعومة';
+      var pipBtn = btnEl(opts.pipSupported ? 'فتح الآن' : 'متصفح آخر', opts.pipSupported ? 'primary' : 'ghost', 'pip');
+      pipBtn.addEventListener('click', function () { if (opts.onPipOpen) opts.onPipOpen(); });
+      var pipActs = el('div', 'uc-row-actions');
+      pipActs.appendChild(pipBadge); pipActs.appendChild(pipBtn);
+      pipRow.appendChild(pipActs);
+      secP2.appendChild(pipRow);
+
+      var pipAutoRow = rowEl('فتح النافذة العائمة تلقائياً', 'تُفتح مع أول نقرة على الشاشة وتبقى فوق كل التطبيقات');
+      pipAutoRow.appendChild(switchEl(st.pipAuto !== false, function (v) { opts.onChange('pipAuto', v); }));
+      secP2.appendChild(pipAutoRow);
+      body.appendChild(secP2);
     }
 
     /* ---- قسم التطبيق ---- */
@@ -1375,25 +1583,26 @@ window.URGENT = (function () {
   }
 
   /* ===================== النسخ إلى الحافظة ===================== */
-  function copyText(text) {
+  function copyText(text, altDoc) {
     var s = String(text == null ? '' : text);
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
         var p = navigator.clipboard.writeText(s);
         if (p && typeof p.then === 'function') {
-          return p.then(function () { return true; }, function () { return legacyCopy(s); });
+          return p.then(function () { return true; }, function () { return legacyCopy(s, altDoc); });
         }
       }
     } catch (e) { /* المتابعة للطريقة البديلة */ }
-    return Promise.resolve(legacyCopy(s));
+    return Promise.resolve(legacyCopy(s, altDoc));
   }
-  function legacyCopy(s) {
+  function legacyCopy(s, altDoc) {
     try {
-      var ta = document.createElement('textarea');
+      var D = altDoc || document;
+      var ta = D.createElement('textarea');
       ta.value = s;
       ta.setAttribute('readonly', '');
       ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
-      document.body.appendChild(ta);
+      (D.body || document.body).appendChild(ta);
       ta.select();
       try { ta.setSelectionRange(0, ta.value.length); } catch (e) {}
       var ok = false;
@@ -1439,7 +1648,8 @@ window.URGENT = (function () {
     section: section, rowEl: rowEl, switchEl: switchEl, btnEl: btnEl, sheetEl: sheetEl, sheetHead: sheetHead,
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
     publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset,
-    publishAlertCfg: publishAlertCfg, saveAlertCfgLocal: saveAlertCfgLocal, alertCfgLocal: recallAlertCfg, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
+    publishAlertCfg: publishAlertCfg, saveAlertCfgLocal: saveAlertCfgLocal, alertCfgLocal: recallAlertCfg,
+    ALERT_SOUNDS: ALERT_SOUNDS, soundLabel: soundLabel, customSoundLocal: customSoundLocal, setCustomSoundLocal: setCustomSoundLocal, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
     makePassword: makePassword, isOwner: isOwner, owners: owners,
     ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,
     gitSaveAdmins: gitSaveAdmins, replaceAdminsBlock: replaceAdminsBlock,

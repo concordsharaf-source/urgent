@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.8" />
+<link rel="stylesheet" href="ui.css?v=3.9" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -297,8 +297,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=3.8"></script>
-<script src="core.js?v=3.8"></script>
+<script src="config.js?v=3.9"></script>
+<script src="core.js?v=3.9"></script>
 <script>
 (function () {
   'use strict';
@@ -703,7 +703,9 @@
     var cfgA = {
       snd: Math.max(3, Number(AC.snd) || Number(DD.alarmEvery) || 5),
       vis: Math.max(3, Number(AC.vis) || Number(DD.visualEvery) || 5),
-      notify: Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30)
+      notify: Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30),
+      type: String(AC.type || DD.alertSound || 'classic'),
+      vol: Math.max(0.1, Math.min(1, Number(AC.vol) || Number(DD.alertVol) || 1))
     };
     function pushAlert(what) {
       U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
@@ -711,14 +713,36 @@
     }
     secAL.appendChild(U.chipsRow('تكرار التنبيه الصوتي', 'ترن النغمة كل … ثانية حتى النسخ على كل شاشات الاستقبال',
       [3, 5, 10, 20, 30, 60], cfgA.snd, function (v) { cfgA.snd = v; pushAlert('الصوت كل ' + v + ' ثانية'); }, 'ث'));
+    var sndNames = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'من ملف الشاشة' : s.label; });
+    var sndKeys = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'custom' : s.id; });
+    var curLabel = 'رنين عاجل';
+    sndKeys.forEach(function (k, i) { if (k === cfgA.type) curLabel = sndNames[i]; });
+    secAL.appendChild(U.chipsRow('نوع صوت التنبيه', 'يُطبَّق على كل شاشات الاستقبال — النغمة المخصصة تُرفع من إعدادات الشاشة نفسها',
+      sndNames, curLabel, function (v) {
+        var i = sndNames.indexOf(v);
+        cfgA.type = sndKeys[i > -1 ? i : 0];
+        pushAlert('الصوت: ' + v);
+      }));
+    var actsSnd = U.el('div', 'uc-row-actions');
+    var bTrySnd = U.btnEl('تجربة الصوت على هذا الجهاز', 'ghost', 'sound');
+    bTrySnd.addEventListener('click', function () {
+      try {
+        if (alerter && alerter.setSound) { alerter.setSound(cfgA.type); alerter.setVolume(cfgA.vol); alerter.unlock(); alerter.play('urgent'); }
+      } catch (e) {}
+    });
+    actsSnd.appendChild(bTrySnd);
+    secAL.appendChild(actsSnd);
+    secAL.appendChild(U.chipsRow('مستوى الصوت', 'ارفع الصوت للحد الأقصى في غرفة التنفيذ',
+      [20, 40, 60, 80, 100], Math.round(cfgA.vol * 100), function (v) { cfgA.vol = v / 100; pushAlert('مستوى الصوت ' + v + '٪'); }, '٪'));
+
     secAL.appendChild(U.chipsRow('تكرار الوميض المرئي', 'يومض إطار الشاشة وشريط التنبيه كل … ثانية حتى النسخ',
       [3, 5, 10, 20, 30, 60], cfgA.vis, function (v) { cfgA.vis = v; pushAlert('الوميض كل ' + v + ' ثانية'); }, 'ث'));
     secAL.appendChild(U.chipsRow('تكرار إشعار سطح المكتب', 'يظهر إشعار فوق شريط المهام كل … ثانية والصفحة مصغّرة',
       [10, 30, 60, 120], cfgA.notify, function (v) { cfgA.notify = v; pushAlert('إشعار سطح المكتب كل ' + v + ' ثانية'); }, 'ث'));
     var actsAL = U.el('div', 'uc-row-actions');
-    var bDefAL = U.btnEl('إرجاع الافتراضي (5 / 5 / 30)', 'ghost', 'check');
+    var bDefAL = U.btnEl('إرجاع الافتراضي (5 / 5 / 30 — رنين عاجل — 100٪)', 'ghost', 'check');
     bDefAL.addEventListener('click', function () {
-      cfgA = { snd: 5, vis: 5, notify: 30 };
+      cfgA = { snd: 5, vis: 5, notify: 30, type: 'classic', vol: 1 };
       U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
       U.toast('تم إرجاع إعدادات التنبيه إلى الافتراضي ونشرها', 'ok', 6000);
       U.closeModal(); openSettings();                       // إعادة بناء النافذة بالقيم الجديدة

@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=3.8" />
+<link rel="stylesheet" href="ui.css?v=3.9" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -270,6 +270,7 @@
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
     <button class="chip ico-only" id="btnFull" aria-label="ملء الشاشة" title="ملء الشاشة — عرض الشاشة كاملة"><i class="ico" data-ic="expand"></i></button>
+    <button class="chip ico-only" id="btnPip" aria-label="نافذة عائمة" title="نافذة عائمة تبقى فوق كل التطبيقات"><i class="ico" data-ic="pip"></i></button>
     <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
   </div>
 </header>
@@ -310,8 +311,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=3.8"></script>
-<script src="core.js?v=3.8"></script>
+<script src="config.js?v=3.9"></script>
+<script src="core.js?v=3.9"></script>
 <script>
 (function () {
   'use strict';
@@ -337,6 +338,9 @@
     deskEvery: Number(U.lsGet(LSP + 'deskEvery', D.deskEvery || 30)) || 30,       // كل كم ثانية يتكرر إشعار سطح المكتب
     visualEvery: Number(U.lsGet(LSP + 'visualEvery', D.visualEvery || 5)) || 5,   // كل كم ثانية يومض الإطار المرئي
     deskNotify: U.lsGet(LSP + 'deskNotify', true) !== false,     // إشعار سطح المكتب عند تصغير الصفحة
+    soundType: U.lsGet(LSP + 'soundType', D.alertSound || 'classic') || 'classic',   // نوع صوت التنبيه
+    vol: clampNum(U.lsGet(LSP + 'vol', D.alertVol == null ? 1 : D.alertVol), 0.05, 1), // مستوى الصوت
+    pipAuto: U.lsGet(LSP + 'pipAuto', true) !== false,           // فتح النافذة العائمة مع أول نقرة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
     pushOn: false,
@@ -480,11 +484,17 @@
       subtitle: 'التنبيهات، الصوت، حجم الخط، وتثبيت التطبيق',
       room: room,
       state: {
-        sound: S.sound,
+        sound: S.sound, soundType: S.soundType, vol: S.vol, pipAuto: S.pipAuto,
         alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery, deskNotify: S.deskNotify,
         deskEvery: S.deskEvery, visualEvery: S.visualEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
+      showPip: true, pipSupported: pipSupported(), alerter: alerter,
+      onPipOpen: function () { openFloat(); },
+      onCustomSound: function (url) {
+        if (!url && S.soundType === 'custom') { S.soundType = 'classic'; U.lsSet(LSP + 'soundType', S.soundType); }
+        try { alerter.setSound(S.soundType); } catch (e) {}
+      },
       onChange: function (key, val) {
         if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
         else if (key === 'alarmRepeat') {
@@ -495,6 +505,16 @@
         else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); updateAlarmBar(); }
         else if (key === 'deskEvery') { S.deskEvery = Math.max(5, Number(val) || 30); U.lsSet(LSP + 'deskEvery', S.deskEvery); lastNotifyAt = 0; }
         else if (key === 'visualEvery') { S.visualEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'visualEvery', S.visualEvery); lastVisualAt = 0; }
+        else if (key === 'soundType') {
+          S.soundType = String(val || 'classic'); U.lsSet(LSP + 'soundType', S.soundType);
+          alerter.setSound(S.soundType);
+          if (S.soundType === 'custom' && !alerter.hasCustom()) {
+            var cs = U.customSoundLocal();
+            if (cs) alerter.setCustomFromDataURL(cs); else U.toast('لا توجد نغمة مخصصة محفوظة — ارفع ملف mp3 من القسم نفسه', 'warn', 7000);
+          }
+        }
+        else if (key === 'vol') { S.vol = clampNum(val, 0.05, 1); U.lsSet(LSP + 'vol', S.vol); alerter.setVolume(S.vol); }
+        else if (key === 'pipAuto') { S.pipAuto = val; U.lsSet(LSP + 'pipAuto', val); if (val) openFloat(); }
         else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
         else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
         else if (key === 'deskNotify') {
@@ -560,6 +580,13 @@
     try { U.initInstallCapture(); } catch (e) {}
     try { U.registerSW(); } catch (e) {}
     try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
+    try { alerter.setSound(S.soundType); alerter.setVolume(S.vol); } catch (e) {}
+    try {
+      var cs0 = U.customSoundLocal();
+      if (cs0) alerter.setCustomFromDataURL(cs0).then(function (ok) {
+        if (!ok && S.soundType === 'custom') { S.soundType = 'classic'; U.lsSet(LSP + 'soundType', 'classic'); alerter.setSound('classic'); }
+      });
+    } catch (e) {}
     try { var ac0 = U.alertCfgLocal(); if (ac0) applyAlertCfg(ac0); } catch (e) {}
     try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
     showEditorButton();
@@ -606,9 +633,12 @@
       alerter.unlock();
       U.askNotify();
       syncToggles();
+      // النافذة العائمة: تُفتح تلقائياً مع أول نقرة (إن كانت مدعومة ومفعّلة)
+      if (S.pipAuto !== false && !pipFailed && pipSupported() && !(pipWin && !pipWin.closed)) openFloat();
     }
     document.addEventListener('click', unlock);
     document.addEventListener('keydown', unlock);
+    U.$('#btnPip').addEventListener('click', function () { openFloat(); });
 
     U.$('#btnSound').addEventListener('click', function () {
       S.sound = !S.sound;
@@ -880,6 +910,7 @@
      2) إشعار سطح المكتب: يتكرر كل S.deskEvery ثانية عبر خدمة التطبيق (فوق شريط المهام).
      3) تحديث تلقائي: فحص دوري لاتصال البث وإعادة الاتصال فوراً إن انقطع. */
   function alarmTick() {
+    if (pipDoc) updateFloat();          // تحديث النافذة العائمة أولاً (حتى وهي فارغة)
     // (3) صيانة الاتصال — كل 10 ثوانٍ
     if (Date.now() - lastHealthAt > 10000) {
       lastHealthAt = Date.now();
@@ -904,6 +935,7 @@
     var vEvery = Math.max(3, Number(S.visualEvery) || 5) * 1000;
     if (Date.now() - lastVisualAt >= vEvery) { lastVisualAt = Date.now(); visualPulse(); }
 
+
     // (3) إشعار سطح المكتب المتكرر
     if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
       var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
@@ -920,6 +952,7 @@
   /* وميض مرئي قوي: إطار الشاشة + شريط التنبيه (يتكرر كل S.visualEvery ثانية حتى النسخ) */
   function visualPulse() {
     try {
+      floatFlash();
       if (S.edgeGlow !== false && edge.box && edge.on) {
         edge.box.classList.add('pulse');
         clearTimeout(visualPulse._t1);
@@ -939,6 +972,9 @@
     var ok = false;
     function num(v, lo, hi) { var n = Number(v); if (!isFinite(n) || n <= 0) return 0; return Math.max(lo, Math.min(hi, Math.round(n))); }
     var s = num(d.snd, 3, 300), v2 = num(d.vis, 3, 300), n = num(d.notify, 5, 900);
+    if (d.type) { S.soundType = String(d.type); U.lsSet(LSP + 'soundType', S.soundType); try { alerter.setSound(S.soundType); } catch (e) {} ok = true; }
+    var vv = Number(d.vol);
+    if (isFinite(vv) && vv > 0) { S.vol = clampNum(vv, 0.05, 1); U.lsSet(LSP + 'vol', S.vol); try { alerter.setVolume(S.vol); } catch (e) {} ok = true; }
     if (s) { S.alarmEvery = s; U.lsSet(LSP + 'alarmEvery', s); ok = true; }
     if (v2) { S.visualEvery = v2; U.lsSet(LSP + 'visualEvery', v2); ok = true; }
     if (n) { S.deskEvery = n; U.lsSet(LSP + 'deskEvery', n); ok = true; }
@@ -948,6 +984,137 @@
       updateAlarmBar();
     }
     return ok;
+  }
+
+  /* ===================== النافذة العائمة فوق كل التطبيقات =====================
+     تعمل بتقنية Picture-in-Picture للنوافذ (كروم/إيدج 116+) — نافذة صغيرة
+     تبقى ظاهرة فوق كل البرامج وتُظهر الخبر العاجل مع زر النسخ. */
+  var pipWin = null, pipDoc = null, pipFailed = false;
+
+  function pipSupported() {
+    try { return !!(window.documentPictureInPicture && documentPictureInPicture.requestWindow); } catch (e) { return false; }
+  }
+  function updatePipBtn() {
+    try {
+      var b = U.$('#btnPip');
+      if (!b) return;
+      b.classList.toggle('on', !!(pipWin && !pipWin.closed));
+      b.title = (pipWin && !pipWin.closed)
+        ? 'النافذة العائمة مفتوحة — تبقى فوق كل التطبيقات'
+        : 'نافذة عائمة تبقى فوق كل التطبيقات (Chrome/Edge)';
+    } catch (e) {}
+  }
+  function floatCss() {
+    return [
+      '*{box-sizing:border-box}',
+      'html,body{margin:0;height:100%;background:#0b0f19;color:#fff;font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif}',
+      '.fx{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px;border:3px solid #b91c1c;border-radius:12px;transition:border-color .25s,box-shadow .25s}',
+      '.fx.fresh{box-shadow:inset 0 0 0 4px rgba(255,60,60,.35)}',
+      '.fx.flash{animation:fxflash .95s ease-out 2}',
+      '@keyframes fxflash{0%{border-color:#b91c1c;box-shadow:0 0 0 rgba(255,60,60,0)}45%{border-color:#ff3b3b;box-shadow:0 0 26px rgba(255,60,60,.75)}100%{border-color:#b91c1c}}',
+      '.fh{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800}',
+      '.fh .fc{margin-inline-start:auto;font-size:13px;opacity:.85}',
+      '.fdot{width:11px;height:11px;border-radius:50%;background:#ef4444;animation:fxpulse 1.4s infinite}',
+      '@keyframes fxpulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.75)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}}',
+      '.fb{flex:1;overflow:auto;background:rgba(255,255,255,.06);border-radius:10px;padding:10px 12px}',
+      '.fb.urgent{background:#dc2626}',
+      '.ft{font-size:20px;font-weight:800;line-height:1.6;white-space:pre-wrap;word-break:break-word}',
+      '.fm{margin-top:8px;font-size:12.5px;opacity:.9}',
+      '.fbar{font-size:12.5px;font-weight:700;background:rgba(239,68,68,.24);color:#fecaca;border-radius:8px;padding:6px 10px;text-align:center}',
+      '.fa{display:flex;gap:8px}',
+      '.fbtn{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.14);color:#fff;font:inherit;font-weight:800;cursor:pointer}',
+      '.fbtn.p{background:#16a34a;border-color:transparent}',
+      '.fbtn:hover{filter:brightness(1.15)}',
+      '.hidden{display:none !important}'
+    ].join('');
+  }
+  function buildFloatDoc(doc) {
+    try {
+      doc.documentElement.setAttribute('dir', 'rtl');
+      doc.documentElement.lang = 'ar';
+      doc.head.innerHTML = '<meta charset="utf-8"><title>أخبار عاجلة — اليمن اليوم</title><style>' + floatCss() + '</style>';
+      doc.body.innerHTML =
+        '<div class="fx" id="fxWrap">' +
+          '<div class="fh"><span class="fdot"></span><b>أخبار عاجلة</b><span class="fc" id="fxCount"></span></div>' +
+          '<div class="fb" id="fxBody"><div class="ft" id="fxText">جارٍ التحميل…</div><div class="fm" id="fxMeta"></div></div>' +
+          '<div class="fbar hidden" id="fxBar"></div>' +
+          '<div class="fa"><button class="fbtn p" id="fxCopy">نسخ الخبر</button>' +
+          '<button class="fbtn" id="fxOpen">الشاشة</button></div>' +
+        '</div>';
+      var bc = doc.getElementById('fxCopy');
+      if (bc) bc.addEventListener('click', function () {
+        var list = uncopiedItems();
+        if (!list.length) { U.toast('لا أخبار بانتظار النسخ', 'warn'); return; }
+        copyItem(list[0].id, doc);                       // النسخ من النافذة العائمة نفسها
+      });
+      var bo = doc.getElementById('fxOpen');
+      if (bo) bo.addEventListener('click', function () { try { window.focus(); } catch (e) {} });
+    } catch (e) {}
+  }
+  function updateFloat() {
+    if (!pipDoc) return;
+    try {
+      var t = pipDoc.getElementById('fxText');
+      if (!t) return;
+      var list = uncopiedItems(), it = list[0];
+      var m = pipDoc.getElementById('fxMeta'), c = pipDoc.getElementById('fxCount'),
+          bar = pipDoc.getElementById('fxBar'), cp = pipDoc.getElementById('fxCopy'),
+          body = pipDoc.getElementById('fxBody'), wrap = pipDoc.getElementById('fxWrap');
+      if (it) {
+        U.txt(t, String(it.text || ''));
+        U.txt(m, (it.author || 'غرفة الأخبار') + ' — ' + U.fmtTime(it.ts) + (list.length > 1 ? '  •  و' + (list.length - 1) + ' خبر آخر' : ''));
+        U.txt(c, '(' + list.length + ')');
+        U.txt(bar, 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' — ' + list.length + ' خبر بانتظار النسخ');
+        bar.classList.remove('hidden');
+        body.classList.add('urgent');
+        if (cp) cp.classList.remove('hidden');
+      } else {
+        U.txt(t, 'لا أخبار بانتظار النسخ');
+        U.txt(m, 'كل الأخبار نُسخت ✔');
+        U.txt(c, '');
+        bar.classList.add('hidden');
+        body.classList.remove('urgent');
+        if (cp) cp.classList.add('hidden');
+      }
+      if (wrap) {
+        var fresh = it && S.fresh[it.id] && (Date.now() - S.fresh[it.id] < 20000);
+        wrap.classList.toggle('fresh', !!fresh);
+      }
+    } catch (e) {}
+  }
+  function floatFlash() {
+    if (!pipDoc) return;
+    try {
+      var w = pipDoc.getElementById('fxWrap');
+      if (!w) return;
+      w.classList.remove('flash');
+      void w.offsetWidth;
+      w.classList.add('flash');
+      clearTimeout(floatFlash._t);
+      floatFlash._t = setTimeout(function () { try { w.classList.remove('flash'); } catch (e) {} }, 1300);
+    } catch (e) {}
+  }
+  function openFloat() {
+    try {
+      if (pipWin && !pipWin.closed) { try { pipWin.focus(); } catch (e) {} return true; }
+      if (!pipSupported()) {
+        pipFailed = true;
+        U.toast('النافذة العائمة تحتاج Chrome أو Edge على الكمبيوتر — ويمكنك أيضاً تثبيت نافذة كروم فوق كل التطبيقات بأداة PowerToys (Win+Ctrl+T)', 'warn', 10000);
+        return false;
+      }
+      documentPictureInPicture.requestWindow({ width: 480, height: 340 }).then(function (w) {
+        pipWin = w; pipDoc = w.document;
+        buildFloatDoc(pipDoc);
+        try {
+          w.addEventListener('pagehide', function () { pipWin = null; pipDoc = null; updatePipBtn(); });
+        } catch (e) {}
+        updateFloat(); floatFlash(); updatePipBtn();
+      }).catch(function () {
+        pipFailed = true;
+        U.toast('تعذّر فتح النافذة العائمة — تأكد من استخدام Chrome أو Edge', 'warn', 8000);
+      });
+      return true;
+    } catch (e) { pipFailed = true; return false; }
   }
 
   function visualPulseStop() {
@@ -980,6 +1147,7 @@
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
     lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
+    if (pipDoc) { updateFloat(); floatFlash(); }
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
@@ -1004,16 +1172,17 @@
   }
 
   /* ---------- النسخ ---------- */
-  function copyItem(id) {
+  function copyItem(id, altDoc) {
     var it = store.get(id);
     if (!it) return;
-    U.copyText(it.text).then(function (ok) {
+    U.copyText(it.text, altDoc).then(function (ok) {
       var a = { id: id, k: 'copied', b: S.opName, ts: Date.now(), n: ok ? '' : 'manual' };
       store.applyAck(a);
       bus.publish('ack/' + id, a, { retain: true });
       try { alerter.cancelAll(); } catch (e) {}            // إسكات التنبيه فوراً
       try { visualPulseStop(); } catch (e) {}
       try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
+      if (pipDoc) { try { updateFloat(); } catch (e) {} }
       alerter.play('info');
       updateAlarmBar();
       U.toast(ok ? 'تم نسخ الخبر وإبلاغ المحرر' : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');
