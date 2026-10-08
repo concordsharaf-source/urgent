@@ -823,6 +823,9 @@ window.URGENT = (function () {
       pushState.reg = reg;
       // التحديث التلقائي عند وجود نسخة جديدة
       try { reg.update(); } catch (e) {}
+      try {
+        setInterval(function () { try { reg.update(); } catch (e2) {} }, 60000);
+      } catch (e) {}
       return reg;
     }).catch(function () { return null; });
   }

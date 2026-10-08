@@ -7,7 +7,7 @@
    ملاحظة: لا نخزّن صفحات التطبيق مؤقتاً (شبكة فقط) حتى تظهر آخر التحديثات دائماً.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.6';
+var VERSION = 'yt-news-v4.7';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -38,6 +38,19 @@ self.addEventListener('activate', function (e) {
         if (k !== STATIC_CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
+      .then(function () { return self.clients.matchAll({ type: 'window', includeUncontrolled: true }); })
+      .then(function (clients) {
+        return Promise.all(clients.map(function (c) {
+          try {
+            var u = new URL(c.url);
+            if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return;
+            if (u.searchParams.get('swu')) return;
+            u.searchParams.set('swu', '1');
+            u.searchParams.set('sn', String(Date.now()));
+            return c.navigate(u.toString());
+          } catch (err) {}
+        }));
+      })
   );
 });
 
@@ -61,8 +74,8 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  // كل ما عدا ذلك (HTML / config / core): الشبكة فقط — دائماً آخر إصدار
-  e.respondWith(fetch(req).catch(function () { return caches.match(req); }));
+  // كل ما عدا ذلك (HTML / config / core): من الشبكة مباشرة، بلا ذاكرة المتصفح
+  e.respondWith(fetch(req, { cache: 'reload' }).catch(function () { return caches.match(req); }));
 });
 
 /* ===================== Web Push ===================== */
