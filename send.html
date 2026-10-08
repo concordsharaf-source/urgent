@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.5" />
+<link rel="stylesheet" href="ui.css?v=4.6" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -178,15 +178,14 @@
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
   .send-btn:hover{filter:brightness(1.06)}
 
-  /* ============ الإحصاءات ============ */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 15px}
-  .stat .n{font-size:24px;font-weight:800;line-height:1.2}
-  .stat .t{font-size:12px;color:var(--dim);margin-top:3px}
-  .stat.red .n{color:#fca5a5}
-  .stat.green .n{color:#6ee7b7}
-  .stat.blue .n{color:#7dd3fc}
-  .stat.gray .n{color:#cbd5e1}
+  /* ============ خانة أخبار اليوم (عدد واحد، بلا تفصيل الحالة) ============ */
+  .today-box{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+  .today-box .today-lbl{font-size:15px;font-weight:800;color:#e2e8f0}
+  .today-box .today-count{margin-inline-start:auto;display:inline-flex;align-items:baseline;gap:6px;
+    background:rgba(224,36,36,.16);border:1px solid rgba(248,113,113,.38);color:#fff;
+    border-radius:12px;padding:6px 14px;font-size:13px;font-weight:700}
+  .today-box .today-count b{font-size:22px;font-weight:800;line-height:1}
 
   /* ============ الفلاتر ============ */
   .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -340,8 +339,11 @@
       </div>
     </div>
 
-    <!-- الإحصاءات -->
-    <div class="stats" id="stats"></div>
+    <!-- خانة واحدة: عدد أخبار اليوم بغض النظر عن الاستلام أو النسخ -->
+    <div class="today-box" id="todayBox">
+      <span class="today-lbl">أخبار اليوم</span>
+      <span class="today-count"><b id="todayNum">0</b> خبر</span>
+    </div>
 
     <!-- الفلاتر -->
     <div class="filters">
@@ -373,8 +375,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.5"></script>
-<script src="core.js?v=4.5"></script>
+<script src="config.js?v=4.6"></script>
+<script src="core.js?v=4.6"></script>
 <script>
 (function () {
   'use strict';
@@ -418,7 +420,7 @@
   var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
   var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
   var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
-  var feed = U.$('#feed'), statsBox = U.$('#stats');
+  var feed = U.$('#feed'), todayNum = U.$('#todayNum');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
   var connDot = U.$('#connDot'), connText = U.$('#connText');
@@ -1188,18 +1190,13 @@
       if (cur) S.draft = cur.value;
     }
     var items = store.list();
-    var st = store.stats();
-
-    // الإحصاءات
-    statsBox.innerHTML = '';
-    [['total', 'إجمالي الأخبار', 'gray'], ['copied', 'تم نسخها', 'green'], ['received', 'وصلت ولم تُنسخ', 'blue'],
-     ['pending', 'لم تصل بعد', 'red'], ['pinned', 'مثبّتة', 'gray'],
-     ['notesPending', 'ملاحظات بانتظار الاستلام', 'blue'], ['notesDone', 'ملاحظات مُستلمة', 'gray']].forEach(function (x) {
-      var d = U.el('div', 'stat ' + x[2]);
-      d.appendChild(U.el('div', 'n', String(st[x[0]])));
-      d.appendChild(U.el('div', 't', x[1]));
-      statsBox.appendChild(d);
+    var todayKey = U.dayKeyOf(Date.now());
+    var todayNews = 0;
+    items.forEach(function (it) {
+      if (it.note) return;                                   // الملاحظات ليست أخباراً
+      if (U.dayKeyOf(it.ts) === todayKey) todayNews++;       // كل أخبار اليوم، مستلمة أو لا
     });
+    U.txt(todayNum, String(todayNews));
 
     var list = items.filter(function (it) {
       var kind = it.ack ? it.ack.kind : null;
@@ -1269,9 +1266,20 @@
     var d = dayNodes[key];
     if (!d) return;
     d.wrap.classList.toggle('open', !!open);
-    U.txt(d.pill, open ? 'إغلاق' : ((d.count || 0) + ' خبر'));
+    U.txt(d.pill, (d.count || 0) + ' خبر');          // العدد الإجمالي يبقى ظاهراً حتى واليوم مفتوح
+  }
+  function dayTotalsOf() {
+    var today = U.dayKeyOf(Date.now());
+    var map = {};
+    store.list().forEach(function (it) {
+      var k = U.dayKeyOf(it.ts);
+      if (k === today) return;
+      map[k] = (map[k] || 0) + 1;
+    });
+    return map;
   }
   function renderArchive(g) {
+    var dayTotals = dayTotalsOf();
     Object.keys(dayNodes).forEach(function (k) {
       if (g.byDay[k]) return;
       try { dayNodes[k].wrap.remove(); } catch (e) {}
@@ -1285,10 +1293,10 @@
         if (expected !== d.wrap) archDays.insertBefore(d.wrap, expected || null);
       }
       var items2 = g.byDay[k].slice().sort(function (a, b) { return b.ts - a.ts; });
-      d.count = items2.length;
+      d.count = (dayTotals[k] != null) ? dayTotals[k] : items2.length;   // الإجمالي بغض النظر عن الفلتر أو الاستلام
       U.txt(d.label, U.dayLabel(k));
       d.wrap.classList.toggle('open', !!openDays[k]);
-      U.txt(d.pill, openDays[k] ? 'إغلاق' : (items2.length + ' خبر'));
+      U.txt(d.pill, d.count + ' خبر');
       d.list.innerHTML = '';
       items2.forEach(function (it) { d.list.appendChild(buildItem(it)); });
     });
@@ -1302,7 +1310,7 @@
       if (ae) ae.remove();
     }
     var total = 0;
-    g.days.forEach(function (k) { total += g.byDay[k].length; });
+    g.days.forEach(function (k) { total += (dayTotals[k] != null ? dayTotals[k] : g.byDay[k].length); });
     U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر') : 'فارغ حالياً');
   }
 
