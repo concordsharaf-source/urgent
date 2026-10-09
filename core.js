@@ -721,16 +721,27 @@ window.URGENT = (function () {
       return { item: it, isNew: isNew };
     }
 
+    function ackOf(raw) {
+      return { kind: raw.k || 'copied', by: raw.b || 'المنفذ', ts: Number(raw.ts) || Date.now(), note: raw.n || '' };
+    }
+    /* إعادة النسخ لا تغيّر ساعة أول نسخة */
+    function keepFirstCopyTs(prev, next) {
+      if (prev && prev.kind === 'copied' && next.kind === 'copied' && prev.ts && next.ts) {
+        next.ts = Math.min(Number(prev.ts), Number(next.ts));
+      }
+      return next;
+    }
     function applyAck(raw) {
       if (!raw || !raw.id) return null;
+      var next = ackOf(raw);
       var it = items[raw.id];
       if (!it) {
         // وصلت الإشارة قبل الخبر: نحفظها ونطبّقها عند وصول الخبر
-        pendingAcks[raw.id] = { kind: raw.k || 'copied', by: raw.b || 'المنفذ', ts: Number(raw.ts) || Date.now(), note: raw.n || '' };
+        pendingAcks[raw.id] = keepFirstCopyTs(pendingAcks[raw.id], next);
         return null;
       }
       var prev = it.ack;
-      it.ack = { kind: raw.k || 'copied', by: raw.b || 'المنفذ', ts: Number(raw.ts) || Date.now(), note: raw.n || '' };
+      it.ack = keepFirstCopyTs(prev, next);
       save();
       emit('ack', { item: it, prev: prev });
       emit('change', { item: it });
