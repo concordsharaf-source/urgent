@@ -629,6 +629,7 @@ window.URGENT = (function () {
       });
 
       c.on('message', function (topic, payload) {
+        if (client !== c) return;   // تجاهل الرسائل المتأخرة من مقبس لم يعد هو الحالي
         var rel = topic.slice(base.length);
         var raw = payload ? payload.toString() : '';
         var data = null;
@@ -648,7 +649,10 @@ window.URGENT = (function () {
           if (!outbox._warned) { outbox._warned = true; }
         }
       });
-      c.on('offline', function () { alive = false; setState('offline', { broker: b.name }); });
+      c.on('offline', function () {
+        if (client !== c) return;   // لا تسمح لمقبس قديم بتغيير حالة الاتصال الحالية
+        alive = false; setState('offline', { broker: b.name });
+      });
     }
 
     /* نبضة حضور دورية */
