@@ -581,7 +581,8 @@ window.URGENT = (function () {
       idx = i;
       if (i >= brs.length) {
         setState('failed', {});
-        setTimeout(function () { alive = false; connect(0); }, 6000);
+        try { localStorage.removeItem('ucn:lastBroker'); } catch (e0) {}
+        setTimeout(function () { alive = false; connect(0); }, 2500);
         return;
       }
       var b = brs[i];
