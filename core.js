@@ -20,6 +20,13 @@ window.URGENT = (function () {
   var ONLINE_TTL = 45000;                // صلاحية نبضة الحضور
   var PRESENCE_MS = 15000;               // دورية نبضة الحضور
 
+  /* ===================== مهل الاتصال — مضبوطة للشبكات البطيئة =====================
+     كانت 4.5 ثانية و 5 ثوانٍ: على 3G لا يصل ردّ الوسيط العام في هذا الوقت،
+     فلا يُعلَن «متصل» وتبقى النقطة حمراء رغم أن الشبكة تعمل. لا تُنقصها. */
+  var T_CONNECT = 12000;        // مهلة mqtt.connect (كانت 4500)
+  var T_GUARD = 12000;          // مهلة فتح المقبس قبل الانتقال إلى الوسيط التالي (كانت 5000)
+  var T_RETRY_ALL = 8000;       // انتظار بعد استنفاد كل الوسطاء (كانت 6000)
+
 
   /* ===================== أيقونات SVG (بدل الإيموجي: تظهر بنفس الشكل على كل الأجهزة) ===================== */
   var ICONS = {
@@ -581,7 +588,7 @@ window.URGENT = (function () {
       idx = i;
       if (i >= brs.length) {
         setState('failed', {});
-        setTimeout(function () { alive = false; connect(0); }, 6000);
+        setTimeout(function () { alive = false; connect(0); }, T_RETRY_ALL);
         return;
       }
       var b = brs[i];
@@ -594,7 +601,7 @@ window.URGENT = (function () {
           clientId: 'ucn_' + Math.random().toString(16).slice(2, 12),
           clean: true,
           keepalive: 120,        // أطول: يحفظ الاتصال أثناء تصغير النافذة
-          connectTimeout: 4500,
+          connectTimeout: T_CONNECT,
           reconnectPeriod: 2500,
           protocolVersion: 4,
           will: { topic: base + 'presence/' + opts.who, payload: JSON.stringify({ off: 1, ts: 0 }), qos: 0, retain: true }
@@ -606,9 +613,10 @@ window.URGENT = (function () {
 
       var guard = setTimeout(function () {
         if (!opened) { deadSwitch = true; try { c.end(true); } catch (e) {} connect(i + 1); }
-      }, 5000);
+      }, T_GUARD);
 
       c.on('connect', function () {
+        if (client !== c) { try { c.end(true); } catch (e0) {} return; }
         opened = true; alive = true; deadSwitch = false;
         clearTimeout(guard);
         setState('connected', { broker: b.name });
@@ -629,6 +637,7 @@ window.URGENT = (function () {
       });
 
       c.on('error', function () {
+        if (client !== c) return;   // خطأ من مقبس متجاوِب لا يقدّم دورة الوسطاء مرتين
         if (!opened) { deadSwitch = true; clearTimeout(guard); try { c.end(true); } catch (e) {} connect(i + 1); }
       });
 
