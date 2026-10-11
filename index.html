@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.13" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.13" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.15" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -455,8 +455,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.13"></script>
-<script src="core.js?v=4.13"></script>
+<script src="config.js?v=4.15"></script>
+<script src="core.js?v=4.15"></script>
 <script>
 (function () {
   'use strict';
@@ -1722,15 +1722,16 @@
    (أو ما زالت فيه إحصاءات الحالة القديمة) تُحدَّث الصفحة بعنوان يكسر التخزين. */
 (function () {
   var booted = false;
+  var RELOAD_COOLDOWN = 180000;   // 3 دقائق بين إعادة تحميلين قسريين في نفس التبويب
+  function lastReload() {
+    try { return Number(sessionStorage.getItem('ucn:lastReload') || 0); } catch (e) { return 0; }
+  }
+  function markReload() { try { sessionStorage.setItem('ucn:lastReload', String(Date.now())); } catch (e2) {} }
   function hardReload() {
+    markReload();
     var jobs = [];
-    try {
-      if (window.caches && caches.keys) {
-        jobs.push(caches.keys().then(function (ks) {
-          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
-        }));
-      }
-    } catch (e) {}
+    /* لم يعد يحذف كاش الجهاز: حذفه كان يُلغي عرض الصفحة الفوري ويُجبر الشبكة على سحب
+       ~500 ك.ب كاملة، وعلى الشبكات البطيئة تبقى الشاشة «غير متصل» وتكرر المحاولة كل 20 ثانية. */
     try {
       if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
         jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
@@ -1775,6 +1776,7 @@
         var sn = 0;
         try { sn = Number(new URL(location.href).searchParams.get('sn') || 0); } catch (e) {}
         if (typing() || (sn && (Date.now() - sn) < 20000)) { showBar(); return; }
+        if (Date.now() - lastReload() < RELOAD_COOLDOWN) { showBar(); return; }
         hardReload();
       }).catch(function () {});
   }
