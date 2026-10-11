@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.13" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.13" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.14" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.14" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -181,7 +181,8 @@
   .bar-btn:hover{filter:brightness(1.07)}
   .bar-btn.open{background:linear-gradient(135deg,#15803d,#14532d)}
   .bar-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
-  .bar-panel.open{max-height:none;opacity:1;overflow:visible;margin-top:12px}
+  .bar-panel.open,.bar-panel.stay{max-height:none;opacity:1;overflow:visible;margin-top:12px}
+  .bar-keep-lbl{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#86efac;margin-bottom:8px}
   .bar-panel textarea{width:100%;min-height:180px;max-height:70vh;overflow:auto;border-radius:14px;border:1px solid rgba(34,197,94,.5);
     background:rgba(22,163,74,.12);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
     line-height:1.9;resize:vertical;outline:none}
@@ -366,7 +367,8 @@
           <div class="note-status" id="noteStatus"></div>
         </div>
         <div class="bar-panel" id="barPanel">
-          <textarea id="barText" placeholder="الصق نص الشريط الإخباري… يبقى هنا بعد الإرسال ولا يُمسح إلا بالحذف"></textarea>
+          <div class="bar-keep-lbl"><i class="livedot" style="background:#22c55e"></i>نص الشريط يبقى هنا بعد الإرسال، ولا يُمسح إلا بالحذف</div>
+          <textarea id="barText" placeholder="الصق نص الشريط الإخباري… يبقى في هذه الخانة بعد الإرسال"></textarea>
           <div class="note-actions">
             <span class="counter" id="barCounter">0 كلمة</span>
             <button class="bar-send" id="btnBarSend" type="button">إرسال الشريط</button>
@@ -413,8 +415,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.13"></script>
-<script src="core.js?v=4.13"></script>
+<script src="config.js?v=4.14"></script>
+<script src="core.js?v=4.14"></script>
 <script>
 (function () {
   'use strict';
@@ -581,7 +583,15 @@
     if (!btnBar) return;
     var ok = canSendBar();
     btnBar.classList.toggle('hidden', !ok);
-    if (!ok && barPanel) barPanel.classList.remove('open');
+    if (!barPanel) return;
+    if (ok) {
+      barPanel.classList.add('open');
+      barPanel.classList.add('stay');
+      btnBar.classList.add('open');
+    } else {
+      barPanel.classList.remove('open');
+      barPanel.classList.remove('stay');
+    }
   }
   function purgeHiddenBars() {
     if (canSeeBar()) return;
@@ -631,8 +641,23 @@
     return String(s || '').replace(/\u0000/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\s+|\s+$/g, '');
   }
   function saveBarDraft() {
-    try { U.lsSet(LSP + 'barDraft', barText ? barText.value : ''); } catch (e) {}
+    var v = barText ? barText.value : '';
+    try { U.lsSet(LSP + 'barDraft', v); } catch (e) {}
     try { U.lsSet(LSP + 'barId', S.barId || ''); } catch (e) {}
+    try { localStorage.setItem('ucn:barKeep', v); } catch (e) {}
+  }
+  function keptBarText() {
+    var draft = '';
+    try { draft = U.lsGet(LSP + 'barDraft', '') || ''; } catch (e) {}
+    if (typeof draft !== 'string' || !draft) {
+      try { draft = localStorage.getItem('ucn:barKeep') || ''; } catch (e) {}
+    }
+    if (typeof draft !== 'string') draft = '';
+    if (!draft) {
+      var saved = storedBarItem();
+      if (saved && saved.text) { draft = saved.text; if (!S.barId) S.barId = saved.id; }
+    }
+    return draft;
   }
   function storedBarItem() {
     if (S.barId) {
@@ -644,18 +669,12 @@
     return list[0] || null;
   }
   function recallBarDraft() {
-    var draft = '';
     try { S.barId = String(U.lsGet(LSP + 'barId', '') || ''); } catch (e) { S.barId = ''; }
-    try { draft = U.lsGet(LSP + 'barDraft', '') || ''; } catch (e) {}
-    if (typeof draft !== 'string') draft = '';
-    if (!draft) {
-      var saved = storedBarItem();
-      if (saved) { draft = saved.text || ''; S.barId = saved.id; }
-    }
+    var draft = keptBarText();
     if (!barText) return;
     if (draft) barText.value = draft;
     barWords();
-    saveBarDraft();
+    if (draft) saveBarDraft();
     ensureBarVisible();
   }
   function ensureBarVisible() {
@@ -700,8 +719,25 @@
     if (barText) barText.value = '';
     barWords();
     saveBarDraft();
+    try { localStorage.removeItem('ucn:barKeep'); } catch (e) {}
     setBarStatus('');
   }
+  var barEmptySince = 0;
+  setInterval(function () {
+    if (!barText || !canSendBar()) return;
+    ensureBarVisible();
+    if (S.barDeleteReq) return;
+    if (barText.value && barText.value.replace(/^\s+|\s+$/g, '')) { barEmptySince = 0; return; }
+    if (document.activeElement === barText) return;
+    if (!barEmptySince) { barEmptySince = Date.now(); return; }
+    if (Date.now() - barEmptySince < 2000) return;
+    var saved = keptBarText();
+    if (!saved) return;
+    barText.value = saved;
+    barWords();
+    barEmptySince = 0;
+    ensureBarVisible();
+  }, 1000);
   function sendBar() {
     if (!canSendBar()) return;
     var t = barPayload(barText.value);
@@ -751,8 +787,8 @@
     U.toast('تم حذف الشريط', 'ok');
   }
   if (btnBar) btnBar.addEventListener('click', function () {
-    if (barText && barText.value.replace(/^\s+|\s+$/g, '')) { barOpen(true); return; }
-    barOpen(!barPanel.classList.contains('open'));
+    barOpen(true);
+    try { barText.focus(); } catch (e) {}
   });
   if (U.$('#btnBarSend')) U.$('#btnBarSend').addEventListener('click', function (e) { e.preventDefault(); sendBar(); });
   if (U.$('#btnBarDelete')) U.$('#btnBarDelete').addEventListener('click', function () { deleteBar(); });
