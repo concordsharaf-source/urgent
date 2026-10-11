@@ -860,12 +860,12 @@
       if (res && res.isNew) onNewItem(res.item);
       return;
     }
-    if (rel.indexOf('ticker/') === 0) {
-      var tid = rel.slice(7);
-      if (isEmpty) { store.remove(tid); render(); updateAlarmBar(); return; }
+    if (rel === 'ticker/active') {
+      if (isEmpty) { store.list().forEach(function(it){ if(it.ticker) store.remove(it.id); }); render(); updateAlarmBar(); return; }
       if (!data || !data.t) return;
-      var tres = store.applyTicker({ id: data.id || tid, t: data.t, a: data.a, ts: data.ts, e: data.e });
-      if (tres && tres.isNew) onNewItem(tres.item);
+      store.list().forEach(function(it){ if(it.ticker && it.id !== data.id) store.remove(it.id); });
+      var tres = store.applyTicker({ id: data.id, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (tres && tres.isNew) onNewItem(tres.item); else { render(); updateAlarmBar(); }
       return;
     }
     if (rel.indexOf('note/') === 0) {
@@ -1421,6 +1421,7 @@
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
     bus.publish('ticker/' + id, '', { retain: true });
+    bus.publish('ticker/active', '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });

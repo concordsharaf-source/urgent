@@ -569,11 +569,19 @@
   function canSendTicker() { return !!(S.admin && (U.isOwner(S.admin.user) || S.admin.name === 'مدير التحرير' || ((cfg.ticker && cfg.ticker.senderUsers) || []).indexOf(S.admin.user) >= 0)); }
   function tickerWords() { var t=tickerText.value.trim(); var n=t ? t.split(/\s+/).filter(Boolean).length : 0; U.txt(tickerCounter,n+' كلمة'+(t.length?' — '+t.length+' حرف':'')); }
   function tickerOpen(open) { tickerPanel.classList.toggle('open',!!open); btnTicker.classList.toggle('open',!!open); if(open) setTimeout(function(){try{tickerText.focus();}catch(e){}},180); }
+  function clearTickerItems() {
+    store.list().forEach(function (it) {
+      if (it.ticker) {
+        bus.publish('ticker/' + it.id, '', { retain: true, queue: false });
+        store.remove(it.id);
+      }
+    });
+  }
   function sendTicker() {
     if (!canSendTicker()) { U.toast('إرسال الشريط مخصص لمدير التحرير والمالك فقط','warn'); return; }
     var t=tickerText.value.trim(); if(!t){U.toast('الصق نص الشريط أولاً','warn');return;}
     var id='tk'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); var item={id:id,t:t,a:S.admin.name,ts:Date.now(),x:1};
-    store.applyTicker(item); var live=bus.publish('ticker/'+id,item,{retain:true}); S.tickerSent[id]=true; tickerText.value=''; tickerWords();
+    clearTickerItems(); store.applyTicker(item); var live=bus.publish('ticker/active',item,{retain:true}); S.tickerSent[id]=true; tickerText.value=''; tickerWords();
     tickerStatus.textContent=live?'أُرسل الشريط — بانتظار النسخ من المنفذ':'سيرسل النظام الشريط عند عودة الاتصال'; tickerStatus.className='note-status'+(live?'':' warn'); render(); U.toast('أُرسل الشريط إلى شاشة المنفذ',live?'ok':'warn');
   }
   btnTicker.addEventListener('click',function(){tickerOpen(!tickerPanel.classList.contains('open'));});
@@ -1043,7 +1051,7 @@
     if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
     var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now(), n: it.note ? 1 : 0, x: it.ticker ? 1 : 0 };
     if (it.note) store.applyNote(upd); else if (it.ticker) store.applyTicker(upd); else store.applyNews(upd);
-    bus.publish((it.note ? 'note/' : it.ticker ? 'ticker/' : 'news/') + id, upd, { retain: true });
+    bus.publish((it.note ? 'note/' : it.ticker ? 'ticker/active' : 'news/') + (it.ticker ? '' : id), upd, { retain: true });
     S.editing = null;
     S.draft = null;
     render();
@@ -1078,6 +1086,7 @@
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
     bus.publish('ticker/' + id, '', { retain: true });
+    bus.publish('ticker/active', '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1109,10 +1118,11 @@
       }
       return;
     }
-    if (rel.indexOf('ticker/') === 0) {
-      var tid=rel.slice(7); if (isEmpty) { store.remove(tid); render(); return; }
+    if (rel === 'ticker/active') {
+      if (isEmpty) { store.list().forEach(function(it){ if(it.ticker) store.remove(it.id); }); render(); return; }
       if (!data || !data.t || (!canSendTicker() && !S.tickerVisibleToEditors)) return;
-      var tr=store.applyTicker({id:data.id||tid,t:data.t,a:data.a,ts:data.ts,e:data.e}); if(tr&&tr.isNew){S.shownIds[tr.item.id]=Date.now(); if(!normOwn(data.a)&&S.sound)alerter.play('info');} render(); return;
+      store.list().forEach(function(it){ if(it.ticker && it.id !== data.id) store.remove(it.id); });
+      var tr=store.applyTicker({id:data.id,t:data.t,a:data.a,ts:data.ts,e:data.e}); if(tr&&tr.isNew){S.shownIds[tr.item.id]=Date.now(); if(!normOwn(data.a)&&S.sound)alerter.play('info');} render(); return;
     }
     if (rel.indexOf('note/') === 0) {
       var nid = rel.slice(5);
