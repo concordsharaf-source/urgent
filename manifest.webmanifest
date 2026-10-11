@@ -5,7 +5,7 @@
   "description": "استقبال الأخبار العاجلة من غرفة الأخبار: تنبيه فوري، نسخ بضغطة، وإشعار المحرر بأن الخبر وصل وتم نسخه.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/index.html?src=pwa",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": [

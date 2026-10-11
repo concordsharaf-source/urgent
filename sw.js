@@ -8,7 +8,7 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.15';
+var VERSION = 'yt-news-v4.16';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -88,7 +88,10 @@ self.addEventListener('fetch', function (e) {
           }).then(function (res) {
             if (res && res.ok && shell) c.put(shell, res.clone());
             return res;
-          }).catch(function () { return hit || Response.error(); });
+          }).catch(function () {
+            if (hit) return hit;
+            return new Response('<!doctype html><meta charset="utf-8"><title>اليمن اليوم</title><body dir="rtl" style="font-family:sans-serif;background:#070b13;color:#fff;padding:24px">لا يوجد اتصال حالياً. افتح التطبيق بعد عودة الاتصال.</body>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+          });
           if (hit && !bust) { net.catch(function () {}); return hit; }
           return net;
         });
