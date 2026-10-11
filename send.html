@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.13" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.13" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.14" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.14" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -394,8 +394,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.13"></script>
-<script src="core.js?v=4.13"></script>
+<script src="config.js?v=4.14"></script>
+<script src="core.js?v=4.14"></script>
 <script>
 (function () {
   'use strict';
@@ -442,6 +442,7 @@
   var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
   var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
   var btnTicker = U.$('#btnTicker'), tickerPanel = U.$('#tickerPanel'), tickerText = U.$('#tickerText'), tickerCounter = U.$('#tickerCounter'), tickerStatus = U.$('#tickerStatus');
+  var tickerDraftKey = U.LS_PREFIX + room + ':tickerDraft';
   var feed = U.$('#feed'), todayNum = U.$('#todayNum');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
@@ -492,6 +493,7 @@
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
+    loadTickerDraft();
     var s = session.get();
     if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
     else { inUser.focus(); }
@@ -568,6 +570,8 @@
   }
   function canSendTicker() { return !!(S.admin && (U.isOwner(S.admin.user) || S.admin.name === 'مدير التحرير' || ((cfg.ticker && cfg.ticker.senderUsers) || []).indexOf(S.admin.user) >= 0)); }
   function tickerWords() { var t=tickerText.value.trim(); var n=t ? t.split(/\s+/).filter(Boolean).length : 0; U.txt(tickerCounter,n+' كلمة'+(t.length?' — '+t.length+' حرف':'')); }
+  function saveTickerDraft() { U.lsSet(tickerDraftKey, tickerText.value); }
+  function loadTickerDraft() { var draft = U.lsGet(tickerDraftKey, ''); if (draft) tickerText.value = String(draft); tickerWords(); }
   function tickerOpen(open) { tickerPanel.classList.toggle('open',!!open); btnTicker.classList.toggle('open',!!open); if(open) setTimeout(function(){try{tickerText.focus();}catch(e){}},180); }
   function clearTickerItems() {
     store.list().forEach(function (it) {
@@ -581,11 +585,11 @@
     if (!canSendTicker()) { U.toast('إرسال الشريط مخصص لمدير التحرير والمالك فقط','warn'); return; }
     var t=tickerText.value.trim(); if(!t){U.toast('الصق نص الشريط أولاً','warn');return;}
     var id='tk'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); var item={id:id,t:t,a:S.admin.name,ts:Date.now(),x:1};
-    clearTickerItems(); store.applyTicker(item); var live=bus.publish('ticker/active',item,{retain:true}); S.tickerSent[id]=true; tickerText.value=''; tickerWords();
+    clearTickerItems(); store.applyTicker(item); var live=bus.publish('ticker/active',item,{retain:true}); S.tickerSent[id]=true; saveTickerDraft(); tickerWords();
     tickerStatus.textContent=live?'أُرسل الشريط — بانتظار النسخ من المنفذ':'سيرسل النظام الشريط عند عودة الاتصال'; tickerStatus.className='note-status'+(live?'':' warn'); render(); U.toast('أُرسل الشريط إلى شاشة المنفذ',live?'ok':'warn');
   }
   btnTicker.addEventListener('click',function(){tickerOpen(!tickerPanel.classList.contains('open'));});
-  U.$('#btnTickerSend').addEventListener('click',sendTicker); U.$('#btnTickerClear').addEventListener('click',function(){tickerText.value='';tickerWords();tickerText.focus();}); U.$('#btnTickerCancel').addEventListener('click',function(){tickerOpen(false);}); tickerText.addEventListener('input',tickerWords); tickerText.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendTicker();}});
+  U.$('#btnTickerSend').addEventListener('click',sendTicker); U.$('#btnTickerClear').addEventListener('click',function(){tickerText.value='';saveTickerDraft();tickerWords();tickerText.focus();}); U.$('#btnTickerCancel').addEventListener('click',function(){tickerOpen(false);}); tickerText.addEventListener('input',function(){tickerWords();saveTickerDraft();}); tickerText.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendTicker();}});
   btnNote.addEventListener('click', function () { noteOpen(!notePanel.classList.contains('open')); });
   U.$('#btnNoteSend').addEventListener('click', function (e) { e.preventDefault(); sendNote(); });
   U.$('#btnNoteClear').addEventListener('click', function () { noteText.value = ''; noteWords(); noteText.focus(); });
