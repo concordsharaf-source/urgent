@@ -877,13 +877,14 @@ window.URGENT = (function () {
       emit('change', {});
     }
 
-    function applyNews(raw, forceNote) {
+    function applyNews(raw, forceNote, forceBar) {
       if (!raw || !raw.id || !raw.t) return null;
       var id = String(raw.id);
       var isNew = !items[id];
       var it = items[id] || (items[id] = { id: id, ack: null, pin: null });
       ids[id] = true;
-      if (forceNote || raw.n) it.note = true;               // ملاحظة (بطاقة زرقاء) بدل خبر عاجل
+      if (forceNote || raw.n) { it.note = true; it.bar = false; }
+      else if (forceBar || raw.bar) { it.bar = true; it.note = false; }
       it.text = String(raw.t);
       it.author = raw.a ? String(raw.a) : 'المحرر';
       it.ts = Number(raw.ts) || Date.now();
@@ -961,7 +962,7 @@ window.URGENT = (function () {
     }
 
     function stats() {
-      var s = { total: 0, copied: 0, received: 0, pending: 0, pinned: 0, notes: 0, notesPending: 0, notesDone: 0 };
+      var s = { total: 0, copied: 0, received: 0, pending: 0, pinned: 0, notes: 0, notesPending: 0, notesDone: 0, bars: 0, barsPending: 0, barsDone: 0 };
       packed().forEach(function (i) {
         s.total++;
         if (i.pin) s.pinned++;
@@ -969,6 +970,11 @@ window.URGENT = (function () {
           s.notes++;
           if (i.ack && i.ack.kind === 'got') s.notesDone++; else s.notesPending++;
           return;                                            // الملاحظات لا تُحسب ضمن «الأخبار»
+        }
+        if (i.bar) {
+          s.bars++;
+          if (i.ack && i.ack.kind === 'copied') s.barsDone++; else s.barsPending++;
+          return;                                            // الشريط لا يُحسب ضمن أخبار اليوم
         }
         if (i.ack && i.ack.kind === 'copied') s.copied++;
         else if (i.ack && i.ack.kind === 'received') s.received++;
@@ -979,7 +985,8 @@ window.URGENT = (function () {
 
     return {
       on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
-      applyNote: function (raw) { return applyNews(raw, true); },
+      applyNote: function (raw) { return applyNews(raw, true, false); },
+      applyBar: function (raw) { return applyNews(raw, false, true); },
       remove: remove, clearAll: clearAll, list: list, stats: stats, save: save, load: load,
       get: function (id) { return items[id]; },
       has: function (id) { return !!ids[id]; },
@@ -1864,6 +1871,20 @@ window.URGENT = (function () {
     return t.split(/\s+/).length;
   }
 
+  function firstLine(s) {
+    var t = String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var line = (t.split('\n')[0] || '').replace(/^\s+|\s+$/g, '');
+    if (line) return line;
+    return t.replace(/^\s+|\s+$/g, '');
+  }
+  function barPreview(s) {
+    var raw = String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var line = firstLine(raw);
+    var rest = raw.replace(/^\s+|\s+$/g, '');
+    if (rest.length > line.length) return line + ' …';
+    return line;
+  }
+
   /* ===================== تصدير ===================== */
   return {
     // أدوات
@@ -1904,7 +1925,7 @@ window.URGENT = (function () {
     // نقل وبيانات
     createBus: createBus, loadMqtt: loadMqtt, createStore: createStore, createSession: createSession,
     // نصوص ونسخ
-    copyText: copyText, cleanNewsText: cleanNewsText, countWords: countWords,
+    copyText: copyText, cleanNewsText: cleanNewsText, countWords: countWords, firstLine: firstLine, barPreview: barPreview,
     ONLINE_TTL: ONLINE_TTL, PRESENCE_MS: PRESENCE_MS
   };
 })();
