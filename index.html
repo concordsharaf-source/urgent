@@ -202,6 +202,10 @@
   .card.note .livedot{background:#bfdbfe}
   .card.note.fresh::after{box-shadow:0 0 0 0 rgba(191,219,254,.55);animation:ring 1.5s ease-out 3}
   .card.note .copy-btn{color:#1d4ed8}
+  .card.ticker{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);box-shadow:0 22px 44px -20px rgba(34,197,94,.7),inset 0 1px 0 rgba(255,255,255,.14)}
+  .card.ticker .text{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+  .card.ticker .tag{background:rgba(0,0,0,.3)}
+  .card.ticker .copy-btn{color:#15803d}
   .recv-btn{
     background:#fff;color:#1d4ed8;border:none;border-radius:14px;font-weight:800;font-size:17px;
     padding:13px 28px;min-height:50px;cursor:pointer;
@@ -856,6 +860,14 @@
       if (res && res.isNew) onNewItem(res.item);
       return;
     }
+    if (rel.indexOf('ticker/') === 0) {
+      var tid = rel.slice(7);
+      if (isEmpty) { store.remove(tid); render(); updateAlarmBar(); return; }
+      if (!data || !data.t) return;
+      var tres = store.applyTicker({ id: data.id || tid, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (tres && tres.isNew) onNewItem(tres.item);
+      return;
+    }
     if (rel.indexOf('note/') === 0) {
       var nid = rel.slice(5);
       if (isEmpty) { store.remove(nid); render(); updateAlarmBar(); return; }   // ملاحظة محذوفة
@@ -1331,7 +1343,7 @@
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
-    var nTitle = (item.note ? 'ملاحظة — ' : 'خبر عاجل — ') + (item.author || 'غرفة الأخبار');
+    var nTitle = (item.note ? 'ملاحظة — ' : item.ticker ? 'شريط إخباري — ' : 'خبر عاجل — ') + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
@@ -1340,7 +1352,7 @@
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
-    if (document.hidden) U.flashTitle(item.note ? 'ملاحظة جديدة' : 'خبر عاجل');
+    if (document.hidden) U.flashTitle(item.note ? 'ملاحظة جديدة' : item.ticker ? 'شريط إخباري جديد' : 'خبر عاجل');
     scheduleReceivedAck(item);
     render();
     updateAlarmBar();
@@ -1408,6 +1420,7 @@
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
+    bus.publish('ticker/' + id, '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1568,7 +1581,7 @@
     var actions = U.el('div', 'actions');
     var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
     var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy');
-    copy.innerHTML = U.ic('copy', 20) + 'نسخ الخبر';
+    copy.innerHTML = U.ic('copy', 20) + 'نسخ' + (it.ticker ? ' الشريط' : ' الخبر');
     var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
     recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
     actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
@@ -1591,17 +1604,19 @@
     r('new').classList.toggle('hidden', !fresh);
 
     var ack = it.ack;
-    var isNote = !!it.note;
+    var isNote = !!it.note, isTicker = !!it.ticker;
     var copied = isNote ? !!(ack && ack.kind === 'got') : !!(ack && ack.kind === 'copied');
     card.classList.toggle('note', isNote);                 // أزرق للملاحظة
+    card.classList.toggle('ticker', isTicker);              // أخضر للشريط
     card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
     card.classList.toggle('pinned', !!it.pin);
     var tg = r('tag');
-    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
+    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : isTicker ? 'شريط' : 'عاجل');
     r('pin').classList.toggle('hidden', !it.pin || isNote);
     r('edited').classList.toggle('hidden', !it.editedAt || isNote);
 
     var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy'), recvBtn = r('recv');
+    if (copyBtn) copyBtn.innerHTML = U.ic('copy', 20) + 'نسخ' + (isTicker ? ' الشريط' : ' الخبر');
     if (isNote) {
       copyBtn.classList.add('hidden');
       recopyBtn.classList.add('hidden');

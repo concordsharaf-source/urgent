@@ -86,6 +86,12 @@ window.URGENT_CONFIG = {
   },
 
   /* ---------- خواص شاشة الاستقبال ---------- */
+  /* ---------- الشريط الإخباري ---------- */
+  ticker: {
+    senderUsers: ['admin', 'sharaf'],
+    showToEditors: false
+  },
+
   display: {
     operatorName: 'المنفذ',             // الاسم الافتراضي الذي يظهر للمحررين
     fontScale: 0.9,                     // حجم الخط الافتراضي (A+ / A- يغيّره)

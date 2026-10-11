@@ -714,13 +714,14 @@ window.URGENT = (function () {
       emit('change', {});
     }
 
-    function applyNews(raw, forceNote) {
+    function applyNews(raw, forceNote, forceTicker) {
       if (!raw || !raw.id || !raw.t) return null;
       var id = String(raw.id);
       var isNew = !items[id];
       var it = items[id] || (items[id] = { id: id, ack: null, pin: null });
       ids[id] = true;
       if (forceNote || raw.n) it.note = true;               // ملاحظة (بطاقة زرقاء) بدل خبر عاجل
+      if (forceTicker || raw.x) it.ticker = true;             // شريط (بطاقة خضراء)
       it.text = String(raw.t);
       it.author = raw.a ? String(raw.a) : 'المحرر';
       it.ts = Number(raw.ts) || Date.now();
@@ -807,6 +808,7 @@ window.URGENT = (function () {
           if (i.ack && i.ack.kind === 'got') s.notesDone++; else s.notesPending++;
           return;                                            // الملاحظات لا تُحسب ضمن «الأخبار»
         }
+        if (i.ticker) return;                                // الشريط لا يُحسب ضمن الأخبار
         if (i.ack && i.ack.kind === 'copied') s.copied++;
         else if (i.ack && i.ack.kind === 'received') s.received++;
         else s.pending++;
@@ -817,6 +819,7 @@ window.URGENT = (function () {
     return {
       on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
       applyNote: function (raw) { return applyNews(raw, true); },
+      applyTicker: function (raw) { return applyNews(raw, false, true); },
       remove: remove, clearAll: clearAll, list: list, stats: stats, save: save, load: load,
       get: function (id) { return items[id]; },
       has: function (id) { return !!ids[id]; },
