@@ -700,8 +700,13 @@ window.URGENT = (function () {
     function save() {
       if (!persist) return;
       try {
-        var arr = packed().sort(function (a, b) { return b.ts - a.ts; }).slice(0, limit);
-        localStorage.setItem(K + 'news', JSON.stringify(arr));
+        var all = packed().sort(function (a, b) { return b.ts - a.ts; });
+        var keep = [], n = 0;
+        all.forEach(function (it) {
+          if (it.bar) { keep.push(it); return; }          // الشريط لا يُسقَط مهما طال
+          if (n < limit) { keep.push(it); n++; }
+        });
+        localStorage.setItem(K + 'news', JSON.stringify(keep));
       } catch (e) {}
     }
     function load() {
@@ -714,13 +719,14 @@ window.URGENT = (function () {
       emit('change', {});
     }
 
-    function applyNews(raw, forceNote) {
+    function applyNews(raw, forceNote, forceBar) {
       if (!raw || !raw.id || !raw.t) return null;
       var id = String(raw.id);
       var isNew = !items[id];
       var it = items[id] || (items[id] = { id: id, ack: null, pin: null });
       ids[id] = true;
-      if (forceNote || raw.n) it.note = true;               // ملاحظة (بطاقة زرقاء) بدل خبر عاجل
+      if (forceNote || raw.n) { it.note = true; it.bar = false; }
+      else if (forceBar || raw.bar) { it.bar = true; it.note = false; }
       it.text = String(raw.t);
       it.author = raw.a ? String(raw.a) : 'المحرر';
       it.ts = Number(raw.ts) || Date.now();
@@ -771,6 +777,16 @@ window.URGENT = (function () {
       return it;
     }
 
+    function clearAck(id) {
+      var it = items[id];
+      if (!it || !it.ack) return false;
+      it.ack = null;
+      save();
+      emit('ack', { item: it, prev: null });
+      emit('change', { item: it });
+      return true;
+    }
+
     function remove(id) {
       if (!items[id]) return false;
       delete items[id]; delete ids[id];
@@ -807,6 +823,12 @@ window.URGENT = (function () {
           if (i.ack && i.ack.kind === 'got') s.notesDone++; else s.notesPending++;
           return;                                            // الملاحظات لا تُحسب ضمن «الأخبار»
         }
+        if (i.bar) {
+          s.bars = (s.bars || 0) + 1;
+          if (i.ack && i.ack.kind === 'copied') s.barsDone = (s.barsDone || 0) + 1;
+          else s.barsPending = (s.barsPending || 0) + 1;
+          return;
+        }
         if (i.ack && i.ack.kind === 'copied') s.copied++;
         else if (i.ack && i.ack.kind === 'received') s.received++;
         else s.pending++;
@@ -816,7 +838,9 @@ window.URGENT = (function () {
 
     return {
       on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
-      applyNote: function (raw) { return applyNews(raw, true); },
+      applyNote: function (raw) { return applyNews(raw, true, false); },
+      applyBar: function (raw) { return applyNews(raw, false, true); },
+      clearAck: clearAck,
       remove: remove, clearAll: clearAll, list: list, stats: stats, save: save, load: load,
       get: function (id) { return items[id]; },
       has: function (id) { return !!ids[id]; },
@@ -1700,6 +1724,19 @@ window.URGENT = (function () {
     if (!t) return 0;
     return t.split(/\s+/).length;
   }
+  function firstLine(s) {
+    var t = String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var line = (t.split('\n')[0] || '').replace(/^\s+|\s+$/g, '');
+    if (line) return line;
+    return t.replace(/^\s+|\s+$/g, '');
+  }
+  function barPreview(s) {
+    var raw = String(s || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var line = firstLine(raw);
+    var rest = raw.replace(/^\s+|\s+$/g, '');
+    if (rest.length > line.length) return line + ' …';
+    return line;
+  }
 
   /* ===================== تصدير ===================== */
   return {
@@ -1741,7 +1778,7 @@ window.URGENT = (function () {
     // نقل وبيانات
     createBus: createBus, loadMqtt: loadMqtt, createStore: createStore, createSession: createSession,
     // نصوص ونسخ
-    copyText: copyText, cleanNewsText: cleanNewsText, countWords: countWords,
+    copyText: copyText, cleanNewsText: cleanNewsText, countWords: countWords, firstLine: firstLine, barPreview: barPreview,
     ONLINE_TTL: ONLINE_TTL, PRESENCE_MS: PRESENCE_MS
   };
 })();
