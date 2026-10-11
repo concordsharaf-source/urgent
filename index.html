@@ -13,7 +13,10 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
 <link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.8" />
+<link rel="stylesheet" href="ui.css?v=4.9" />
+<link rel="preload" href="mqtt.min.js" as="script" />
+<script src="mqtt.min.js" async></script>
+<link rel="preload" href="core.js?v=4.9" as="script" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -355,9 +358,73 @@
 <main class="feed" id="feed">
   <div class="empty" id="empty">
     <img src="assets/logo-320.png" alt="اليمن اليوم" class="empty-logo" />
-    <h2>بانتظار الأخبار…</h2>
-    <p>هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
+    <h2 id="emptyTitle">بانتظار الأخبار…</h2>
+    <p id="emptyText">هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
   </div>
+  <script>
+  /* إظهار الأخبار المحفوظة فوراً، قبل تحميل السكربتات والاتصال — حتى لا تبقى صورة الانتظار */
+  (function () {
+    try {
+      var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
+      var room = (m && m[1]) || '07c97da1547b2d26734f';
+      var raw = localStorage.getItem('ucn:' + room + ':news');
+      var arr = raw ? JSON.parse(raw) : null;
+      var empty = document.getElementById('empty');
+      var title = document.getElementById('emptyTitle');
+      var text = document.getElementById('emptyText');
+      if (!arr || !arr.length) {
+        if (title) title.textContent = 'جارٍ فتح الشاشة…';
+        if (text) text.textContent = 'يتم جلب الأخبار المحفوظة والاتصال بالبث. لن تطول.';
+        return;
+      }
+      function p2(n) { return (n < 10 ? '0' : '') + n; }
+      function dayKey(ts) {
+        var d = new Date(Number(ts) || 0);
+        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+      }
+      var today = dayKey(Date.now());
+      var list = arr.filter(function (it) { return it && dayKey(it.ts) === today; });
+      list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+      if (empty) empty.classList.add('hidden');
+      var feed = document.getElementById('feed');
+      var arch = document.getElementById('archive');
+      if (!feed) return;
+      if (!list.length) {
+        var note = document.createElement('div');
+        note.className = 'empty boot-card';
+        note.setAttribute('data-boot', '1');
+        note.textContent = 'لا أخبار جديدة اليوم — الأخبار السابقة في الأرشيف.';
+        feed.insertBefore(note, arch || null);
+        return;
+      }
+      list.slice(0, 20).forEach(function (it) {
+        var card = document.createElement('article');
+        var copied = it.ack && (it.note ? it.ack.kind === 'got' : it.ack.kind === 'copied');
+        card.className = 'card boot-card' + (it.note ? ' note' : '') + (copied ? ' copied' : '');
+        card.setAttribute('data-boot', '1');
+        var top = document.createElement('div');
+        top.className = 'card-top';
+        var tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = it.note ? 'ملاحظة' : 'عاجل';
+        var who = document.createElement('span');
+        who.className = 'who';
+        who.textContent = it.author || '';
+        var ts = document.createElement('span');
+        ts.className = 'ts';
+        var d = new Date(it.ts || Date.now());
+        ts.textContent = p2(d.getHours()) + ':' + p2(d.getMinutes());
+        top.appendChild(tag); top.appendChild(who); top.appendChild(ts);
+        var body = document.createElement('p');
+        body.className = 'text';
+        body.textContent = it.text || '';
+        card.appendChild(top);
+        card.appendChild(body);
+        feed.insertBefore(card, arch || null);
+      });
+    } catch (e) {}
+  })();
+  </script>
   <!-- أرشيف الأيام السابقة: خانة لكل يوم وتاريخها تُفتح بالضغط -->
   <section class="archive" id="archive">
     <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
@@ -371,8 +438,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.8"></script>
-<script src="core.js?v=4.8"></script>
+<script src="config.js?v=4.9"></script>
+<script src="core.js?v=4.9"></script>
 <script>
 (function () {
   'use strict';
@@ -1344,6 +1411,8 @@
   var curToday = U.dayKeyOf(Date.now());
 
   function render() {
+    var boots = document.querySelectorAll('[data-boot]');
+    for (var bi = 0; bi < boots.length; bi++) boots[bi].remove();
     var items = store.list();
     var want = {};
     items.forEach(function (it) { want[it.id] = true; });

@@ -536,6 +536,16 @@ window.URGENT = (function () {
     var base = opts.base;
     var getName = (typeof opts.name === 'function') ? opts.name : function () { return opts.name; };
     var brs = brokers();
+    function orderedBrokers() {
+      var list = brokers().slice();
+      var last = '';
+      try { last = localStorage.getItem('ucn:lastBroker') || ''; } catch (e) {}
+      if (!last) return list;
+      var ix = -1;
+      for (var j = 0; j < list.length; j++) if (list[j].url === last) ix = j;
+      if (ix > 0) list.unshift(list.splice(ix, 1)[0]);
+      return list;
+    }
     var state = 'idle';
     var client = null, idx = 0, deadSwitch = false, alive = false;
     var outbox = [];
@@ -571,7 +581,7 @@ window.URGENT = (function () {
       idx = i;
       if (i >= brs.length) {
         setState('failed', {});
-        setTimeout(function () { alive = false; connect(0); }, 12000);
+        setTimeout(function () { alive = false; connect(0); }, 6000);
         return;
       }
       var b = brs[i];
@@ -584,8 +594,8 @@ window.URGENT = (function () {
           clientId: 'ucn_' + Math.random().toString(16).slice(2, 12),
           clean: true,
           keepalive: 120,        // أطول: يحفظ الاتصال أثناء تصغير النافذة
-          connectTimeout: 9000,
-          reconnectPeriod: 4000,
+          connectTimeout: 4500,
+          reconnectPeriod: 2500,
           protocolVersion: 4,
           will: { topic: base + 'presence/' + opts.who, payload: JSON.stringify({ off: 1, ts: 0 }), qos: 0, retain: true }
         });
@@ -596,12 +606,13 @@ window.URGENT = (function () {
 
       var guard = setTimeout(function () {
         if (!opened) { deadSwitch = true; try { c.end(true); } catch (e) {} connect(i + 1); }
-      }, 11000);
+      }, 5000);
 
       c.on('connect', function () {
         opened = true; alive = true; deadSwitch = false;
         clearTimeout(guard);
         setState('connected', { broker: b.name });
+        try { localStorage.setItem('ucn:lastBroker', b.url); } catch (e) {}
         c.subscribe([base + '#'], { qos: 0 }, function () {
           flush();
           pubPresence();
@@ -654,6 +665,7 @@ window.URGENT = (function () {
       connect: function () {
         loadMqtt(function (ok) {
           if (!ok) { setState('failed', { reason: 'mqtt-load' }); return; }
+          brs = orderedBrokers();
           connect(0);
         });
       },

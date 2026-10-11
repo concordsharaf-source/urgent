@@ -7,7 +7,7 @@
    ملاحظة: لا نخزّن صفحات التطبيق مؤقتاً (شبكة فقط) حتى تظهر آخر التحديثات دائماً.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.8';
+var VERSION = 'yt-news-v4.9';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -38,19 +38,6 @@ self.addEventListener('activate', function (e) {
         if (k !== STATIC_CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
-      .then(function () { return self.clients.matchAll({ type: 'window', includeUncontrolled: true }); })
-      .then(function (clients) {
-        return Promise.all(clients.map(function (c) {
-          try {
-            var u = new URL(c.url);
-            if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return;
-            if (u.searchParams.get('swu')) return;
-            u.searchParams.set('swu', '1');
-            u.searchParams.set('sn', String(Date.now()));
-            return c.navigate(u.toString());
-          } catch (err) {}
-        }));
-      })
   );
 });
 
@@ -74,8 +61,39 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  // كل ما عدا ذلك (HTML / config / core): من الشبكة مباشرة، بلا ذاكرة المتصفح
-  e.respondWith(fetch(req, { cache: 'reload' }).catch(function () { return caches.match(req); }));
+  // صفحة التطبيق: اعرض النسخة المحفوظة فوراً ثم حدّثها في الخلفية (الفتح لا ينتظر الشبكة)
+  var isDoc = req.mode === 'navigate' || /\.html$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/send';
+  if (isDoc) {
+    e.respondWith(
+      caches.open(STATIC_CACHE).then(function (c) {
+        return c.match(req).then(function (hit) {
+          var net = fetch(req, { cache: 'no-store' }).then(function (res) {
+            if (res && res.ok) c.put(req, res.clone());
+            return res;
+          }).catch(function () { return hit; });
+          return hit || net;
+        });
+      })
+    );
+    return;
+  }
+
+  // config.js دائماً من الشبكة حتى يُكتشف الإصدار الجديد
+  if (/config\.js$/.test(url.pathname)) {
+    e.respondWith(fetch(req, { cache: 'no-store' }).catch(function () { return caches.match(req); }));
+    return;
+  }
+
+  // core.js و ui.css: من الذاكرة أولاً (رابطهما يحمل رقم الإصدار)
+  e.respondWith(
+    caches.match(req).then(function (hit) {
+      return hit || fetch(req).then(function (res) {
+        var copy = res.clone();
+        caches.open(STATIC_CACHE).then(function (c) { c.put(req, copy); });
+        return res;
+      });
+    })
+  );
 });
 
 /* ===================== Web Push ===================== */
