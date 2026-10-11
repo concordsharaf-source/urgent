@@ -12,9 +12,10 @@ window.URGENT = (function () {
   var PBKDF2_ITER = 150000;              // قوة تجزئة كلمة المرور
 
   var DEFAULT_BROKERS = [
-    { url: 'wss://broker.emqx.io:8084/mqtt',     name: 'EMQX' },
-    { url: 'wss://broker.hivemq.com:8884/mqtt',  name: 'HiveMQ' },
-    { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
+    { url: 'wss://mqtt.eclipseprojects.io:443/mqtt', name: 'Eclipse' },
+    { url: 'wss://broker.emqx.io:8084/mqtt',         name: 'EMQX' },
+    { url: 'wss://broker.hivemq.com:8884/mqtt',      name: 'HiveMQ' },
+    { url: 'wss://test.mosquitto.org:8081/mqtt',     name: 'Mosquitto' }
   ];
 
   var ONLINE_TTL = 45000;                // صلاحية نبضة الحضور
