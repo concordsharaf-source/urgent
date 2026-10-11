@@ -10,11 +10,9 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
-<link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.9" />
-<link rel="preload" href="mqtt.min.js" as="script" />
-<script src="mqtt.min.js" async></script>
-<link rel="preload" href="core.js?v=4.9" as="script" />
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.10" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.10" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -378,8 +376,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.9"></script>
-<script src="core.js?v=4.9"></script>
+<script src="config.js?v=4.10"></script>
+<script src="core.js?v=4.10"></script>
 <script>
 (function () {
   'use strict';

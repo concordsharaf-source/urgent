@@ -12,11 +12,22 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
-<link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.9" />
-<link rel="preload" href="mqtt.min.js" as="script" />
-<script src="mqtt.min.js" async></script>
-<link rel="preload" href="core.js?v=4.9" as="script" />
+<script>
+/* قبل أي تحميل: إن وُجدت أخبار محفوظة لا تُرسم صورة الانتظار أصلاً */
+(function () {
+  try {
+    var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
+    var room = (m && m[1]) || '07c97da1547b2d26734f';
+    var raw = localStorage.getItem('ucn:' + room + ':news');
+    var arr = raw ? JSON.parse(raw) : null;
+    document.documentElement.classList.add((arr && arr.length) ? 'has-saved' : 'show-wait');
+  } catch (e) { document.documentElement.classList.add('show-wait'); }
+})();
+</script>
+<style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.10" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.10" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -357,9 +368,8 @@
 
 <main class="feed" id="feed">
   <div class="empty" id="empty">
-    <img src="assets/logo-320.png" alt="اليمن اليوم" class="empty-logo" />
-    <h2 id="emptyTitle">بانتظار الأخبار…</h2>
-    <p id="emptyText">هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
+    <h2 id="emptyTitle">جارٍ فتح الشاشة…</h2>
+    <p id="emptyText">يتم إظهار الأخبار المحفوظة والاتصال بالبث.</p>
   </div>
   <script>
   /* إظهار الأخبار المحفوظة فوراً، قبل تحميل السكربتات والاتصال — حتى لا تبقى صورة الانتظار */
@@ -374,7 +384,7 @@
       var text = document.getElementById('emptyText');
       if (!arr || !arr.length) {
         if (title) title.textContent = 'جارٍ فتح الشاشة…';
-        if (text) text.textContent = 'يتم جلب الأخبار المحفوظة والاتصال بالبث. لن تطول.';
+        if (text) text.textContent = 'يتم إظهار الأخبار المحفوظة والاتصال بالبث.';
         return;
       }
       function p2(n) { return (n < 10 ? '0' : '') + n; }
@@ -438,8 +448,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.9"></script>
-<script src="core.js?v=4.9"></script>
+<script src="config.js?v=4.10"></script>
+<script src="core.js?v=4.10"></script>
 <script>
 (function () {
   'use strict';
@@ -1439,6 +1449,8 @@
     /* ---- الأيام السابقة: خانة لكل يوم قابلة للفتح والإغلاق ---- */
     renderArchive(g);
 
+    document.documentElement.classList.toggle('has-saved', items.length > 0);
+    document.documentElement.classList.toggle('show-wait', items.length === 0);
     emptyBox.classList.toggle('hidden', items.length > 0);
     if (!items.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
     if (items.length) updateHeaderCount(items);
