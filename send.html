@@ -10,8 +10,9 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
-<link rel="stylesheet" href="fonts/fonts.css" />
-<link rel="stylesheet" href="ui.css?v=4.8" />
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.11" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.11" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -173,24 +174,6 @@
   .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
   .note-status.ok{color:#6ee7b7}
   .note-status.warn{color:#fcd34d}
-  .note-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .bar-btn{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:14px;
-    padding:12px 22px;font-size:15.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
-    box-shadow:0 14px 28px -16px rgba(22,163,74,1);transition:.15s}
-  .bar-btn:hover{filter:brightness(1.07)}
-  .bar-btn.open{background:linear-gradient(135deg,#15803d,#14532d)}
-  .bar-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
-  .bar-panel.open{max-height:640px;opacity:1;margin-top:12px}
-  .bar-panel textarea{width:100%;min-height:160px;border-radius:14px;border:1px solid rgba(34,197,94,.5);
-    background:rgba(22,163,74,.12);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
-    line-height:1.9;resize:vertical;outline:none}
-  .bar-panel textarea:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.22)}
-  .bar-send{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:13px;
-    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,163,74,1)}
-  .bar-send:hover{filter:brightness(1.07)}
-  .bar-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#86efac}
-  .bar-status.ok{color:#6ee7b7}
-  .bar-status.warn{color:#fcd34d}
 
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
@@ -226,13 +209,6 @@
   .item.note .livedot{background:#bfdbfe}
   .item.note .itext{color:#fff}
   .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
-    border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
-  .item.bar{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);
-    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(22,163,74,.9)}
-  .item.bar .itop .tag{background:rgba(0,0,0,.32)}
-  .item.bar .livedot{background:#bbf7d0}
-  .item.bar .itext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-  .item.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
   .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
   .item.isnew{animation:cardIn .35s ease-out}
@@ -350,10 +326,7 @@
 
       <!-- الملاحظات: زر أزرق ينسدل منه حقل كتابة الملاحظة -->
       <div class="note-wrap">
-        <div class="note-row">
-          <button class="note-btn" id="btnNote" type="button"><i class="ico" data-ic="edit"></i>ملاحظات</button>
-          <button class="bar-btn hidden" id="btnBar" type="button">الشريط</button>
-        </div>
+        <button class="note-btn" id="btnNote" type="button"><i class="ico" data-ic="edit"></i>ملاحظات</button>
         <div class="note-panel" id="notePanel">
           <textarea id="noteText" placeholder="اكتب ملاحظة تظهر على شاشة المنفذ بالأزرق…"></textarea>
           <div class="note-actions">
@@ -363,16 +336,6 @@
             <button class="btn ghost tiny" id="btnNoteCancel" type="button">إغلاق</button>
           </div>
           <div class="note-status" id="noteStatus"></div>
-        </div>
-        <div class="bar-panel" id="barPanel">
-          <textarea id="barText" placeholder="الصق نص الشريط الإخباري…"></textarea>
-          <div class="note-actions">
-            <span class="counter" id="barCounter">0 كلمة</span>
-            <button class="btn ghost tiny" id="btnBarClear" type="button">مسح</button>
-            <button class="bar-send" id="btnBarSend" type="button">إرسال الشريط</button>
-            <button class="btn ghost tiny" id="btnBarCancel" type="button">إغلاق</button>
-          </div>
-          <div class="bar-status" id="barStatus"></div>
         </div>
       </div>
     </div>
@@ -413,8 +376,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.8.3"></script>
-<script src="core.js?v=4.8.3"></script>
+<script src="config.js?v=4.11"></script>
+<script src="core.js?v=4.11"></script>
 <script>
 (function () {
   'use strict';
@@ -426,10 +389,6 @@
 
   var S = {
     notesSent: {},                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
-    barsSent: {},
-    barCache: {},              // نص الشريط يُحفظ هنا ولا يُعرض لغير المصرّح لهم
-    barAckCache: {},
-    barShowOthers: false,      // المالك وحده يفتح ظهور الشريط لبقية المحررين
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
     filter: 'all',
@@ -462,8 +421,6 @@
   var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
   var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
   var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
-  var btnBar = U.$('#btnBar'), barPanel = U.$('#barPanel'), barText = U.$('#barText');
-  var barCounter = U.$('#barCounter'), barStatus = U.$('#barStatus');
   var feed = U.$('#feed'), todayNum = U.$('#todayNum');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
@@ -525,10 +482,7 @@
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     U.askNotify();
-    try { S.barShowOthers = U.lsGet(LSP + 'barShowOthers', false) === true; } catch (e) {}
     store.load();
-    purgeHiddenBars();
-    syncBarBtn();
     render();
     bus.connect();
     bus.startPresence();
@@ -568,45 +522,9 @@
     var n = t ? t.split(/\s+/).filter(Boolean).length : 0;
     U.txt(noteCounter, n + ' كلمة' + (t.length ? ' — ' + t.length + ' حرف' : ''));
   }
-  function canSendBar() {
-    if (!S.admin) return false;
-    if (U.isOwner(S.admin.user)) return true;
-    return String(S.admin.name || '').replace(/^\s+|\s+$/g, '') === 'مدير التحرير';
-  }
-  function canSeeBar() {
-    if (canSendBar()) return true;
-    return !!S.barShowOthers;
-  }
-  function purgeHiddenBars() {
-    if (canSeeBar()) return;
-    store.list().forEach(function (it) { if (it && it.bar) store.remove(it.id); });
-  }
-  function flushBarCache() {
-    if (!canSeeBar()) return;
-    Object.keys(S.barCache).forEach(function (id) {
-      var raw = S.barCache[id];
-      if (!raw || raw.empty) { store.remove(id); return; }
-      store.applyBar(raw);
-      if (S.barAckCache[id]) store.applyAck(S.barAckCache[id]);
-    });
-  }
-  function setBarVisibility(show) {
-    S.barShowOthers = !!show;
-    try { U.lsSet(LSP + 'barShowOthers', S.barShowOthers); } catch (e) {}
-    if (S.barShowOthers) flushBarCache();
-    else purgeHiddenBars();
-    render();
-  }
-  function syncBarBtn() {
-    if (!btnBar) return;
-    var ok = canSendBar();
-    btnBar.classList.toggle('hidden', !ok);
-    if (!ok) barOpen(false);
-  }
   function noteOpen(open) {
     notePanel.classList.toggle('open', !!open);
     btnNote.classList.toggle('open', !!open);
-    if (open && barPanel) { barPanel.classList.remove('open'); if (btnBar) btnBar.classList.remove('open'); }
     if (open) setTimeout(function () { try { noteText.focus(); } catch (e) {} }, 180);
   }
   function setNoteStatus(msg, kind) {
@@ -633,55 +551,6 @@
   noteText.addEventListener('input', noteWords);
   noteText.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendNote(); }
-  });
-
-  function barWords() {
-    var t = barText.value.replace(/^\s+|\s+$/g, '');
-    var n = t ? t.split(/\s+/).filter(Boolean).length : 0;
-    U.txt(barCounter, n + ' كلمة' + (t.length ? ' — ' + t.length + ' حرف' : ''));
-  }
-  function barOpen(open) {
-    if (!barPanel || !btnBar) return;
-    if (open && !canSendBar()) open = false;
-    barPanel.classList.toggle('open', !!open);
-    btnBar.classList.toggle('open', !!open);
-    if (open) {
-      notePanel.classList.remove('open');
-      btnNote.classList.remove('open');
-      setTimeout(function () { try { barText.focus(); } catch (e) {} }, 180);
-    }
-  }
-  function setBarStatus(msg, kind) {
-    barStatus.textContent = msg || '';
-    barStatus.className = 'bar-status' + (kind ? ' ' + kind : '');
-  }
-  function barPayload(s) {
-    return String(s || '').replace(/\u0000/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\s+|\s+$/g, '');
-  }
-  function sendBar() {
-    if (!canSendBar()) return;
-    var t = barPayload(barText.value);
-    if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
-    if (t.length > 20000) { U.toast('الشريط طويل جداً — الحد 20000 حرف', 'warn', 6000); return; }
-    var id = 'br' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    var item = { id: id, t: t, a: S.admin ? S.admin.name : 'المحرر', ts: Date.now(), bar: 1 };
-    store.applyBar(item);
-    var live = bus.publish('bar/' + id, item, { retain: true });
-    S.barsSent[id] = true;
-    S.shownIds[id] = Date.now();
-    barText.value = ''; barWords();
-    setBarStatus(live ? 'أُرسل الشريط (' + U.fmtTime(item.ts) + ') — بانتظار نسخه من المنفذ' : 'سيرسله النظام تلقائياً عند عودة الاتصال', live ? '' : 'warn');
-    render();
-    U.toast('أُرسل الشريط إلى شاشة المنفذ', 'ok');
-    if (S.sound) alerter.play('info');
-  }
-  btnBar.addEventListener('click', function () { barOpen(!barPanel.classList.contains('open')); });
-  U.$('#btnBarSend').addEventListener('click', function (e) { e.preventDefault(); sendBar(); });
-  U.$('#btnBarClear').addEventListener('click', function () { barText.value = ''; barWords(); barText.focus(); });
-  U.$('#btnBarCancel').addEventListener('click', function () { barOpen(false); });
-  barText.addEventListener('input', barWords);
-  barText.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBar(); }
   });
 
   /* ==================== الإعدادات وإدارة بيانات الدخول ==================== */
@@ -948,18 +817,6 @@
     sec.appendChild(tail);
     extra.push(sec);
 
-    if (amOwner) {
-      var secBar = U.section('خصوصية الشريط', 'lock');
-      var barRow = U.rowEl('عرض الشريط للمحررين الآخرين', 'عند الإيقاف لا يراه إلا المالك ومدير التحرير وشاشة المنفذ.');
-      barRow.appendChild(U.switchEl(!!S.barShowOthers, function (on) {
-        bus.publish('cfg/bar', { show: !!on, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
-        setBarVisibility(on);
-        U.toast(on ? 'سيظهر الشريط للمحررين الآخرين' : 'أصبح الشريط حصراً بين الإدارة والمنفذ', 'ok');
-      }));
-      secBar.appendChild(barRow);
-      extra.push(secBar);
-    }
-
     // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
     var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
     var AC = U.alertCfgLocal() || {};
@@ -1132,24 +989,21 @@
   function actEdit(id, newText) {
     var it = store.get(id);
     if (!it) return;
-    var text = it.bar ? barPayload(newText) : U.cleanNewsText(newText);
+    var text = U.cleanNewsText(newText);
     if (!text) { U.toast('لا يمكن حفظ نص فارغ', 'warn'); return; }
     if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
-    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now() };
-    var topic = 'news/';
-    if (it.note) { upd.n = 1; store.applyNote(upd); topic = 'note/'; }
-    else if (it.bar) { upd.bar = 1; store.applyBar(upd); topic = 'bar/'; }
-    else store.applyNews(upd);
-    bus.publish(topic + id, upd, { retain: true });
+    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now(), n: it.note ? 1 : 0 };
+    if (it.note) store.applyNote(upd); else store.applyNews(upd);
+    bus.publish((it.note ? 'note/' : 'news/') + id, upd, { retain: true });
     S.editing = null;
     S.draft = null;
     render();
-    U.toast(it.note ? 'تم تحديث الملاحظة' : (it.bar ? 'تم تحديث الشريط' : 'تم تحديث الخبر'), 'ok');
+    U.toast(it.note ? 'تم تحديث الملاحظة' : 'تم تحديث الخبر', 'ok');
   }
 
   function actPin(id) {
     var it = store.get(id);
-    if (!it || it.note || it.bar) return;
+    if (!it || it.note) return;
     if (it.pin) {
       store.applyPin({ id: id }, false);
       bus.publish('pin/' + id, '', { retain: true });
@@ -1166,16 +1020,14 @@
   function actDelete(id) {
     var it = store.get(id);
     if (!it) return;
-    var label = it.note ? 'هذه الملاحظة' : (it.bar ? 'هذا الشريط' : 'هذا الخبر');
-    if (!confirm('حذف ' + label + ' من شاشة المنفذ ومن كل الأجهزة؟')) return;
+    if (!confirm((it.note ? 'حذف هذه الملاحظة' : 'حذف هذا الخبر') + ' من شاشة المنفذ ومن كل الأجهزة؟')) return;
     wipe(id);
-    U.toast(it.note ? 'تم حذف الملاحظة' : (it.bar ? 'تم حذف الشريط' : 'تم حذف الخبر'), 'ok');
+    U.toast(it.note ? 'تم حذف الملاحظة' : 'تم حذف الخبر', 'ok');
   }
 
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
-    bus.publish('bar/' + id, '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1187,7 +1039,7 @@
     var it = store.get(id);
     if (!it || it.note) return;
     U.copyText(it.text).then(function (ok) {
-      U.toast(ok ? ('تم نسخ نص ' + (it.bar ? 'الشريط' : 'الخبر')) : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
+      U.toast(ok ? 'تم نسخ نص الخبر' : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
     });
   }
 
@@ -1222,66 +1074,26 @@
       render();
       return;
     }
-    if (rel.indexOf('bar/') === 0) {
-      var bid = rel.slice(4);
-      if (isEmpty) {
-        S.barCache[bid] = { id: bid, empty: true };
-        store.remove(bid);
-        render();
-        return;
-      }
-      if (!data || !data.t) return;
-      var rawB = { id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 };
-      S.barCache[rawB.id] = rawB;
-      if (!canSeeBar()) { store.remove(rawB.id); return; }
-      var resB = store.applyBar(rawB);
-      if (S.barAckCache[rawB.id]) store.applyAck(S.barAckCache[rawB.id]);
-      if (resB && resB.isNew) {
-        S.shownIds[resB.item.id] = Date.now();
-        if (!normOwn(data.a)) {
-          if (S.sound) alerter.play('info');
-          if (document.hidden) U.flashTitle('شريط جديد');
-        }
-      }
-      render();
-      return;
-    }
     if (rel.indexOf('ack/') === 0) {
       if (isEmpty) return;
-      if (data && !canSeeBar() && (S.barCache[data.id] || String(data.id).indexOf('br') === 0)) {
-        S.barAckCache[data.id] = data;
-        return;
-      }
-      var prevItem = data && store.get(data.id);
-      var wasGot = prevItem && prevItem.ack && prevItem.ack.kind === 'got';
-      var wasCopied = prevItem && prevItem.ack && prevItem.ack.kind === 'copied';
-      store.applyAck(data);
-      var cur = data && store.get(data.id);
-      var isNoteAck = !!(data && S.notesSent[data.id]) || !!(cur && cur.note);
-      var isBarAck = !!(data && S.barsSent[data.id]) || !!(cur && cur.bar);
-      if (isNoteAck && !isBarAck) {
+      var wasNote = data && S.notesSent[data.id];
+      var prevNote = store.get(data.id);
+      var wasGot = prevNote && prevNote.ack && prevNote.ack.kind === 'got';
+      store.applyAck(data);                                      // يُحدِّث البطاقة (أزرق ⇒ رمادي عند الاستلام)
+      if (wasNote) {                                             // إشارة تخصّ ملاحظة أرسلناها
         if (data.k === 'got' && !wasGot) {
           setNoteStatus('تم استلام الملاحظة على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
           U.toast('المنفذ استلم الملاحظة', 'ok');
           if (S.sound) alerter.play('info');
-        } else if (data.k === 'received' && S.notesSent[data.id]) {
+        } else if (data.k === 'received') {
           setNoteStatus('وصلت الملاحظة إلى الشاشة — بانتظار الاستلام', '');
         }
         render();
         return;
       }
-      if (isBarAck) {
-        if (data.k === 'copied' && !wasCopied) {
-          if (S.barsSent[data.id]) setBarStatus('تم نسخ الشريط على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
-          U.toast('المنفذ نسخ الشريط' + (data.b ? ': ' + data.b : ''), 'ok');
-          if (S.sound) alerter.play('info');
-          if (document.hidden) U.flashTitle('تم نسخ الشريط');
-        } else if (data.k === 'received' && S.barsSent[data.id]) {
-          setBarStatus('وصل الشريط إلى الشاشة — بانتظار النسخ', '');
-        }
-        render();
-        return;
-      }
+      var prev = store.get(data.id);
+      var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
+      store.applyAck(data);
       if (data.k === 'copied' && !wasCopied) {
         if (S.sound) alerter.play('info');
         U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
@@ -1317,11 +1129,6 @@
       if (!data.list) return;
       if (data.k !== (cfg.settingsKey || '')) return;          // مفتاح غير مطابق => تجاهل
       U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
-      return;
-    }
-    if (rel === 'cfg/bar') {
-      if (isEmpty || !data) { setBarVisibility(false); return; }
-      setBarVisibility(!!data.show);
       return;
     }
     if (rel === 'cfg/alerts') {
@@ -1363,7 +1170,7 @@
 
   function updatePendingChip() {
     var st = store.stats();
-    var pending = st.pending + st.received + (canSeeBar() ? (st.barsPending || 0) : 0);
+    var pending = st.pending + st.received;
     chipPending.classList.toggle('hidden', pending === 0);
     U.txt(pendingText, String(pending));
   }
@@ -1387,13 +1194,12 @@
     var todayKey = U.dayKeyOf(Date.now());
     var todayNews = 0;
     items.forEach(function (it) {
-      if (it.note || it.bar) return;                         // الملاحظات والشريط ليست أخبار اليوم
+      if (it.note) return;                                   // الملاحظات ليست أخباراً
       if (U.dayKeyOf(it.ts) === todayKey) todayNews++;       // كل أخبار اليوم، مستلمة أو لا
     });
     U.txt(todayNum, String(todayNews));
 
     var list = items.filter(function (it) {
-      if (it.bar && !canSeeBar()) return false;
       var kind = it.ack ? it.ack.kind : null;
       if (it.note) {                                                     // الملاحظات: تنتهي بالاستلام
         if (S.filter === 'pending' && kind) return false;
@@ -1467,7 +1273,6 @@
     var today = U.dayKeyOf(Date.now());
     var map = {};
     store.list().forEach(function (it) {
-      if (it.bar && !canSeeBar()) return;
       var k = U.dayKeyOf(it.ts);
       if (k === today) return;
       map[k] = (map[k] || 0) + 1;
@@ -1514,22 +1319,20 @@
     var n = U.el('article', 'item');
     n.setAttribute('data-id', it.id);
     var isNote = !!it.note;
-    var isBar = !!it.bar && !isNote;
     var copied = isNote ? !!(it.ack && it.ack.kind === 'got') : !!(it.ack && it.ack.kind === 'copied');
-    if (isNote) n.classList.add('note');
-    if (isBar) n.classList.add('bar');
-    if (copied) n.classList.add('copied');
-    if (it.pin && !isNote && !isBar) n.classList.add('pinned');
+    if (isNote) n.classList.add('note');                       // أزرق
+    if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
+    if (it.pin && !isNote) n.classList.add('pinned');
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
 
     var top = U.el('div', 'itop');
     var tag = U.el('span', 'tag');
-    tag.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : (isBar ? 'شريط' : 'عاجل'));
+    tag.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || ''));
     top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
     if (it.editedAt) top.appendChild(U.el('span', 'mini', 'محدَّث ' + U.fmtTime(it.editedAt)));
-    if (it.pin && !isNote && !isBar) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
+    if (it.pin && !isNote) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
     top.appendChild(U.el('span', 'mini', U.rel(it.ts)));
     n.appendChild(top);
 
@@ -1552,18 +1355,18 @@
       return n;
     }
 
-    n.appendChild(U.el('p', 'itext', isBar ? U.barPreview(it.text) : it.text));
+    n.appendChild(U.el('p', 'itext', it.text));
 
     var bottom = U.el('div', 'ibottom');
 
     // حالة الخبر
     if (copied) {
       var p = U.el('span', 'pill ok big');
-      U.setIconText(p, 'check', (isNote ? 'تم استلامه من المنفذ — ' : (isBar ? 'تم نسخ الشريط من المنفذ — ' : 'تم نسخه من المنفذ — ')) + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
+      U.setIconText(p, 'check', (isNote ? 'تم استلامه من المنفذ — ' : 'تم نسخه من المنفذ — ') + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
       bottom.appendChild(p);
     } else if (it.ack && it.ack.kind === 'received') {
       var p2 = U.el('span', 'pill info big');
-      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + (isNote ? ' — بانتظار الاستلام' : (isBar ? ' — بانتظار نسخ الشريط' : ' — بانتظار النسخ')));
+      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + (isNote ? ' — بانتظار الاستلام' : ' — بانتظار النسخ'));
       bottom.appendChild(p2);
     } else if (bus.state() === 'connected') {
       var p3 = U.el('span', 'pill warn big');
@@ -1589,10 +1392,7 @@
     bDel.innerHTML = U.ic('trash') + 'حذف';
     bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
     if (isNote) {
-      acts.appendChild(bEdit); acts.appendChild(bDel);
-    } else if (isBar) {
-      bCopy.innerHTML = U.ic('copy') + 'نسخ الشريط';
-      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bDel);
+      acts.appendChild(bEdit); acts.appendChild(bDel);        // الملاحظة: تعديل وحذف فقط
     } else {
       acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
     }
@@ -1658,8 +1458,8 @@
     document.body.appendChild(d);
   }
   function typing() {
-    var a = document.getElementById('newsText'), n = document.getElementById('noteText'), b = document.getElementById('barText');
-    return !!((a && a.value && a.value.trim()) || (n && n.value && n.value.trim()) || (b && b.value && b.value.trim()));
+    var a = document.getElementById('newsText'), n = document.getElementById('noteText');
+    return !!((a && a.value && a.value.trim()) || (n && n.value && n.value.trim()));
   }
   function check() {
     if (!window.fetch || !window.URGENT_CONFIG) return;

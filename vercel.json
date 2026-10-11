@@ -17,10 +17,6 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
-        },
-        {
-          "key": "Clear-Site-Data",
-          "value": "\"cache\""
         }
       ]
     },
@@ -38,10 +34,6 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
-        },
-        {
-          "key": "Clear-Site-Data",
-          "value": "\"cache\""
         }
       ]
     },
@@ -59,19 +51,24 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
-        },
-        {
-          "key": "Clear-Site-Data",
-          "value": "\"cache\""
         }
       ]
     },
     {
-      "source": "/(config|core).js",
+      "source": "/config.js",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "no-store, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/core.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, immutable"
         }
       ]
     },
@@ -80,7 +77,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-store, max-age=0, must-revalidate"
+          "value": "public, max-age=604800, immutable"
         }
       ]
     },

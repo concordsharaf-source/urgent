@@ -4,14 +4,17 @@
      1) تفعيل تثبيت التطبيق على الجوال والكمبيوتر (PWA).
      2) استقبال إشعارات Web Push وعرضها حتى لو كان التطبيق مغلقاً.
      3) فتح شاشة الاستقبال عند الضغط على الإشعار.
-   ملاحظة: لا نخزّن صفحات التطبيق مؤقتاً (شبكة فقط) حتى تظهر آخر التحديثات دائماً.
+   صفحة الفتح تُحفظ على الجهاز وتُعرض فوراً حتى لا تبقى صورة الانتظار.
+   config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.8';
+var VERSION = 'yt-news-v4.11';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
 var STATIC_ASSETS = [
+  './index.html',
+  './send.html',
   './assets/logo-320.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
@@ -19,6 +22,11 @@ var STATIC_ASSETS = [
   './fonts/fonts.css',
   './fonts/NotoKufiArabic-400-arabic.woff2'
 ];
+function shellUrl(pathname) {
+  if (pathname === '/' || pathname === '/index.html') return './index.html';
+  if (pathname === '/send' || pathname === '/send.html') return './send.html';
+  return '';
+}
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
@@ -38,18 +46,8 @@ self.addEventListener('activate', function (e) {
         if (k !== STATIC_CACHE) return caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
-      .then(function () { return self.clients.matchAll({ type: 'window', includeUncontrolled: true }); })
-      .then(function (clients) {
-        return Promise.all(clients.map(function (c) {
-          try {
-            var u = new URL(c.url);
-            if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return;
-            if (u.searchParams.get('swu')) return;
-            u.searchParams.set('swu', '1');
-            u.searchParams.set('sn', String(Date.now()));
-            return c.navigate(u.toString());
-          } catch (err) {}
-        }));
+      .then(function () {
+        if (self.registration.navigationPreload) return self.registration.navigationPreload.enable();
       })
   );
 });
@@ -74,8 +72,47 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  // كل ما عدا ذلك (HTML / config / core): من الشبكة مباشرة، بلا ذاكرة المتصفح
-  e.respondWith(fetch(req, { cache: 'reload' }).catch(function () { return caches.match(req); }));
+  // صفحة التطبيق: من الذاكرة فوراً مهما كان رابط الفتح (?src=pwa أو ?sn=)
+  // طلب التحديث (?sn=) يذهب للشبكة حتى لا تُعاد نسخة قديمة في حلقة.
+  var isDoc = req.mode === 'navigate' || /\.html$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/send';
+  if (isDoc) {
+    var shell = shellUrl(url.pathname);
+    var bust = url.searchParams.has('sn') || url.searchParams.has('swu');
+    e.respondWith(
+      caches.open(STATIC_CACHE).then(function (c) {
+        var cached = shell ? c.match(shell) : c.match(req);
+        return cached.then(function (hit) {
+          var net = (e.preloadResponse || Promise.resolve(null)).then(function (pre) {
+            if (pre) return pre;
+            return fetch(req, { cache: 'no-store' });
+          }).then(function (res) {
+            if (res && res.ok && shell) c.put(shell, res.clone());
+            return res;
+          }).catch(function () { return hit || Response.error(); });
+          if (hit && !bust) { net.catch(function () {}); return hit; }
+          return net;
+        });
+      })
+    );
+    return;
+  }
+
+  // config.js دائماً من الشبكة حتى يُكتشف الإصدار الجديد
+  if (/config\.js$/.test(url.pathname)) {
+    e.respondWith(fetch(req, { cache: 'no-store' }).catch(function () { return caches.match(req); }));
+    return;
+  }
+
+  // core.js و ui.css: من الذاكرة أولاً (رابطهما يحمل رقم الإصدار)
+  e.respondWith(
+    caches.match(req).then(function (hit) {
+      return hit || fetch(req).then(function (res) {
+        var copy = res.clone();
+        caches.open(STATIC_CACHE).then(function (c) { c.put(req, copy); });
+        return res;
+      });
+    })
+  );
 });
 
 /* ===================== Web Push ===================== */
