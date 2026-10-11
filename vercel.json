@@ -134,5 +134,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/send",
+      "destination": "/send.html"
+    }
   ]
 }
