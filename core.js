@@ -754,6 +754,10 @@ window.URGENT = (function () {
         return null;
       }
       var prev = it.ack;
+      // لا تسمح لإقرار «وصل» المتأخر بإلغاء حالة «نُسخ» أو «استُلم».
+      // هذا يحدث عند اختلاف ترتيب وصول رسائل MQTT retained بين المحررين.
+      var rank = { received: 1, copied: 2, got: 2 };
+      if (prev && (rank[prev.kind] || 0) > (rank[next.kind] || 0)) return it;
       it.ack = keepFirstCopyTs(prev, next);
       save();
       emit('ack', { item: it, prev: prev });
