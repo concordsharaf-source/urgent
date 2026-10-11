@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.12" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.12" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.13" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.13" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -181,8 +181,8 @@
   .bar-btn:hover{filter:brightness(1.07)}
   .bar-btn.open{background:linear-gradient(135deg,#15803d,#14532d)}
   .bar-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
-  .bar-panel.open{max-height:640px;opacity:1;margin-top:12px}
-  .bar-panel textarea{width:100%;min-height:160px;border-radius:14px;border:1px solid rgba(34,197,94,.5);
+  .bar-panel.open{max-height:none;opacity:1;overflow:visible;margin-top:12px}
+  .bar-panel textarea{width:100%;min-height:180px;max-height:70vh;overflow:auto;border-radius:14px;border:1px solid rgba(34,197,94,.5);
     background:rgba(22,163,74,.12);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
     line-height:1.9;resize:vertical;outline:none}
   .bar-panel textarea:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.22)}
@@ -232,7 +232,7 @@
     border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(22,163,74,.9)}
   .item.bar .itop .tag{background:rgba(0,0,0,.32)}
   .item.bar .livedot{background:#bbf7d0}
-  .item.bar .itext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .item.bar .itext{white-space:pre-wrap;overflow:visible;text-overflow:clip;display:block}
   .item.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
   .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
@@ -366,12 +366,11 @@
           <div class="note-status" id="noteStatus"></div>
         </div>
         <div class="bar-panel" id="barPanel">
-          <textarea id="barText" placeholder="الصق نص الشريط الإخباري… يبقى هنا بعد الإرسال"></textarea>
+          <textarea id="barText" placeholder="الصق نص الشريط الإخباري… يبقى هنا بعد الإرسال ولا يُمسح إلا بالحذف"></textarea>
           <div class="note-actions">
             <span class="counter" id="barCounter">0 كلمة</span>
             <button class="bar-send" id="btnBarSend" type="button">إرسال الشريط</button>
             <button class="btn ghost tiny" id="btnBarDelete" type="button">حذف الشريط</button>
-            <button class="btn ghost tiny" id="btnBarCancel" type="button">إغلاق</button>
           </div>
           <div class="bar-status" id="barStatus"></div>
         </div>
@@ -414,8 +413,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.12"></script>
-<script src="core.js?v=4.12"></script>
+<script src="config.js?v=4.13"></script>
+<script src="core.js?v=4.13"></script>
 <script>
 (function () {
   'use strict';
@@ -431,6 +430,7 @@
     barCache: {},
     barAckCache: {},
     barId: '',
+    barDeleteReq: '',
     barShowOthers: false,
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
@@ -590,7 +590,10 @@
   function noteOpen(open) {
     notePanel.classList.toggle('open', !!open);
     btnNote.classList.toggle('open', !!open);
-    if (open && barPanel) { barPanel.classList.remove('open'); if (btnBar) btnBar.classList.remove('open'); }
+    if (open && barPanel && !(barText && barText.value.replace(/^\s+|\s+$/g, ''))) {
+      barPanel.classList.remove('open');
+      if (btnBar) btnBar.classList.remove('open');
+    }
     if (open) setTimeout(function () { try { noteText.focus(); } catch (e) {} }, 180);
   }
   function setNoteStatus(msg, kind) {
@@ -631,20 +634,35 @@
     try { U.lsSet(LSP + 'barDraft', barText ? barText.value : ''); } catch (e) {}
     try { U.lsSet(LSP + 'barId', S.barId || ''); } catch (e) {}
   }
+  function storedBarItem() {
+    if (S.barId) {
+      var one = store.get(S.barId);
+      if (one && one.bar && one.text) return one;
+    }
+    var list = store.list().filter(function (it) { return it && it.bar && it.text; });
+    list.sort(function (a, b) { return (b.editedAt || b.ts || 0) - (a.editedAt || a.ts || 0); });
+    return list[0] || null;
+  }
   function recallBarDraft() {
     var draft = '';
     try { S.barId = String(U.lsGet(LSP + 'barId', '') || ''); } catch (e) { S.barId = ''; }
     try { draft = U.lsGet(LSP + 'barDraft', '') || ''; } catch (e) {}
     if (typeof draft !== 'string') draft = '';
-    if (!draft && S.barId) {
-      var saved = store.get(S.barId);
-      if (saved && saved.bar) draft = saved.text || '';
+    if (!draft) {
+      var saved = storedBarItem();
+      if (saved) { draft = saved.text || ''; S.barId = saved.id; }
     }
     if (!barText) return;
     if (draft) barText.value = draft;
     barWords();
     saveBarDraft();
-    if (canSendBar() && barText.value.replace(/^\s+|\s+$/g, '')) barOpen(true);
+    ensureBarVisible();
+  }
+  function ensureBarVisible() {
+    if (!canSendBar() || !barPanel || !barText) return;
+    if (!barText.value.replace(/^\s+|\s+$/g, '')) return;
+    barPanel.classList.add('open');
+    if (btnBar) btnBar.classList.add('open');
   }
   function fillBarComposer(it, force) {
     if (!canSendBar() || !it || !it.bar || !barText) return;
@@ -675,8 +693,10 @@
     barStatus.className = 'bar-status' + (kind ? ' ' + kind : '');
   }
   function forgetBarLocal(id) {
-    if (S.barId && id && S.barId !== id) return;
+    if (id && S.barDeleteReq !== id) return;
+    if (S.barId && id && S.barId !== id && S.barDeleteReq !== id) return;
     S.barId = '';
+    S.barDeleteReq = '';
     if (barText) barText.value = '';
     barWords();
     saveBarDraft();
@@ -711,10 +731,13 @@
     S.barsSent[id] = true;
     S.barCache[id] = item;
     S.shownIds[id] = Date.now();
+    if (barText.value !== t) barText.value = t;
     saveBarDraft();
     barOpen(true);
     setBarStatus(live ? 'أُرسل، والنص يبقى هنا للتعديل أو الإضافة' : 'سيُرسل عند عودة الاتصال، والنص يبقى هنا', live ? 'ok' : 'warn');
     render();
+    ensureBarVisible();
+    try { barText.focus(); } catch (e) {}
     U.toast('أُرسل الشريط، والنص يبقى في هذه الخانة', 'ok');
     if (S.sound) alerter.play('info');
   }
@@ -722,14 +745,18 @@
     var id = S.barId;
     if (!id && barText && !barPayload(barText.value)) return;
     if (!confirm('حذف الشريط من صفحتك ومن شاشة المنفذ؟ لن يرجع إلا إذا لصقته من جديد.')) return;
+    S.barDeleteReq = id || 'local';
     if (id) wipe(id);
-    forgetBarLocal(id || S.barId);
+    forgetBarLocal(id || 'local');
     U.toast('تم حذف الشريط', 'ok');
   }
-  if (btnBar) btnBar.addEventListener('click', function () { barOpen(!barPanel.classList.contains('open')); });
+  if (btnBar) btnBar.addEventListener('click', function () {
+    if (barText && barText.value.replace(/^\s+|\s+$/g, '')) { barOpen(true); return; }
+    barOpen(!barPanel.classList.contains('open'));
+  });
   if (U.$('#btnBarSend')) U.$('#btnBarSend').addEventListener('click', function (e) { e.preventDefault(); sendBar(); });
   if (U.$('#btnBarDelete')) U.$('#btnBarDelete').addEventListener('click', function () { deleteBar(); });
-  if (U.$('#btnBarCancel')) U.$('#btnBarCancel').addEventListener('click', function () { barOpen(false); });
+
   if (barText) {
     barText.addEventListener('input', function () { barWords(); saveBarDraft(); });
     barText.addEventListener('keydown', function (e) {
@@ -1233,6 +1260,7 @@
     if (!it) return;
     var label = it.note ? 'هذه الملاحظة' : (it.bar ? 'هذا الشريط' : 'هذا الخبر');
     if (!confirm('حذف ' + label + ' من شاشة المنفذ ومن كل الأجهزة؟')) return;
+    if (it.bar) S.barDeleteReq = id;
     wipe(id);
     if (it.bar) forgetBarLocal(id);
     U.toast(it.note ? 'تم حذف الملاحظة' : (it.bar ? 'تم حذف الشريط' : 'تم حذف الخبر'), 'ok');
@@ -1293,8 +1321,8 @@
       if (isEmpty) {
         S.barCache[bid] = { id: bid, empty: true };
         store.remove(bid);
-        if (S.barId === bid) forgetBarLocal(bid);
         render();
+        ensureBarVisible();
         return;
       }
       if (!data || !data.t) return;
@@ -1374,8 +1402,8 @@
     }
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
       store.remove(data.id);
-      if (S.barId === data.id) forgetBarLocal(data.id);
       render();
+      ensureBarVisible();
       return;
     }
     if (rel === 'cfg/admins') {
@@ -1506,6 +1534,7 @@
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
     btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
+    ensureBarVisible();
   }
 
   /* ---------- أرشيف الأيام (خانة لكل يوم) ---------- */
@@ -1626,7 +1655,7 @@
       return n;
     }
 
-    n.appendChild(U.el('p', 'itext', isBar ? U.barPreview(it.text) : it.text));
+    n.appendChild(U.el('p', 'itext', it.text));
 
     var bottom = U.el('div', 'ibottom');
 
