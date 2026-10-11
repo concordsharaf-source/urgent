@@ -413,8 +413,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.8.2"></script>
-<script src="core.js?v=4.8.2"></script>
+<script src="config.js?v=4.8.3"></script>
+<script src="core.js?v=4.8.3"></script>
 <script>
 (function () {
   'use strict';
@@ -427,6 +427,9 @@
   var S = {
     notesSent: {},                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
     barsSent: {},
+    barCache: {},              // نص الشريط يُحفظ هنا ولا يُعرض لغير المصرّح لهم
+    barAckCache: {},
+    barShowOthers: false,      // المالك وحده يفتح ظهور الشريط لبقية المحررين
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
     filter: 'all',
@@ -522,7 +525,9 @@
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     U.askNotify();
+    try { S.barShowOthers = U.lsGet(LSP + 'barShowOthers', false) === true; } catch (e) {}
     store.load();
+    purgeHiddenBars();
     syncBarBtn();
     render();
     bus.connect();
@@ -567,6 +572,30 @@
     if (!S.admin) return false;
     if (U.isOwner(S.admin.user)) return true;
     return String(S.admin.name || '').replace(/^\s+|\s+$/g, '') === 'مدير التحرير';
+  }
+  function canSeeBar() {
+    if (canSendBar()) return true;
+    return !!S.barShowOthers;
+  }
+  function purgeHiddenBars() {
+    if (canSeeBar()) return;
+    store.list().forEach(function (it) { if (it && it.bar) store.remove(it.id); });
+  }
+  function flushBarCache() {
+    if (!canSeeBar()) return;
+    Object.keys(S.barCache).forEach(function (id) {
+      var raw = S.barCache[id];
+      if (!raw || raw.empty) { store.remove(id); return; }
+      store.applyBar(raw);
+      if (S.barAckCache[id]) store.applyAck(S.barAckCache[id]);
+    });
+  }
+  function setBarVisibility(show) {
+    S.barShowOthers = !!show;
+    try { U.lsSet(LSP + 'barShowOthers', S.barShowOthers); } catch (e) {}
+    if (S.barShowOthers) flushBarCache();
+    else purgeHiddenBars();
+    render();
   }
   function syncBarBtn() {
     if (!btnBar) return;
@@ -919,6 +948,18 @@
     sec.appendChild(tail);
     extra.push(sec);
 
+    if (amOwner) {
+      var secBar = U.section('خصوصية الشريط', 'lock');
+      var barRow = U.rowEl('عرض الشريط للمحررين الآخرين', 'عند الإيقاف لا يراه إلا المالك ومدير التحرير وشاشة المنفذ.');
+      barRow.appendChild(U.switchEl(!!S.barShowOthers, function (on) {
+        bus.publish('cfg/bar', { show: !!on, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
+        setBarVisibility(on);
+        U.toast(on ? 'سيظهر الشريط للمحررين الآخرين' : 'أصبح الشريط حصراً بين الإدارة والمنفذ', 'ok');
+      }));
+      secBar.appendChild(barRow);
+      extra.push(secBar);
+    }
+
     // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
     var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
     var AC = U.alertCfgLocal() || {};
@@ -1183,9 +1224,18 @@
     }
     if (rel.indexOf('bar/') === 0) {
       var bid = rel.slice(4);
-      if (isEmpty) { store.remove(bid); render(); return; }
+      if (isEmpty) {
+        S.barCache[bid] = { id: bid, empty: true };
+        store.remove(bid);
+        render();
+        return;
+      }
       if (!data || !data.t) return;
-      var resB = store.applyBar({ id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 });
+      var rawB = { id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 };
+      S.barCache[rawB.id] = rawB;
+      if (!canSeeBar()) { store.remove(rawB.id); return; }
+      var resB = store.applyBar(rawB);
+      if (S.barAckCache[rawB.id]) store.applyAck(S.barAckCache[rawB.id]);
       if (resB && resB.isNew) {
         S.shownIds[resB.item.id] = Date.now();
         if (!normOwn(data.a)) {
@@ -1198,6 +1248,10 @@
     }
     if (rel.indexOf('ack/') === 0) {
       if (isEmpty) return;
+      if (data && !canSeeBar() && (S.barCache[data.id] || String(data.id).indexOf('br') === 0)) {
+        S.barAckCache[data.id] = data;
+        return;
+      }
       var prevItem = data && store.get(data.id);
       var wasGot = prevItem && prevItem.ack && prevItem.ack.kind === 'got';
       var wasCopied = prevItem && prevItem.ack && prevItem.ack.kind === 'copied';
@@ -1265,6 +1319,11 @@
       U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
       return;
     }
+    if (rel === 'cfg/bar') {
+      if (isEmpty || !data) { setBarVisibility(false); return; }
+      setBarVisibility(!!data.show);
+      return;
+    }
     if (rel === 'cfg/alerts') {
       if (isEmpty || !data) return;
       U.saveAlertCfgLocal(data);                              // يُطبَّق بصمت بلا أي رسالة
@@ -1304,7 +1363,7 @@
 
   function updatePendingChip() {
     var st = store.stats();
-    var pending = st.pending + st.received;
+    var pending = st.pending + st.received + (canSeeBar() ? (st.barsPending || 0) : 0);
     chipPending.classList.toggle('hidden', pending === 0);
     U.txt(pendingText, String(pending));
   }
@@ -1334,6 +1393,7 @@
     U.txt(todayNum, String(todayNews));
 
     var list = items.filter(function (it) {
+      if (it.bar && !canSeeBar()) return false;
       var kind = it.ack ? it.ack.kind : null;
       if (it.note) {                                                     // الملاحظات: تنتهي بالاستلام
         if (S.filter === 'pending' && kind) return false;
@@ -1407,6 +1467,7 @@
     var today = U.dayKeyOf(Date.now());
     var map = {};
     store.list().forEach(function (it) {
+      if (it.bar && !canSeeBar()) return;
       var k = U.dayKeyOf(it.ts);
       if (k === today) return;
       map[k] = (map[k] || 0) + 1;
