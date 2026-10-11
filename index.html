@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.19" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.19" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -331,7 +331,7 @@
 
   <div class="grow"></div>
 
-  <div class="conn" title="حالة الاتصال بخادم البث">
+  <div class="conn" id="connBox" title="حالة الاتصال بخادم البث">
     <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
   </div>
 
@@ -452,8 +452,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.18"></script>
-<script src="core.js?v=4.18"></script>
+<script src="config.js?v=4.19"></script>
+<script src="core.js?v=4.19"></script>
 <script>
 (function () {
   'use strict';
@@ -497,7 +497,7 @@
 
   /* ---------- عناصر ---------- */
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
-  var connDot = U.$('#connDot'), connText = U.$('#connText');
+  var connDot = U.$('#connDot'), connText = U.$('#connText'), connBox = U.$('#connBox');
 
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
@@ -910,16 +910,31 @@
 
   function onState(st, info) {
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
+    info = info || {};
+    var br = info.broker || '';
     if (st === 'connected') {
       connDot.className = 'dot on';
-      U.txt(connText, 'متصل');
+      // اسم الوسيط المتصل يظهر بجانب النقطة — تعرف فوراً على أي خادم بث أنت
+      U.txt(connText, br ? ('متصل — ' + br) : 'متصل');
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
-      U.txt(connText, 'جارٍ الاتصال…');
+      U.txt(connText, 'جارٍ الاتصال…' + (br ? ' (' + br + ')' : '') + (info.attempt > 1 ? ' محاولة ' + info.attempt : ''));
     } else {
       connDot.className = 'dot off';
       U.txt(connText, 'البث غير متصل — جارٍ إعادة المحاولة');
       if (hintBox) U.txt(hintBox, 'الموقع يعمل، لكن اتصال البث غير متاح حالياً؛ ستظهر الأخبار عند عودة الاتصال.');
+    }
+    // تفاصيل حالة MQTT في تلميح المؤشر: الوسيط، زمن الاستجابة، الطابور، موعد إعادة المحاولة
+    if (connBox) {
+      var d = (bus && bus.diag) ? bus.diag() : null;
+      var lag = (info.lag != null) ? info.lag : (d ? d.lag : null);
+      var line = ['الاتصال بالبث: ' + (st === 'connected' ? 'متصل' : (st === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'))];
+      if (br) line.push('الوسيط: ' + br);
+      if (st === 'connected' && lag != null) line.push('زمن الاستجابة: ' + lag + ' مللي ثانية');
+      if (info.attempt > 1) line.push('المحاولة: ' + info.attempt);
+      if (info.retryIn) line.push('إعادة المحاولة خلال ' + info.retryIn + ' ثانية');
+      if (d && d.queued) line.push('رسائل بالانتظار: ' + d.queued);
+      connBox.title = line.join(' — ');
     }
   }
 
