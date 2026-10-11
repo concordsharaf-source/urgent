@@ -10,9 +10,8 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
-<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.19" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.19" /></noscript>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="ui.css?v=4.8" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -174,16 +173,6 @@
   .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
   .note-status.ok{color:#6ee7b7}
   .note-status.warn{color:#fcd34d}
-  .ticker-btn{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:none;border-radius:14px;padding:12px 22px;font-size:15.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:9px;box-shadow:0 14px 28px -16px rgba(34,197,94,1);transition:.15s}
-  .ticker-btn:hover{filter:brightness(1.08)}
-  .ticker-btn.open{background:linear-gradient(135deg,#15803d,#14532d)}
-  .ticker-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
-  .ticker-panel.open{max-height:420px;opacity:1;margin-top:12px}
-  .ticker-panel textarea{width:100%;min-height:96px;border-radius:14px;border:1px solid rgba(34,197,94,.5);background:rgba(34,197,94,.1);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;line-height:1.9;resize:vertical;outline:none}
-  .ticker-send{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:none;border-radius:13px;padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer}
-  .item.ticker{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);border-color:rgba(187,247,208,.35);box-shadow:0 16px 34px -22px rgba(34,197,94,.9)}
-  .item.ticker .itext{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
-  .item.ticker .itop .tag{background:rgba(0,0,0,.3)}
 
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
     padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
@@ -348,14 +337,6 @@
           <div class="note-status" id="noteStatus"></div>
         </div>
       </div>
-      <div class="note-wrap ticker-wrap">
-        <button class="ticker-btn" id="btnTicker" type="button"><i class="ico" data-ic="send"></i>الشريط</button>
-        <div class="ticker-panel" id="tickerPanel">
-          <textarea id="tickerText" placeholder="الصق الشريط الإخباري كاملاً هنا…"></textarea>
-          <div class="note-actions"><span class="counter" id="tickerCounter">0 كلمة</span><button class="btn ghost tiny" id="btnTickerClear" type="button">مسح</button><button class="ticker-send" id="btnTickerSend" type="button">إرسال الشريط</button><button class="btn ghost tiny" id="btnTickerCancel" type="button">إغلاق</button></div>
-          <div class="note-status" id="tickerStatus"></div>
-        </div>
-      </div>
     </div>
 
     <!-- خانة واحدة: عدد أخبار اليوم بغض النظر عن الاستلام أو النسخ -->
@@ -394,8 +375,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.19"></script>
-<script src="core.js?v=4.19"></script>
+<script src="config.js?v=4.8"></script>
+<script src="core.js?v=4.8"></script>
 <script>
 (function () {
   'use strict';
@@ -406,9 +387,7 @@
   var LSP = U.LS_PREFIX + room + ':';
 
   var S = {
-    notesSent: {},
-    tickerSent: {},
-    tickerVisibleToEditors: U.lsGet(U.LS_PREFIX + room + ':tickerVisibleToEditors', !!(cfg.ticker && cfg.ticker.showToEditors)) === true,                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
+    notesSent: {},                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
     filter: 'all',
@@ -441,12 +420,10 @@
   var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
   var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
   var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
-  var btnTicker = U.$('#btnTicker'), tickerPanel = U.$('#tickerPanel'), tickerText = U.$('#tickerText'), tickerCounter = U.$('#tickerCounter'), tickerStatus = U.$('#tickerStatus');
-  var tickerDraftKey = U.LS_PREFIX + room + ':tickerDraft';
   var feed = U.$('#feed'), todayNum = U.$('#todayNum');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
-  var connDot = U.$('#connDot'), connText = U.$('#connText'), connBox = U.$('#chipConn');
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
   var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
 
@@ -493,7 +470,6 @@
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
-    loadTickerDraft();
     var s = session.get();
     if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
     else { inUser.focus(); }
@@ -502,7 +478,6 @@
   function loginSuccess(admin, silent) {
     S.admin = admin;
     U.txt(U.$('#userLabel'), admin.name);
-    if (btnTicker) btnTicker.classList.toggle('hidden', !canSendTicker());
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     U.askNotify();
@@ -568,28 +543,6 @@
     U.toast('أُرسلت الملاحظة إلى شاشة المنفذ', 'ok');
     if (S.sound) alerter.play('info');
   }
-  function canSendTicker() { return !!(S.admin && (U.isOwner(S.admin.user) || S.admin.name === 'مدير التحرير' || ((cfg.ticker && cfg.ticker.senderUsers) || []).indexOf(S.admin.user) >= 0)); }
-  function tickerWords() { var t=tickerText.value.trim(); var n=t ? t.split(/\s+/).filter(Boolean).length : 0; U.txt(tickerCounter,n+' كلمة'+(t.length?' — '+t.length+' حرف':'')); }
-  function saveTickerDraft() { U.lsSet(tickerDraftKey, tickerText.value); }
-  function loadTickerDraft() { var draft = U.lsGet(tickerDraftKey, ''); if (draft) tickerText.value = String(draft); tickerWords(); }
-  function tickerOpen(open) { tickerPanel.classList.toggle('open',!!open); btnTicker.classList.toggle('open',!!open); if(open) setTimeout(function(){try{tickerText.focus();}catch(e){}},180); }
-  function clearTickerItems() {
-    store.list().forEach(function (it) {
-      if (it.ticker) {
-        bus.publish('ticker/' + it.id, '', { retain: true, queue: false });
-        store.remove(it.id);
-      }
-    });
-  }
-  function sendTicker() {
-    if (!canSendTicker()) { U.toast('إرسال الشريط مخصص لمدير التحرير والمالك فقط','warn'); return; }
-    var t=tickerText.value.trim(); if(!t){U.toast('الصق نص الشريط أولاً','warn');return;}
-    var id='tk'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); var item={id:id,t:t,a:S.admin.name,ts:Date.now(),x:1};
-    clearTickerItems(); store.applyTicker(item); var live=bus.publish('ticker/active',item,{retain:true}); S.tickerSent[id]=true; saveTickerDraft(); tickerWords();
-    tickerStatus.textContent=live?'أُرسل الشريط — بانتظار النسخ من المنفذ':'سيرسل النظام الشريط عند عودة الاتصال'; tickerStatus.className='note-status'+(live?'':' warn'); render(); U.toast('أُرسل الشريط إلى شاشة المنفذ',live?'ok':'warn');
-  }
-  btnTicker.addEventListener('click',function(){tickerOpen(!tickerPanel.classList.contains('open'));});
-  U.$('#btnTickerSend').addEventListener('click',sendTicker); U.$('#btnTickerClear').addEventListener('click',function(){tickerText.value='';saveTickerDraft();tickerWords();tickerText.focus();}); U.$('#btnTickerCancel').addEventListener('click',function(){tickerOpen(false);}); tickerText.addEventListener('input',function(){tickerWords();saveTickerDraft();}); tickerText.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendTicker();}});
   btnNote.addEventListener('click', function () { noteOpen(!notePanel.classList.contains('open')); });
   U.$('#btnNoteSend').addEventListener('click', function (e) { e.preventDefault(); sendNote(); });
   U.$('#btnNoteClear').addEventListener('click', function () { noteText.value = ''; noteWords(); noteText.focus(); });
@@ -863,21 +816,6 @@
     sec.appendChild(tail);
     extra.push(sec);
 
-    // ---- إعدادات خصوصية الشريط: يملكها المالك فقط ----
-    if (amOwner) {
-      var secTK = U.section('خصوصية الشريط الإخباري', 'lock');
-      var tkRow = U.rowEl('إظهار الشريط للمحررين الآخرين', 'عند الإيقاف يبقى الشريط حصراً بين المالك/مدير التحرير وشاشة المنفذ.');
-      var tkOn = U.switchEl ? U.switchEl(!!S.tickerVisibleToEditors, function (on) {
-        S.tickerVisibleToEditors = on;
-        U.lsSet(U.LS_PREFIX + room + ':tickerVisibleToEditors', on);
-        bus.publish('cfg/ticker', { showToEditors: on, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
-        U.toast(on ? 'سيظهر الشريط للمحررين الآخرين' : 'سيبقى الشريط سرياً بين الإدارة والمنفذ', 'ok');
-      }) : null;
-      if (tkOn) tkRow.appendChild(tkOn);
-      secTK.appendChild(tkRow);
-      extra.push(secTK);
-    }
-
     // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
     var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
     var AC = U.alertCfgLocal() || {};
@@ -1053,9 +991,9 @@
     var text = U.cleanNewsText(newText);
     if (!text) { U.toast('لا يمكن حفظ نص فارغ', 'warn'); return; }
     if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
-    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now(), n: it.note ? 1 : 0, x: it.ticker ? 1 : 0 };
-    if (it.note) store.applyNote(upd); else if (it.ticker) store.applyTicker(upd); else store.applyNews(upd);
-    bus.publish((it.note ? 'note/' : it.ticker ? 'ticker/active' : 'news/') + (it.ticker ? '' : id), upd, { retain: true });
+    var upd = { id: id, t: text, a: it.author, ts: it.ts, e: Date.now(), n: it.note ? 1 : 0 };
+    if (it.note) store.applyNote(upd); else store.applyNews(upd);
+    bus.publish((it.note ? 'note/' : 'news/') + id, upd, { retain: true });
     S.editing = null;
     S.draft = null;
     render();
@@ -1089,8 +1027,6 @@
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
-    bus.publish('ticker/' + id, '', { retain: true });
-    bus.publish('ticker/active', '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1100,7 +1036,7 @@
 
   function actCopy(id) {
     var it = store.get(id);
-    if (!it) return;
+    if (!it || it.note) return;
     U.copyText(it.text).then(function (ok) {
       U.toast(ok ? 'تم نسخ نص الخبر' : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
     });
@@ -1121,12 +1057,6 @@
         if (document.hidden) U.flashTitle('خبر جديد');
       }
       return;
-    }
-    if (rel === 'ticker/active') {
-      if (isEmpty) { store.list().forEach(function(it){ if(it.ticker) store.remove(it.id); }); render(); return; }
-      if (!data || !data.t || (!canSendTicker() && !S.tickerVisibleToEditors)) return;
-      store.list().forEach(function(it){ if(it.ticker && it.id !== data.id) store.remove(it.id); });
-      var tr=store.applyTicker({id:data.id,t:data.t,a:data.a,ts:data.ts,e:data.e}); if(tr&&tr.isNew){S.shownIds[tr.item.id]=Date.now(); if(!normOwn(data.a)&&S.sound)alerter.play('info');} render(); return;
     }
     if (rel.indexOf('note/') === 0) {
       var nid = rel.slice(5);
@@ -1200,7 +1130,6 @@
       U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
       return;
     }
-    if (rel === 'cfg/ticker') { if (!isEmpty && data) { S.tickerVisibleToEditors=!!data.showToEditors; if (!S.tickerVisibleToEditors) store.list().forEach(function(it){ if(it.ticker) store.remove(it.id); }); render(); } return; }
     if (rel === 'cfg/alerts') {
       if (isEmpty || !data) return;
       U.saveAlertCfgLocal(data);                              // يُطبَّق بصمت بلا أي رسالة
@@ -1217,31 +1146,16 @@
 
   function onState(st, info) {
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
-    info = info || {};
-    var br = info.broker || '';
     if (st === 'connected') {
       connDot.className = 'dot on';
-      U.txt(connText, br ? ('متصل — ' + br) : 'متصل');   // اسم الوسيط المتصل بجانب النقطة
+      U.txt(connText, 'متصل');
       updatePendingChip();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
-      U.txt(connText, 'جارٍ الاتصال…' + (br ? ' (' + br + ')' : '') + (info.attempt > 1 ? ' محاولة ' + info.attempt : ''));
+      U.txt(connText, 'جارٍ الاتصال…');
     } else {
       connDot.className = 'dot off';
-      U.txt(connText, 'غير متصل' + (br ? ' — ' + br : ''));
-    }
-    // تفاصيل حالة MQTT في تلميح المؤشر: الوسيط، زمن الاستجابة، الطابور، موعد إعادة المحاولة
-    if (connBox) {
-      var d = (bus && bus.diag) ? bus.diag() : null;
-      var lag = (info.lag != null) ? info.lag : (d ? d.lag : null);
-      var line = ['الاتصال بالبث: ' + (st === 'connected' ? 'متصل' : (st === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'))];
-      if (br) line.push('الوسيط: ' + br);
-      if (st === 'connected' && lag != null) line.push('زمن الاستجابة: ' + lag + ' مللي ثانية');
-      if (info.attempt > 1) line.push('المحاولة: ' + info.attempt);
-      if (info.retryIn) line.push('إعادة المحاولة خلال ' + info.retryIn + ' ثانية');
-      if (d && d.queued) line.push('رسائل بالانتظار: ' + d.queued);
-      connBox.title = line.join(' — ');
-      connBox.setAttribute('aria-label', connBox.title);
+      U.txt(connText, 'غير متصل');
     }
   }
 
@@ -1403,17 +1317,16 @@
   function buildItem(it) {
     var n = U.el('article', 'item');
     n.setAttribute('data-id', it.id);
-    var isNote = !!it.note, isTicker = !!it.ticker;
+    var isNote = !!it.note;
     var copied = isNote ? !!(it.ack && it.ack.kind === 'got') : !!(it.ack && it.ack.kind === 'copied');
-    if (isNote) n.classList.add('note');
-    if (isTicker) n.classList.add('ticker');                       // أزرق
+    if (isNote) n.classList.add('note');                       // أزرق
     if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
     if (it.pin && !isNote) n.classList.add('pinned');
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
 
     var top = U.el('div', 'itop');
     var tag = U.el('span', 'tag');
-    tag.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : isTicker ? 'شريط' : 'عاجل');
+    tag.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || ''));
     top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
@@ -1477,7 +1390,7 @@
     var bDel = U.el('button', 'ibtn');
     bDel.innerHTML = U.ic('trash') + 'حذف';
     bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
-    if (isNote || isTicker) {
+    if (isNote) {
       acts.appendChild(bEdit); acts.appendChild(bDel);        // الملاحظة: تعديل وحذف فقط
     } else {
       acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);

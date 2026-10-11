@@ -12,22 +12,8 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>اليمن اليوم — شاشة الأخبار العاجلة</title>
-<script>
-/* قبل أي تحميل: إن وُجدت أخبار محفوظة لا تُرسم صورة الانتظار أصلاً */
-(function () {
-  try {
-    var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
-    var room = (m && m[1]) || '07c97da1547b2d26734f';
-    var raw = localStorage.getItem('ucn:' + room + ':news');
-    var arr = raw ? JSON.parse(raw) : null;
-    document.documentElement.classList.add((arr && arr.length) ? 'has-saved' : 'show-wait');
-  } catch (e) { document.documentElement.classList.add('show-wait'); }
-})();
-</script>
-<style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
-<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.19" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.19" /></noscript>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="ui.css?v=4.8" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -202,10 +188,6 @@
   .card.note .livedot{background:#bfdbfe}
   .card.note.fresh::after{box-shadow:0 0 0 0 rgba(191,219,254,.55);animation:ring 1.5s ease-out 3}
   .card.note .copy-btn{color:#1d4ed8}
-  .card.ticker{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);box-shadow:0 22px 44px -20px rgba(34,197,94,.7),inset 0 1px 0 rgba(255,255,255,.14)}
-  .card.ticker .text{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
-  .card.ticker .tag{background:rgba(0,0,0,.3)}
-  .card.ticker .copy-btn{color:#15803d}
   .recv-btn{
     background:#fff;color:#1d4ed8;border:none;border-radius:14px;font-weight:800;font-size:17px;
     padding:13px 28px;min-height:50px;cursor:pointer;
@@ -331,7 +313,7 @@
 
   <div class="grow"></div>
 
-  <div class="conn" id="connBox" title="حالة الاتصال بخادم البث">
+  <div class="conn" title="حالة الاتصال بخادم البث">
     <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
   </div>
 
@@ -372,73 +354,10 @@
 
 <main class="feed" id="feed">
   <div class="empty" id="empty">
-    <h2 id="emptyTitle">جارٍ فتح الشاشة…</h2>
-    <p id="emptyText">يتم إظهار الأخبار المحفوظة والاتصال بالبث.</p>
+    <img src="assets/logo-320.png" alt="اليمن اليوم" class="empty-logo" />
+    <h2>بانتظار الأخبار…</h2>
+    <p>هذه شاشة الاستقبال الخاصة بغرفة التنفيذ.<br />عند إرسال أي خبر عاجل من غرفة الأخبار سيظهر هنا فوراً مع تنبيه صوتي.</p>
   </div>
-  <script>
-  /* إظهار الأخبار المحفوظة فوراً، قبل تحميل السكربتات والاتصال — حتى لا تبقى صورة الانتظار */
-  (function () {
-    try {
-      var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
-      var room = (m && m[1]) || '07c97da1547b2d26734f';
-      var raw = localStorage.getItem('ucn:' + room + ':news');
-      var arr = raw ? JSON.parse(raw) : null;
-      var empty = document.getElementById('empty');
-      var title = document.getElementById('emptyTitle');
-      var text = document.getElementById('emptyText');
-      if (!arr || !arr.length) {
-        if (title) title.textContent = 'جارٍ فتح الشاشة…';
-        if (text) text.textContent = 'يتم إظهار الأخبار المحفوظة والاتصال بالبث.';
-        return;
-      }
-      function p2(n) { return (n < 10 ? '0' : '') + n; }
-      function dayKey(ts) {
-        var d = new Date(Number(ts) || 0);
-        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
-      }
-      var today = dayKey(Date.now());
-      var list = arr.filter(function (it) { return it && dayKey(it.ts) === today; });
-      list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
-      if (empty) empty.classList.add('hidden');
-      var feed = document.getElementById('feed');
-      var arch = document.getElementById('archive');
-      if (!feed) return;
-      if (!list.length) {
-        var note = document.createElement('div');
-        note.className = 'empty boot-card';
-        note.setAttribute('data-boot', '1');
-        note.textContent = 'لا أخبار جديدة اليوم — الأخبار السابقة في الأرشيف.';
-        feed.insertBefore(note, arch || null);
-        return;
-      }
-      list.slice(0, 20).forEach(function (it) {
-        var card = document.createElement('article');
-        var copied = it.ack && (it.note ? it.ack.kind === 'got' : it.ack.kind === 'copied');
-        card.className = 'card boot-card' + (it.note ? ' note' : '') + (copied ? ' copied' : '');
-        card.setAttribute('data-boot', '1');
-        var top = document.createElement('div');
-        top.className = 'card-top';
-        var tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = it.note ? 'ملاحظة' : 'عاجل';
-        var who = document.createElement('span');
-        who.className = 'who';
-        who.textContent = it.author || '';
-        var ts = document.createElement('span');
-        ts.className = 'ts';
-        var d = new Date(it.ts || Date.now());
-        ts.textContent = p2(d.getHours()) + ':' + p2(d.getMinutes());
-        top.appendChild(tag); top.appendChild(who); top.appendChild(ts);
-        var body = document.createElement('p');
-        body.className = 'text';
-        body.textContent = it.text || '';
-        card.appendChild(top);
-        card.appendChild(body);
-        feed.insertBefore(card, arch || null);
-      });
-    } catch (e) {}
-  })();
-  </script>
   <!-- أرشيف الأيام السابقة: خانة لكل يوم وتاريخها تُفتح بالضغط -->
   <section class="archive" id="archive">
     <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
@@ -452,8 +371,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.19"></script>
-<script src="core.js?v=4.19"></script>
+<script src="config.js?v=4.8"></script>
+<script src="core.js?v=4.8"></script>
 <script>
 (function () {
   'use strict';
@@ -497,7 +416,7 @@
 
   /* ---------- عناصر ---------- */
   var feed = U.$('#feed'), emptyBox = U.$('#empty');
-  var connDot = U.$('#connDot'), connText = U.$('#connText'), connBox = U.$('#connBox');
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
 
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
   var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
@@ -860,14 +779,6 @@
       if (res && res.isNew) onNewItem(res.item);
       return;
     }
-    if (rel === 'ticker/active') {
-      if (isEmpty) { store.list().forEach(function(it){ if(it.ticker) store.remove(it.id); }); render(); updateAlarmBar(); return; }
-      if (!data || !data.t) return;
-      store.list().forEach(function(it){ if(it.ticker && it.id !== data.id) store.remove(it.id); });
-      var tres = store.applyTicker({ id: data.id, t: data.t, a: data.a, ts: data.ts, e: data.e });
-      if (tres && tres.isNew) onNewItem(tres.item); else { render(); updateAlarmBar(); }
-      return;
-    }
     if (rel.indexOf('note/') === 0) {
       var nid = rel.slice(5);
       if (isEmpty) { store.remove(nid); render(); updateAlarmBar(); return; }   // ملاحظة محذوفة
@@ -910,36 +821,19 @@
 
   function onState(st, info) {
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
-    info = info || {};
-    var br = info.broker || '';
     if (st === 'connected') {
       connDot.className = 'dot on';
-      // اسم الوسيط المتصل يظهر بجانب النقطة — تعرف فوراً على أي خادم بث أنت
-      U.txt(connText, br ? ('متصل — ' + br) : 'متصل');
+      U.txt(connText, 'متصل');
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
-      U.txt(connText, 'جارٍ الاتصال…' + (br ? ' (' + br + ')' : '') + (info.attempt > 1 ? ' محاولة ' + info.attempt : ''));
+      U.txt(connText, 'جارٍ الاتصال…');
     } else {
       connDot.className = 'dot off';
-      U.txt(connText, 'البث غير متصل — جارٍ إعادة المحاولة');
-      if (hintBox) U.txt(hintBox, 'الموقع يعمل، لكن اتصال البث غير متاح حالياً؛ ستظهر الأخبار عند عودة الاتصال.');
-    }
-    // تفاصيل حالة MQTT في تلميح المؤشر: الوسيط، زمن الاستجابة، الطابور، موعد إعادة المحاولة
-    if (connBox) {
-      var d = (bus && bus.diag) ? bus.diag() : null;
-      var lag = (info.lag != null) ? info.lag : (d ? d.lag : null);
-      var line = ['الاتصال بالبث: ' + (st === 'connected' ? 'متصل' : (st === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'))];
-      if (br) line.push('الوسيط: ' + br);
-      if (st === 'connected' && lag != null) line.push('زمن الاستجابة: ' + lag + ' مللي ثانية');
-      if (info.attempt > 1) line.push('المحاولة: ' + info.attempt);
-      if (info.retryIn) line.push('إعادة المحاولة خلال ' + info.retryIn + ' ثانية');
-      if (d && d.queued) line.push('رسائل بالانتظار: ' + d.queued);
-      connBox.title = line.join(' — ');
+      U.txt(connText, 'غير متصل');
     }
   }
 
-  function onReady() {
-    if (hintBox) U.txt(hintBox, 'تم الاتصال بالبث — الأخبار الجديدة ستظهر هنا فوراً.'); render(); setTimeout(pruneOld, 9000); }
+  function onReady() { render(); setTimeout(pruneOld, 9000); }
 
   /* ---------- خبر جديد ---------- */
   /* ===================== إطار التنبيه المضيء (إضاءة الأطراف) ===================== */
@@ -1360,7 +1254,7 @@
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
     if (S.sound) alerter.play('urgent');
-    var nTitle = (item.note ? 'ملاحظة — ' : item.ticker ? 'شريط إخباري — ' : 'خبر عاجل — ') + (item.author || 'غرفة الأخبار');
+    var nTitle = (item.note ? 'ملاحظة — ' : 'خبر عاجل — ') + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
@@ -1369,7 +1263,7 @@
     if (S.pushOn && S.pushEndpoint) {
       bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
     }
-    if (document.hidden) U.flashTitle(item.note ? 'ملاحظة جديدة' : item.ticker ? 'شريط إخباري جديد' : 'خبر عاجل');
+    if (document.hidden) U.flashTitle(item.note ? 'ملاحظة جديدة' : 'خبر عاجل');
     scheduleReceivedAck(item);
     render();
     updateAlarmBar();
@@ -1437,8 +1331,6 @@
   function wipe(id) {
     bus.publish('news/' + id, '', { retain: true });
     bus.publish('note/' + id, '', { retain: true });
-    bus.publish('ticker/' + id, '', { retain: true });
-    bus.publish('ticker/active', '', { retain: true });
     bus.publish('ack/' + id, '', { retain: true });
     bus.publish('pin/' + id, '', { retain: true });
     bus.publish('ctrl', { action: 'delete', id: id });
@@ -1452,8 +1344,6 @@
   var curToday = U.dayKeyOf(Date.now());
 
   function render() {
-    var boots = document.querySelectorAll('[data-boot]');
-    for (var bi = 0; bi < boots.length; bi++) boots[bi].remove();
     var items = store.list();
     var want = {};
     items.forEach(function (it) { want[it.id] = true; });
@@ -1480,8 +1370,6 @@
     /* ---- الأيام السابقة: خانة لكل يوم قابلة للفتح والإغلاق ---- */
     renderArchive(g);
 
-    document.documentElement.classList.toggle('has-saved', items.length > 0);
-    document.documentElement.classList.toggle('show-wait', items.length === 0);
     emptyBox.classList.toggle('hidden', items.length > 0);
     if (!items.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
     if (items.length) updateHeaderCount(items);
@@ -1599,7 +1487,7 @@
     var actions = U.el('div', 'actions');
     var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
     var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy');
-    copy.innerHTML = U.ic('copy', 20) + 'نسخ' + (it.ticker ? ' الشريط' : ' الخبر');
+    copy.innerHTML = U.ic('copy', 20) + 'نسخ الخبر';
     var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
     recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
     actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
@@ -1622,19 +1510,17 @@
     r('new').classList.toggle('hidden', !fresh);
 
     var ack = it.ack;
-    var isNote = !!it.note, isTicker = !!it.ticker;
+    var isNote = !!it.note;
     var copied = isNote ? !!(ack && ack.kind === 'got') : !!(ack && ack.kind === 'copied');
     card.classList.toggle('note', isNote);                 // أزرق للملاحظة
-    card.classList.toggle('ticker', isTicker);              // أخضر للشريط
     card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
     card.classList.toggle('pinned', !!it.pin);
     var tg = r('tag');
-    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : isTicker ? 'شريط' : 'عاجل');
+    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isNote ? 'ملاحظة' : 'عاجل');
     r('pin').classList.toggle('hidden', !it.pin || isNote);
     r('edited').classList.toggle('hidden', !it.editedAt || isNote);
 
     var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy'), recvBtn = r('recv');
-    if (copyBtn) copyBtn.innerHTML = U.ic('copy', 20) + 'نسخ' + (isTicker ? ' الشريط' : ' الخبر');
     if (isNote) {
       copyBtn.classList.add('hidden');
       recopyBtn.classList.add('hidden');

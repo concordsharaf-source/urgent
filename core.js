@@ -12,10 +12,9 @@ window.URGENT = (function () {
   var PBKDF2_ITER = 150000;              // قوة تجزئة كلمة المرور
 
   var DEFAULT_BROKERS = [
-    { url: 'wss://mqtt.eclipseprojects.io:443/mqtt', name: 'Eclipse' },
-    { url: 'wss://broker.emqx.io:8084/mqtt',         name: 'EMQX' },
-    { url: 'wss://broker.hivemq.com:8884/mqtt',      name: 'HiveMQ' },
-    { url: 'wss://test.mosquitto.org:8081/mqtt',     name: 'Mosquitto' }
+    { url: 'wss://broker.emqx.io:8084/mqtt',     name: 'EMQX' },
+    { url: 'wss://broker.hivemq.com:8884/mqtt',  name: 'HiveMQ' },
+    { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
   ];
 
   var ONLINE_TTL = 45000;                // صلاحية نبضة الحضور
@@ -533,85 +532,24 @@ window.URGENT = (function () {
    * opts: { base, role, who, name, onMessage(topic, data, isEmpty), onState(state, info) }
    * state: 'idle' | 'connecting' | 'connected' | 'offline' | 'failed'
    */
-  /**
-   * createBus — ناقل مشترك (MQTT عبر WebSocket)
-   * opts: { base, role, who, name, onMessage(topic, data, isEmpty), onState(state, info) }
-   * state: 'idle' | 'connecting' | 'connected' | 'offline' | 'failed'
-   *
-   * إصلاح 4.19 — اتصال لا يعلق على وسيط واحد:
-   *   1) إعادة الاتصال التلقائي داخل المكتبة معطّلة (reconnectPeriod: 0) ونديرها بأنفسنا،
-   *      فإن فشل وسيط (حجب/بطء/انقطاع) ننتقل تلقائياً إلى الوسيط البديل ثم نعود للبحث دوماً،
-   *      بدل البقاء أبد الدهر على وسيط واحد معطّل.
-   *   2) لكل محاولة اتصال «جيل» (generation) لا يملك تغيير الحالة ولا إرسال الرسائل إلا الجيل
-   *      الحالي، فلا يستطيع اتصال قديم متأخر أن يوهم الواجهة بأننا متصلون أو يبتلع رسالة.
-   *   3) نبضة قياس على قناة خاصة بهذه النافذة: إن لم ترتد مرتين متتاليتين فالاتصال «نصف ميت»
-   *      (يحدث بعد نوم الجوال أو تبديل الشبكة) فنُعيد الاتصال فوراً بدل انتظار دقائق.
-   *   4) مهلة المصافحة رُفعت إلى 9 ثوانٍ: الشبكات البطيئة كانت تُسقط وسيطاً سليماً قبل أن يُكمل.
-   *   5) المصافحة تُعاد مرتين للوسيط نفسه قبل استبعاده، فلا نستبعد وسيطاً بسبب رعشة شبكة.
-   *   6) اسم المستخدم (دالة) صار يُقرأ لحظة الإرسال، فظهر اسم المنفذ/المحرر الحقيقي في الحضور.
-   */
   function createBus(opts) {
     var base = opts.base;
-    var who = opts.who;
-    var nameOf = (typeof opts.name === 'function') ? opts.name : function () { return opts.name; };
-    var myPing = 'ping/' + randToken(8);          // قناة النبضة: خاصة بهذه النافذة وحدها
+    var getName = (typeof opts.name === 'function') ? opts.name : function () { return opts.name; };
     var brs = brokers();
-
-    /* الوسيط الذي نجح آخر مرة يُجرَّب أولاً */
-    function orderedBrokers() {
-      var list = brokers().slice();
-      var last = '';
-      try { last = localStorage.getItem('ucn:lastBroker') || ''; } catch (e) {}
-      if (!last) return list;
-      var ix = -1;
-      for (var j = 0; j < list.length; j++) if (list[j].url === last) ix = j;
-      if (ix > 0) list.unshift(list.splice(ix, 1)[0]);
-      return list;
-    }
-
-    /* ---------- ثوابت الاتصال (مللي ثانية) ---------- */
-    var T_CONNECT = 9000;      // مهلة مصافحة الوسيط
-    var T_GUARD = 11500;       // مهلة صارمة للمحاولة كلها
-    var TRY_SAME = 2;          // محاولتان للوسيط نفسه قبل الانتقال للبديل
-    var T_PING = 20000;        // لا نُبضّ إن وصلت رسائل خلال هذه المدة (اتصال حيّ)
-    var T_PONG = 10000;        // مهلة ارتداد النبضة
-    var PONG_MAX = 2;          // نبضتان بلا ارتداد ⇒ الاتصال ميت
-    var T_SHORT = 6000;        // اتصال يعيش أقل من ذلك = وسيط متذبذب
-    var SHORT_MAX = 3;         // ثلاث مرات ⇒ ننتقل للبديل
-
     var state = 'idle';
-    var client = null, idx = 0, alive = false, stopped = false;
-    var gen = 0;               // جيل الاتصال: كل محاولة جديدة تُبطل ما قبلها
-    var tries = 0;             // محاولات الوسيط الحالي
-    var shortLived = 0;        // عدد الاتصالات القصيرة المتتالية
-    var failStreak = 0;        // فشل متتالٍ (للتصاعد في مدة الانتظار)
+    var client = null, idx = 0, deadSwitch = false, alive = false;
     var outbox = [];
-    var guardT = null, retryT = null, pingT = null;
-    var attemptAt = 0, lastFailAt = 0, lastRxAt = 0, connectedAt = 0;
-    var pingSentAt = 0, pingsPending = 0, lagMs = null;
     var pubPresence = function () {};
 
     function setState(s, info) {
       state = s;
       try { opts.onState && opts.onState(s, info || {}); } catch (e) {}
     }
-    /* معلومات الحالة المعروضة في الواجهة (اسم الوسيط وزمن الاستجابة) */
-    function binfo(extra) {
-      var b = brs[idx] || {};
-      var o = { broker: b.name || '', attempt: tries, lag: lagMs };
-      if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) o[k] = extra[k];
-      return o;
-    }
-    function netOff() { return (typeof navigator !== 'undefined' && navigator.onLine === false); }
-    function stopGuard() { if (guardT) { clearTimeout(guardT); guardT = null; } }
-    function stopPing() { if (pingT) { clearTimeout(pingT); pingT = null; } }
-    function stopRetry() { if (retryT) { clearTimeout(retryT); retryT = null; } }
 
-    /* ---------- الإرسال ---------- */
     function publish(rel, payload, o) {
       o = o || {};
       var body = (payload === '' || payload == null) ? '' : (typeof payload === 'string' ? payload : JSON.stringify(payload));
-      if (!stopped && client && alive) {
+      if (client && alive) {
         try { client.publish(base + rel, body, { qos: 0, retain: !!o.retain }); return true; } catch (e) {}
       }
       if (o.queue !== false) {
@@ -621,178 +559,84 @@ window.URGENT = (function () {
       }
       return false;
     }
-    /* إفراغ ما تجمّع أثناء الانقطاع — على الاتصال الجديد نفسه */
-    function flush(c) {
+
+    function flush() {
       while (outbox.length) {
         var m = outbox.shift();
-        try { c.publish(base + m.rel, m.body, { qos: 0, retain: m.retain }); }
-        catch (e) { outbox.unshift(m); return; }
+        try { client.publish(base + m.rel, m.body, { qos: 0, retain: m.retain }); } catch (e) { outbox.unshift(m); break; }
       }
     }
 
-    /* ---------- الانتقال بين الوسطاء ---------- */
-    function moveNext() {
-      if (!brs.length) return;
-      idx = (idx + 1) % brs.length;
-      tries = 0;
-    }
-    function scheduleNext(reason) {
-      if (stopped) return;
-      stopGuard(); stopPing(); stopRetry();
-      var b = brs[idx] || {};
-      var delay = netOff() ? 6000 : Math.min(1000 * Math.pow(1.7, Math.min(failStreak, 4)), 12000);
-      setState('offline', binfo({ reason: reason || '', retryIn: Math.max(1, Math.round(delay / 1000)) }));
-      retryT = setTimeout(function () { retryT = null; startAttempt(reason); }, delay);
-    }
-    /* فشل المحاولة الحالية (يُستدعى مرة واحدة لكل جيل) */
-    function fail(mygen, why) {
-      if (stopped || mygen !== gen) return;
-      stopGuard(); stopPing();
-      var c = client;
-      alive = false; lastFailAt = Date.now(); failStreak++;
-      gen++;                                    // نُبطل هذا الاتصال نهائياً
-      if (c) { try { c.end(true); } catch (e) {} }
-      if (client === c) client = null;
-      if (tries >= TRY_SAME) moveNext();         // فشل الوسيط مرتين ⇒ جرّب البديل
-      scheduleNext(why);
-    }
-    /* إعادة اتصال فورية (عودة الشبكة / العودة من نوم الجهاز / نبضة بلا ارتداد) */
-    function hardReconnect(reason) {
-      if (stopped) return;
-      stopGuard(); stopPing(); stopRetry();
-      var c = client;
-      gen++; alive = false; tries = 0;
-      if (c) { try { c.end(true); } catch (e) {} }
-      if (client === c) client = null;
-      if (failStreak >= 2) moveNext();           // تكرّر الفشل: جرّب الوسيط التالي
-      lastFailAt = Date.now();
-      startAttempt(reason || 'manual');
-    }
-
-    function startAttempt(reason) {
-      if (stopped) return;
-      if (!brs.length) { setState('failed', { reason: 'no-brokers' }); return; }
-      if (netOff()) { lastFailAt = Date.now(); failStreak++; return scheduleNext('net-offline'); }
-      stopGuard(); stopPing(); stopRetry();
-      var b = brs[idx];
-      tries++;
-      var mygen = ++gen;
-      attemptAt = Date.now();
-      setState('connecting', binfo({ reason: reason || '' }));
+    function connect(i) {
+      idx = i;
+      if (i >= brs.length) {
+        setState('failed', {});
+        setTimeout(function () { alive = false; connect(0); }, 12000);
+        return;
+      }
+      var b = brs[i];
+      var opened = false;
+      setState('connecting', { broker: b.name });
 
       var c;
       try {
         c = window.mqtt.connect(b.url, {
-          clientId: 'ucn_' + randToken(10),
+          clientId: 'ucn_' + Math.random().toString(16).slice(2, 12),
           clean: true,
           keepalive: 120,        // أطول: يحفظ الاتصال أثناء تصغير النافذة
-          connectTimeout: T_CONNECT,
-          reconnectPeriod: 0,    // ← إعادة الاتصال بإدارتنا: ننتقل بين الوسطاء بأنفسنا
+          connectTimeout: 9000,
+          reconnectPeriod: 4000,
           protocolVersion: 4,
-          will: { topic: base + 'presence/' + who, payload: JSON.stringify({ off: 1, ts: 0 }), qos: 0, retain: true }
+          will: { topic: base + 'presence/' + opts.who, payload: JSON.stringify({ off: 1, ts: 0 }), qos: 0, retain: true }
         });
-      } catch (e) { return fail(mygen, 'connect-throw'); }
+      } catch (e) { return connect(i + 1); }
 
       client = c;
       alive = false;
 
-      guardT = setTimeout(function () { guardT = null; fail(mygen, 'timeout'); }, T_GUARD);
+      var guard = setTimeout(function () {
+        if (!opened) { deadSwitch = true; try { c.end(true); } catch (e) {} connect(i + 1); }
+      }, 11000);
 
       c.on('connect', function () {
-        if (stopped || mygen !== gen || client !== c) { try { c.end(true); } catch (e) {} return; }
-        stopGuard(); stopPing();
-        alive = true; failStreak = 0; shortLived = 0; pingsPending = 0; lagMs = null;
-        connectedAt = Date.now(); lastRxAt = connectedAt;
-        try { localStorage.setItem('ucn:lastBroker', b.url); } catch (e) {}
-        setState('connected', binfo({}));
-        c.subscribe([base + '#'], { qos: 0 }, function (err) {
-          if (stopped || mygen !== gen || client !== c) return;
-          if (err) return fail(mygen, 'subscribe');     // وسيط لا يقبل الاشتراك: ليس صالحاً لنا
-          tries = 0;
-          flush(c);
+        opened = true; alive = true; deadSwitch = false;
+        clearTimeout(guard);
+        setState('connected', { broker: b.name });
+        c.subscribe([base + '#'], { qos: 0 }, function () {
+          flush();
           pubPresence();
-          startPing();
           try { opts.onReady && opts.onReady(); } catch (e) {}
         });
       });
 
       c.on('message', function (topic, payload) {
-        if (stopped || mygen !== gen || client !== c) return;
-        lastRxAt = Date.now();
         var rel = topic.slice(base.length);
         var raw = payload ? payload.toString() : '';
-        if (rel.indexOf('ping/') === 0) {              // ارتداد نبضة القياس: قياس زمن الاستجابة
-          if (rel === myPing) {
-            pingsPending = 0;
-            lagMs = Date.now() - pingSentAt;
-            setState('connected', binfo({}));
-          }
-          return;                                      // قناة داخلية: لا تُسلَّم للصفحة
-        }
         var data = null;
         if (raw) { try { data = JSON.parse(raw); } catch (e) { data = null; } }
         try { opts.onMessage && opts.onMessage(rel, data, raw === ''); } catch (e) {}
       });
 
       c.on('error', function () {
-        if (stopped || mygen !== gen || client !== c) return;
-        if (!alive) fail(mygen, 'error');              // فشل أثناء الاتصال ⇒ جرّب غيره
-        // وإن كنا متصلين، 'close' هو من يتولّى إعادة الاتصال
+        if (!opened) { deadSwitch = true; clearTimeout(guard); try { c.end(true); } catch (e) {} connect(i + 1); }
       });
 
       c.on('close', function () {
-        if (stopped || mygen !== gen || client !== c) return;
-        var wasAlive = alive;
         alive = false;
-        stopGuard(); stopPing();
-        if (!wasAlive) return fail(mygen, 'close');
-        // سقط اتصال قائم — غالباً تبديل شبكة أو نوم جهاز: فرصة سريعة لنفس الوسيط أولاً
-        var lived = Date.now() - connectedAt;
-        shortLived = lived < T_SHORT ? (shortLived + 1) : 0;
-        gen++; if (client === c) client = null;
-        try { c.end(true); } catch (e) {}
-        if (shortLived >= SHORT_MAX) {                 // وسيط يقطع فوراً كل مرة: لا فائدة منه
-          shortLived = 0; failStreak++; moveNext();
-          return scheduleNext('flap');
+        if (!deadSwitch && client === c) {
+          setState('offline', { broker: b.name });
+          if (!outbox._warned) { outbox._warned = true; }
         }
-        tries = 0;
-        failStreak = Math.max(failStreak, 1);
-        return scheduleNext('closed');
       });
-
-      c.on('offline', function () {
-        if (stopped || mygen !== gen || client !== c) return;
-        alive = false;
-        setState('offline', binfo({ reason: 'offline' }));
-      });
+      c.on('offline', function () { alive = false; setState('offline', { broker: b.name }); });
     }
 
-    /* ---------- نبضة قياس الاتصال ---------- */
-    function startPing() {
-      stopPing();
-      if (stopped) return;
-      pingT = setTimeout(pingTick, T_PING);
-    }
-    function pingTick() {
-      pingT = null;
-      if (stopped || !alive || !client) return;
-      if (Date.now() - lastRxAt < T_PING) return startPing();     // رسائل واردة: الاتصال حيّ
-      if (pingsPending >= PONG_MAX) return hardReconnect('no-pong');
-      pingsPending++;
-      pingSentAt = Date.now();
-      try { client.publish(base + myPing, '{"n":' + pingsPending + '}', { qos: 0, retain: false }); } catch (e) {}
-      pingT = setTimeout(pingTick, T_PONG);
-    }
-
-    /* ---------- نبضة حضور دورية ---------- */
+    /* نبضة حضور دورية */
     var timer = null;
-    function presencePayload() {
-      return { who: who, role: opts.role, name: nameOf(), ts: Date.now() };
-    }
     function startPresence() {
       pubPresence = function () {
-        if (stopped) return;
-        publish('presence/' + who, presencePayload(), { retain: true, queue: false });
+        publish('presence/' + opts.who, { who: opts.who, role: opts.role, name: opts.name, ts: Date.now() },
+          { retain: true, queue: false });
       };
       pubPresence();
       if (timer) clearInterval(timer);
@@ -803,58 +647,22 @@ window.URGENT = (function () {
       document.addEventListener('visibilitychange', function () { if (!document.hidden) pubPresence(); });
     }
     function goOffline() {
-      try {
-        var p = presencePayload(); p.ts = 0; p.off = 1;
-        publish('presence/' + who, p, { retain: true, queue: false });
-      } catch (e) {}
+      try { publish('presence/' + opts.who, { who: opts.who, role: opts.role, name: opts.name, ts: 0, off: 1 }, { retain: true, queue: false }); } catch (e) {}
     }
 
     return {
       connect: function () {
-        stopped = false;
         loadMqtt(function (ok) {
           if (!ok) { setState('failed', { reason: 'mqtt-load' }); return; }
-          brs = orderedBrokers();
-          idx = 0; tries = 0; failStreak = 0; shortLived = 0;
-          startAttempt('init');
+          connect(0);
         });
       },
       startPresence: startPresence,
       publish: publish,
       state: function () { return state; },
       isAlive: function () { return alive; },
-      /* إعادة اتصال فورية — تُستدعى عند عودة الشبكة أو العودة من التصغير.
-         لا نقطع محاولة جارية، ولا نلمس اتصالاً حيّاً وسليماً. */
-      reconnectNow: function () {
-        if (stopped) return;
-        if (alive) {
-          // صامت أكثر من اللازم؟ (نوم جهاز/شبكة معلّقة) أعد الاتصال فوراً
-          if (lastRxAt && (Date.now() - lastRxAt) > (T_PING + T_PONG * PONG_MAX)) hardReconnect('resume');
-          return;
-        }
-        if (retryT) return;                                              // محاولة قادمة مجدولة
-        if (attemptAt && Date.now() - attemptAt < T_GUARD + 500) return;  // محاولة جارية الآن
-        if (Date.now() - lastFailAt < 1500) return;                       // لا نوفّر محاولات عبثية
-        hardReconnect('manual');
-      },
-      /* حالة الاتصال الداخلية — تُعرض في تلميح مؤشر الاتصال */
-      diag: function () {
-        var b = brs[idx] || {};
-        return {
-          state: state, broker: b.name || '', url: b.url || '', alive: alive,
-          lag: lagMs, queued: outbox.length, attempt: tries, gen: gen,
-          idleSec: lastRxAt ? Math.round((Date.now() - lastRxAt) / 1000) : -1
-        };
-      },
-      /* تجاوز الوسيط الحالي يدوياً (زر «جرّب وسيطاً آخر» في الإعدادات) */
-      nextBroker: function () { if (stopped) return; moveNext(); hardReconnect('manual'); },
-      end: function () {
-        goOffline();
-        stopped = true; gen++;
-        stopRetry(); stopGuard(); stopPing();
-        try { clearInterval(timer); } catch (e) {}
-        try { if (client) setTimeout(function () { try { client.end(true); } catch (e) {} }, 150); } catch (e) {}
-      }
+      reconnectNow: function () { if (client) { try { client.reconnect(); } catch (e) { connect(idx); } } else connect(0); },
+      end: function () { goOffline(); try { clearInterval(timer); if (client) setTimeout(function () { try { client.end(true); } catch (e) {} }, 150); } catch (e) {} }
     };
   }
 
@@ -894,14 +702,13 @@ window.URGENT = (function () {
       emit('change', {});
     }
 
-    function applyNews(raw, forceNote, forceTicker) {
+    function applyNews(raw, forceNote) {
       if (!raw || !raw.id || !raw.t) return null;
       var id = String(raw.id);
       var isNew = !items[id];
       var it = items[id] || (items[id] = { id: id, ack: null, pin: null });
       ids[id] = true;
       if (forceNote || raw.n) it.note = true;               // ملاحظة (بطاقة زرقاء) بدل خبر عاجل
-      if (forceTicker || raw.x) it.ticker = true;             // شريط (بطاقة خضراء)
       it.text = String(raw.t);
       it.author = raw.a ? String(raw.a) : 'المحرر';
       it.ts = Number(raw.ts) || Date.now();
@@ -934,10 +741,6 @@ window.URGENT = (function () {
         return null;
       }
       var prev = it.ack;
-      // لا تسمح لإقرار «وصل» المتأخر بإلغاء حالة «نُسخ» أو «استُلم».
-      // هذا يحدث عند اختلاف ترتيب وصول رسائل MQTT retained بين المحررين.
-      var rank = { received: 1, copied: 2, got: 2 };
-      if (prev && (rank[prev.kind] || 0) > (rank[next.kind] || 0)) return it;
       it.ack = keepFirstCopyTs(prev, next);
       save();
       emit('ack', { item: it, prev: prev });
@@ -992,7 +795,6 @@ window.URGENT = (function () {
           if (i.ack && i.ack.kind === 'got') s.notesDone++; else s.notesPending++;
           return;                                            // الملاحظات لا تُحسب ضمن «الأخبار»
         }
-        if (i.ticker) return;                                // الشريط لا يُحسب ضمن الأخبار
         if (i.ack && i.ack.kind === 'copied') s.copied++;
         else if (i.ack && i.ack.kind === 'received') s.received++;
         else s.pending++;
@@ -1003,7 +805,6 @@ window.URGENT = (function () {
     return {
       on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
       applyNote: function (raw) { return applyNews(raw, true); },
-      applyTicker: function (raw) { return applyNews(raw, false, true); },
       remove: remove, clearAll: clearAll, list: list, stats: stats, save: save, load: load,
       get: function (id) { return items[id]; },
       has: function (id) { return !!ids[id]; },

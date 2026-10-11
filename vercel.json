@@ -17,6 +17,10 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
+        },
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\""
         }
       ]
     },
@@ -34,6 +38,10 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
+        },
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\""
         }
       ]
     },
@@ -51,11 +59,15 @@
         {
           "key": "Vercel-CDN-Cache-Control",
           "value": "no-store"
+        },
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\""
         }
       ]
     },
     {
-      "source": "/config.js",
+      "source": "/(config|core).js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -64,20 +76,11 @@
       ]
     },
     {
-      "source": "/core.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=604800, immutable"
-        }
-      ]
-    },
-    {
       "source": "/ui.css",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800, immutable"
+          "value": "no-store, max-age=0, must-revalidate"
         }
       ]
     },
@@ -133,12 +136,6 @@
           "value": "public, max-age=604800, immutable"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/send",
-      "destination": "/send.html"
     }
   ]
 }
