@@ -8,23 +8,23 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.14';
+var VERSION = 'yt-news-v4.15';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
 var STATIC_ASSETS = [
-  './index.html',
-  './send.html',
-  './assets/logo-320.png',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  './assets/apple-touch-icon.png',
-  './fonts/fonts.css',
-  './fonts/NotoKufiArabic-400-arabic.woff2'
+  '/index.html',
+  '/send.html',
+  '/assets/logo-320.png',
+  '/assets/icon-192.png',
+  '/assets/icon-512.png',
+  '/assets/apple-touch-icon.png',
+  '/fonts/fonts.css',
+  '/fonts/NotoKufiArabic-400-arabic.woff2'
 ];
 function shellUrl(pathname) {
-  if (pathname === '/' || pathname === '/index.html') return './index.html';
-  if (pathname === '/send' || pathname === '/send.html') return './send.html';
+  if (pathname === '/' || pathname === '/index.html') return '/index.html';
+  if (pathname === '/send' || pathname === '/send.html') return '/send.html';
   return '';
 }
 
@@ -129,8 +129,8 @@ self.addEventListener('push', function (e) {
     body: body,
     dir: 'rtl',
     lang: 'ar',
-    icon: './assets/icon-192.png',
-    badge: './assets/icon-192.png',
+    icon: '/assets/icon-192.png',
+    badge: '/assets/icon-192.png',
     image: undefined,
     tag: data.tag || 'yt-news',
     renotify: true,
@@ -138,7 +138,7 @@ self.addEventListener('push', function (e) {
     silent: false,
     vibrate: [280, 120, 280, 120, 420],
     timestamp: Date.now(),
-    data: { url: data.url || './index.html', id: data.id || '' },
+    data: { url: data.url || '/index.html', id: data.id || '' },
     actions: data.actions || [
       { action: 'open', title: 'فتح الشاشة' }
     ]
@@ -155,13 +155,13 @@ self.addEventListener('message', function (e) {
     self.registration.showNotification(d.title || 'خبر عاجل — اليمن اليوم', {
       body: d.body || '',
       dir: 'rtl', lang: 'ar',
-      icon: './assets/icon-192.png',
-      badge: './assets/icon-192.png',
+      icon: '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
       tag: d.tag || 'yt-news-live',
       renotify: true,
       requireInteraction: true,
       vibrate: [280, 120, 280],
-      data: { url: d.url || './index.html' },
+      data: { url: d.url || '/index.html' },
       actions: [{ action: 'open', title: 'فتح الشاشة' }]
     });
   }
@@ -171,7 +171,7 @@ self.addEventListener('message', function (e) {
 /* الضغط على الإشعار أو أحد أزراره */
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var target = (e.notification.data && e.notification.data.url) || './index.html';
+  var target = (e.notification.data && e.notification.data.url) || '/index.html';
   var action = e.action;
 
   e.waitUntil(
