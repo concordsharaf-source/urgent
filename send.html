@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.15.2" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.2" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.15.3" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.3" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -413,11 +413,12 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.15.2"></script>
-<script src="core.js?v=4.15.2"></script>
+<script src="config.js?v=4.15.3"></script>
+<script src="core.js?v=4.15.3"></script>
 <script>
 (function () {
   'use strict';
+  try { localStorage.removeItem('ucn:lastBroker'); } catch (e) {}
   var U = window.URGENT;
   var cfg = U.config();
   var room = U.room();
@@ -1202,7 +1203,7 @@
     if (text.length < 3) { U.toast('النص قصير جداً', 'warn'); return; }
 
     var id = U.uid();
-    var item = { id: id, t: text, a: S.admin.name, ts: Date.now() };
+    var item = { id: id, t: text, a: S.admin.name, u: S.admin.user, ts: Date.now() };
     store.applyNews(item);
     var live = bus.publish('news/' + id, item, { retain: true });
     S.shownIds[id] = Date.now();
@@ -1289,16 +1290,17 @@
   function onMessage(rel, data, isEmpty) {
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
-      if (isEmpty) { store.remove(id); return; }
+      if (isEmpty) { store.remove(id); render(); return; }
       if (!data || !data.t) return;
       var before = store.has(data.id || id);
-      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, u: data.u, ts: data.ts, e: data.e });
       if (res && res.isNew && !before) {
         // خبر وصل من محرر آخر
-        if (normOwn(data.a)) return;
-        alerter.play('info');
+        if (normOwn(data.a, data.u)) { render(); return; }
+        if (S.sound) alerter.play('info');
         if (document.hidden) U.flashTitle('خبر جديد');
       }
+      render();
       return;
     }
     if (rel.indexOf('note/') === 0) {
@@ -1436,19 +1438,27 @@
     }
   }
 
-  function normOwn(author) { return S.admin && String(author || '') === String(S.admin.name); }
+  function normOwn(author, user) {
+    if (!S.admin) return false;
+    if (user && S.admin.user) return String(user) === String(S.admin.user);
+    return String(author || '') === String(S.admin.name);
+  }
 
   function onState(st, info) {
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
-      U.txt(connText, 'متصل');
+      var bName = info && info.broker ? (' (' + info.broker + ')') : '';
+      connDot.title = 'متصل' + (info && info.broker ? ' عبر ' + info.broker : '');
+      U.txt(connText, 'متصل' + bName);
       updatePendingChip();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
+      connDot.title = 'جارٍ الاتصال…';
       U.txt(connText, 'جارٍ الاتصال…');
     } else {
       connDot.className = 'dot off';
+      connDot.title = 'غير متصل';
       U.txt(connText, 'غير متصل');
     }
   }
