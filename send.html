@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.15.3" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.3" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.15.4" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.4" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -229,10 +229,15 @@
   .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
   .item.bar{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);
-    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(22,163,74,.9)}
+    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(22,163,74,.9);transition:padding .2s}
   .item.bar .itop .tag{background:rgba(0,0,0,.32)}
   .item.bar .livedot{background:#bbf7d0}
-  .item.bar .itext{white-space:pre-wrap;overflow:visible;text-overflow:clip;display:block}
+  .item.bar .itext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;cursor:pointer;line-height:1.6}
+  .item.bar.expanded .itext{white-space:pre-wrap;overflow:visible;text-overflow:clip;max-height:480px;overflow-y:auto;line-height:1.8;padding:4px 0}
+  .item.bar .bar-expand-btn{background:rgba(0,0,0,.28);color:#dcfce7;border:1px solid rgba(255,255,255,.22);
+    border-radius:9px;padding:5px 12px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;
+    align-items:center;gap:6px;margin-top:7px;transition:.15s}
+  .item.bar .bar-expand-btn:hover{background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.35)}
   .item.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
   .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
@@ -413,8 +418,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.15.3"></script>
-<script src="core.js?v=4.15.3"></script>
+<script src="config.js?v=4.15.4"></script>
+<script src="core.js?v=4.15.4"></script>
 <script>
 (function () {
   'use strict';
@@ -433,6 +438,7 @@
     barId: '',
     barDeleteReq: '',
     barShowOthers: false,
+    barExpanded: {},
     admin: null,               // {user, name}
     editing: null,             // id الخبر الجاري تعديله
     filter: 'all',
@@ -657,13 +663,6 @@
     if (draft) barText.value = draft;
     barWords();
     saveBarDraft();
-    ensureBarVisible();
-  }
-  function ensureBarVisible() {
-    if (!canSendBar() || !barPanel || !barText) return;
-    if (!barText.value.replace(/^\s+|\s+$/g, '')) return;
-    barPanel.classList.add('open');
-    if (btnBar) btnBar.classList.add('open');
   }
   function fillBarComposer(it, force) {
     if (!canSendBar() || !it || !it.bar || !barText) return;
@@ -674,7 +673,7 @@
       barText.value = it.text || '';
       barWords();
       saveBarDraft();
-      barOpen(true);
+      if (force) barOpen(true);
     }
   }
   function barOpen(open) {
@@ -708,38 +707,27 @@
     var t = barPayload(barText.value);
     if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
     if (t.length > 20000) { U.toast('الشريط طويل جداً — الحد 20000 حرف', 'warn', 6000); return; }
-    var id = S.barId || ('br' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-    var existing = store.get(id);
-    if (existing && !existing.bar) id = 'br' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    existing = store.get(id);
-    if (existing && existing.text === t) {
-      S.barId = id;
-      saveBarDraft();
-      barOpen(true);
-      setBarStatus('النص باقٍ هنا — لن يختفي إلا إذا حذفته', 'ok');
-      return;
-    }
-    if (existing && existing.ack) {
-      existing.ack = null;
-      if (store.clearAck) store.clearAck(id);
-      bus.publish('ack/' + id, '', { retain: true });
-    }
+    var id = 'br' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+    // الشريط الجديد يحل محل القديم تلقائياً — حذف أي شريط سابق من السيرفر والشاشات
+    store.list().forEach(function (it) {
+      if (it && it.bar && it.id !== id) {
+        wipe(it.id);
+      }
+    });
+
     var item = { id: id, t: t, a: S.admin ? S.admin.name : 'المحرر', ts: Date.now(), bar: 1 };
-    if (existing) item.e = Date.now();
     store.applyBar(item);
     var live = bus.publish('bar/' + id, item, { retain: true });
     S.barId = id;
     S.barsSent[id] = true;
     S.barCache[id] = item;
     S.shownIds[id] = Date.now();
-    if (barText.value !== t) barText.value = t;
     saveBarDraft();
-    barOpen(true);
-    setBarStatus(live ? 'أُرسل، والنص يبقى هنا للتعديل أو الإضافة' : 'سيُرسل عند عودة الاتصال، والنص يبقى هنا', live ? 'ok' : 'warn');
+    barOpen(false); // إغلاق الخانة تلقائياً حتى لا تحجز مساحة الشاشة
+    setBarStatus(live ? 'أُرسل الشريط الجديد وحلّ محل القديم' : 'سيُرسل عند عودة الاتصال', live ? 'ok' : 'warn');
     render();
-    ensureBarVisible();
-    try { barText.focus(); } catch (e) {}
-    U.toast('أُرسل الشريط، والنص يبقى في هذه الخانة', 'ok');
+    U.toast(live ? 'تم إرسال الشريط وحذف القديم تلقائياً' : 'سيُرسل عند عودة الاتصال', live ? 'ok' : 'warn');
     if (S.sound) alerter.play('info');
   }
   function deleteBar() {
@@ -747,12 +735,16 @@
     if (!id && barText && !barPayload(barText.value)) return;
     if (!confirm('حذف الشريط من صفحتك ومن شاشة المنفذ؟ لن يرجع إلا إذا لصقته من جديد.')) return;
     S.barDeleteReq = id || 'local';
+    store.list().forEach(function (it) {
+      if (it && it.bar) wipe(it.id);
+    });
     if (id) wipe(id);
     forgetBarLocal(id || 'local');
+    barOpen(false);
+    render();
     U.toast('تم حذف الشريط', 'ok');
   }
   if (btnBar) btnBar.addEventListener('click', function () {
-    if (barText && barText.value.replace(/^\s+|\s+$/g, '')) { barOpen(true); return; }
     barOpen(!barPanel.classList.contains('open'));
   });
   if (U.$('#btnBarSend')) U.$('#btnBarSend').addEventListener('click', function (e) { e.preventDefault(); sendBar(); });
@@ -1166,8 +1158,22 @@
       var b = e.target.closest ? e.target.closest('[data-act]') : null;
       if (!b) return;
       var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+      if (act === 'toggle-bar') {
+        S.barExpanded[id] = !S.barExpanded[id];
+        render();
+        return;
+      }
       if (act === 'copy') actCopy(id);
-      else if (act === 'edit') { S.editing = id; S.draft = null; S.focusEdit = true; render(); }
+      else if (act === 'edit') {
+        var it = store.get(id);
+        if (it && it.bar) {
+          fillBarComposer(it, true);
+          barOpen(true);
+          try { barText.focus(); } catch (e0) {}
+          return;
+        }
+        S.editing = id; S.draft = null; S.focusEdit = true; render();
+      }
       else if (act === 'cancel') { S.editing = null; S.draft = null; render(); }
       else if (act === 'save') {
         var ta = feed.querySelector('.iedit');
@@ -1324,19 +1330,24 @@
         S.barCache[bid] = { id: bid, empty: true };
         store.remove(bid);
         render();
-        ensureBarVisible();
         return;
       }
       if (!data || !data.t) return;
+      // الشريط الجديد يحل محل القديم تلقائياً
+      store.list().forEach(function (it) {
+        if (it && it.bar && it.id !== (data.id || bid)) {
+          store.remove(it.id);
+        }
+      });
       var rawB = { id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 };
       S.barCache[rawB.id] = rawB;
       if (!canSeeBar()) { store.remove(rawB.id); return; }
       var resB = store.applyBar(rawB);
       if (S.barAckCache[rawB.id]) store.applyAck(S.barAckCache[rawB.id]);
-      fillBarComposer(resB && resB.item);
+      fillBarComposer(resB && resB.item, false);
       if (resB && resB.isNew && canSendBar()) {
         S.shownIds[resB.item.id] = Date.now();
-        if (!normOwn(data.a)) {
+        if (!normOwn(data.a, data.u)) {
           if (S.sound) alerter.play('info');
           if (document.hidden) U.flashTitle('شريط جديد');
         }
@@ -1405,7 +1416,6 @@
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
       store.remove(data.id);
       render();
-      ensureBarVisible();
       return;
     }
     if (rel === 'cfg/admins') {
@@ -1544,7 +1554,6 @@
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
     btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
-    ensureBarVisible();
   }
 
   /* ---------- أرشيف الأيام (خانة لكل يوم) ---------- */
@@ -1634,6 +1643,8 @@
     if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
     if (it.pin && !isNote && !isBar) n.classList.add('pinned');
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
+    var isExpanded = isBar && !!S.barExpanded[it.id];
+    if (isExpanded) n.classList.add('expanded');
 
     var top = U.el('div', 'itop');
     var tag = U.el('span', 'tag');
@@ -1665,7 +1676,21 @@
       return n;
     }
 
-    n.appendChild(U.el('p', 'itext', it.text));
+    var pText = U.el('p', 'itext', isBar ? (isExpanded ? it.text : U.barPreview(it.text)) : it.text);
+    if (isBar) {
+      pText.setAttribute('title', isExpanded ? 'اضغط لطي الشريط (سطر واحد)' : 'اضغط لتوسيع نص الشريط كاملاً');
+      pText.setAttribute('data-act', 'toggle-bar');
+      pText.setAttribute('data-id', it.id);
+    }
+    n.appendChild(pText);
+
+    if (isBar) {
+      var expBtn = U.el('button', 'bar-expand-btn', isExpanded ? '▲ طي الشريط (سطر واحد)' : '▼ توسيع الشريط كاملاً');
+      expBtn.setAttribute('type', 'button');
+      expBtn.setAttribute('data-act', 'toggle-bar');
+      expBtn.setAttribute('data-id', it.id);
+      n.appendChild(expBtn);
+    }
 
     var bottom = U.el('div', 'ibottom');
 
