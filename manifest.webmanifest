@@ -5,7 +5,7 @@
   "description": "استقبال الأخبار العاجلة من غرفة الأخبار: تنبيه فوري، نسخ بضغطة، وإشعار المحرر بأن الخبر وصل وتم نسخه.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "./index.html?src=pwa",
+  "start_url": "./?src=pwa",
   "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
@@ -23,13 +23,13 @@
     {
       "name": "شاشة الاستقبال",
       "short_name": "الشاشة",
-      "url": "./index.html?src=shortcut",
+      "url": "./?src=shortcut",
       "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "لوحة المحررين",
       "short_name": "المحررون",
-      "url": "./send.html?src=shortcut",
+      "url": "./send?src=shortcut",
       "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

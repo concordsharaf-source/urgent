@@ -8,13 +8,11 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.15.1';
+var VERSION = 'yt-news-v4.15.2';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
 var STATIC_ASSETS = [
-  './index.html',
-  './send.html',
   './assets/logo-320.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
@@ -22,7 +20,50 @@ var STATIC_ASSETS = [
   './fonts/fonts.css',
   './fonts/NotoKufiArabic-400-arabic.woff2'
 ];
+
+/* إزالة علامة التحويل (redirected) حتى لا ترفض متصفحات Safari/WebKit استجابة التنقل */
+function cleanResponse(res) {
+  if (!res) return res;
+  if (res.redirected) {
+    var body = (res.status === 204 || res.status === 304) ? null : res.body;
+    return new Response(body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers
+    });
+  }
+  return res;
+}
+
+/* تخزين صفحات التطبيق مسبقاً بشكل نظيف وبدون تحويلات Vercel 308 */
+function precacheDoc(c, cleanPath, filePath) {
+  return fetch(new Request(cleanPath, { cache: 'reload' })).then(function (res) {
+    if (res && res.ok && !res.redirected) {
+      return Promise.all([
+        c.put(cleanPath, res.clone()),
+        c.put(filePath, res)
+      ]);
+    }
+    var fallback = (res && res.ok) ? Promise.resolve(res) : fetch(new Request(filePath, { cache: 'reload' }));
+    return fallback.then(function (r2) {
+      if (!r2 || !r2.ok) return;
+      var clean1 = cleanResponse(r2);
+      var clean2 = cleanResponse(r2.clone ? r2.clone() : r2);
+      return Promise.all([
+        c.put(cleanPath, clean1),
+        c.put(filePath, clean2)
+      ]);
+    });
+  }).catch(function () {});
+}
+
 function shellUrl(pathname) {
+  if (pathname === '/' || pathname === '/index.html') return './';
+  if (pathname === '/send' || pathname === '/send.html') return './send';
+  return '';
+}
+
+function altShellUrl(pathname) {
   if (pathname === '/' || pathname === '/index.html') return './index.html';
   if (pathname === '/send' || pathname === '/send.html') return './send.html';
   return '';
@@ -32,9 +73,12 @@ self.addEventListener('install', function (e) {
   self.skipWaiting();
   e.waitUntil(
     caches.open(STATIC_CACHE).then(function (c) {
-      return Promise.all(STATIC_ASSETS.map(function (u) {
+      var pAssets = Promise.all(STATIC_ASSETS.map(function (u) {
         return c.add(new Request(u, { cache: 'reload' })).catch(function () {});
       }));
+      var pIndex = precacheDoc(c, './', './index.html');
+      var pSend = precacheDoc(c, './send', './send.html');
+      return Promise.all([pAssets, pIndex, pSend]);
     })
   );
 });
@@ -73,23 +117,42 @@ self.addEventListener('fetch', function (e) {
   }
 
   // صفحة التطبيق: من الذاكرة فوراً مهما كان رابط الفتح (?src=pwa أو ?sn=)
-  // طلب التحديث (?sn=) يذهب للشبكة حتى لا تُعاد نسخة قديمة في حلقة.
+  // طلب التحديث (?sn= أو ?swu=) يذهب للشبكة حتى لا تُعاد نسخة قديمة في حلقة.
   var isDoc = req.mode === 'navigate' || /\.html$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/send';
   if (isDoc) {
     var shell = shellUrl(url.pathname);
+    var altShell = altShellUrl(url.pathname);
     var bust = url.searchParams.has('sn') || url.searchParams.has('swu');
     e.respondWith(
       caches.open(STATIC_CACHE).then(function (c) {
-        var cached = shell ? c.match(shell) : c.match(req);
-        return cached.then(function (hit) {
+        var matchPrimary = shell ? c.match(shell) : Promise.resolve(null);
+        return matchPrimary.then(function (hit) {
+          if (hit) return hit;
+          if (altShell) {
+            return c.match(altShell).then(function (hit2) {
+              if (hit2) return hit2;
+              return c.match(req);
+            });
+          }
+          return c.match(req);
+        }).then(function (rawHit) {
+          var hit = cleanResponse(rawHit);
           var net = (e.preloadResponse || Promise.resolve(null)).then(function (pre) {
-            if (pre) return pre;
+            if (pre && pre.ok) return cleanResponse(pre);
             return fetch(req, { cache: 'no-store' });
           }).then(function (res) {
-            if (res && res.ok && shell) c.put(shell, res.clone());
-            return res;
+            if (res && res.ok && shell) {
+              var toSave = cleanResponse(res.clone());
+              c.put(shell, toSave);
+              if (altShell) c.put(altShell, cleanResponse(res.clone()));
+            }
+            return cleanResponse(res);
           }).catch(function () { return hit || Response.error(); });
-          if (hit && !bust) { net.catch(function () {}); return hit; }
+
+          if (hit && !bust) {
+            net.catch(function () {});
+            return hit;
+          }
           return net;
         });
       })
@@ -138,7 +201,7 @@ self.addEventListener('push', function (e) {
     silent: false,
     vibrate: [280, 120, 280, 120, 420],
     timestamp: Date.now(),
-    data: { url: data.url || './index.html', id: data.id || '' },
+    data: { url: data.url || './', id: data.id || '' },
     actions: data.actions || [
       { action: 'open', title: 'فتح الشاشة' }
     ]
@@ -161,7 +224,7 @@ self.addEventListener('message', function (e) {
       renotify: true,
       requireInteraction: true,
       vibrate: [280, 120, 280],
-      data: { url: d.url || './index.html' },
+      data: { url: d.url || './' },
       actions: [{ action: 'open', title: 'فتح الشاشة' }]
     });
   }
@@ -171,14 +234,14 @@ self.addEventListener('message', function (e) {
 /* الضغط على الإشعار أو أحد أزراره */
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var target = (e.notification.data && e.notification.data.url) || './index.html';
+  var target = (e.notification.data && e.notification.data.url) || './';
   var action = e.action;
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
       for (var i = 0; i < list.length; i++) {
         var c = list[i];
-        if (c.url.indexOf('index.html') >= 0 || c.url.endsWith('/')) {
+        if (c.url.indexOf('index.html') >= 0 || c.url.endsWith('/') || c.url.indexOf('/?') >= 0) {
           if (action === 'copy' && c.postMessage) c.postMessage({ type: 'copy-first' });
           return c.focus();
         }
