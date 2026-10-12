@@ -642,13 +642,16 @@
         try { alerter.setSound(S.soundType); } catch (e) {}
       },
       onChange: function (key, val) {
-        if (key === 'sound') { S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles(); }
+        if (key === 'sound') {
+          S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles();
+          if (val) { lastSoundAt = 0; startAlarmLoop(); } else { try { alerter.cancelAll(); } catch (e) {} }
+        }
         else if (key === 'alarmRepeat') {
           S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val);
           if (val) { lastSoundAt = 0; startAlarmLoop(); } else { try { alerter.cancelAll(); } catch (e) {} }
           updateAlarmBar();
         }
-        else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); updateAlarmBar(); }
+        else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); lastSoundAt = 0; updateAlarmBar(); }
         else if (key === 'deskEvery') { S.deskEvery = Math.max(5, Number(val) || 30); U.lsSet(LSP + 'deskEvery', S.deskEvery); lastNotifyAt = 0; }
         else if (key === 'visualEvery') { S.visualEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'visualEvery', S.visualEvery); lastVisualAt = 0; }
         else if (key === 'soundType') {
@@ -784,12 +787,15 @@
     }
     document.addEventListener('click', unlock);
     document.addEventListener('keydown', unlock);
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('touchstart', unlock);
     U.$('#btnPip').addEventListener('click', function () { openFloat(); });
 
     U.$('#btnSound').addEventListener('click', function () {
       S.sound = !S.sound;
       U.lsSet(LSP + 'sound', S.sound);
-      if (S.sound) { alerter.unlock(); alerter.play('info'); }
+      if (S.sound) { alerter.unlock(); alerter.play('info'); lastSoundAt = 0; startAlarmLoop(); }
+      else { try { alerter.cancelAll(); } catch (e) {} }
       syncToggles();
     });
     U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
@@ -1042,9 +1048,9 @@
     }
   }
 
-  /* ---------- التنبيه المتكرر كل 30 ثانية حتى يتم نسخ الخبر ---------- */
-  var alarmTimer = null;
-  var ticker = null, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0, lastVisualAt = 0;
+  /* ---------- التنبيه المتكرر حتى يتم نسخ الخبر ---------- */
+  var alarmTimer = null, loopTimer = null;
+  var ticker = null, lastTickAt = 0, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0, lastVisualAt = 0;
 
   function isPending(it) {
     if (!it) return false;
@@ -1112,42 +1118,52 @@
   }
 
   /* ---------- حلقة التنبيه (تعمل حتى والنافذة مصغّرة) ----------
-     1) الصوت: النغمات تُجدَّل مقدماً داخل محرّك الصوت (WebAudio) في محرّك الصوت نفسه،
-        لذلك تبقى ترن كل S.alarmEvery ثانية حتى لو خفّض المتصفح دقّة مؤقتات الصفحة.
+     1) الصوت: تشغيل صوت التنبيه وتكراره بدقة كل S.alarmEvery ثانية حتى يضغط المنفذ زر النسخ.
      2) إشعار سطح المكتب: يتكرر كل S.deskEvery ثانية عبر خدمة التطبيق (فوق شريط المهام).
-     3) تحديث تلقائي: فحص دوري لاتصال البث وإعادة الاتصال فوراً إن انقطع. */
+     3) صيانة الاتصال: فحص دوري لاتصال البث كل 10 ثوانٍ وإعادة الاتصال فوراً إن انقطع. */
   function alarmTick() {
+    var now = Date.now();
+    if (now - lastTickAt < 750) return;
+    lastTickAt = now;
+
     if (pipDoc) updateFloat();          // تحديث النافذة العائمة أولاً (حتى وهي فارغة)
+
     // (3) صيانة الاتصال — كل 10 ثوانٍ
-    if (Date.now() - lastHealthAt > 10000) {
-      lastHealthAt = Date.now();
+    if (now - lastHealthAt > 10000) {
+      lastHealthAt = now;
       if (!bus.isAlive()) { try { bus.reconnectNow(); } catch (e) {} }
     }
     var list = uncopiedItems();
-    var active = S.alarmRepeat && list.length > 0 && Date.now() > S.alarmMutedUntil;
-    if (!active) { alerter.cancelAll(); updateAlarmBar(); return; }
+    var active = S.alarmRepeat && list.length > 0 && now > S.alarmMutedUntil;
+    if (!active) {
+      try { alerter.cancelAll(); } catch (e) {}
+      updateAlarmBar();
+      return;
+    }
 
-    // (1) الصوت
+    // (1) الصوت: يتكرر كل S.alarmEvery ثانية بدقة وموثوقية عالية حتى يتم النسخ
     var everyMs = Math.max(3, Number(S.alarmEvery) || 5) * 1000;
     if (S.sound) {
-      // أفق الجدولة: أطول عند التصغير (3 دقائق) حتى لا تتأثر النغمة بأي تعطيل للنافذة
-      var ok = alerter.keepEvery(everyMs, document.hidden ? 180000 : 90000);
-      if (!ok && Date.now() - lastSoundAt >= everyMs) {   // احتياطي: الصوت لم يُفتح بعد (يحتاج نقرة واحدة)
-        lastSoundAt = Date.now();
+      if (!lastSoundAt || (now - lastSoundAt) >= everyMs) {
+        lastSoundAt = now;
         fireAlarm();
       }
-    } else { alerter.cancelAll(); }
+    } else {
+      try { alerter.cancelAll(); } catch (e) {}
+    }
 
     // (2) الوميض المرئي المتكرر (إطار الشاشة + شريط التنبيه)
     var vEvery = Math.max(3, Number(S.visualEvery) || 5) * 1000;
-    if (Date.now() - lastVisualAt >= vEvery) { lastVisualAt = Date.now(); visualPulse(); }
-
+    if (now - lastVisualAt >= vEvery) {
+      lastVisualAt = now;
+      visualPulse();
+    }
 
     // (3) إشعار سطح المكتب المتكرر
     if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
       var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
-      if (Date.now() - lastNotifyAt >= nEvery) {
-        lastNotifyAt = Date.now();
+      if (now - lastNotifyAt >= nEvery) {
+        lastNotifyAt = now;
         var first = list[0];
         var c2 = pendingCounts();
         var what = (c2.notes && !c2.news) ? 'بانتظار الاستلام' : 'بانتظار النسخ';
@@ -1346,8 +1362,12 @@
   }
 
   function startAlarmLoop() {
-    if (ticker) return;                                  // الحلقة تعمل دائماً (كل ثانية)
-    ticker = U.createTicker(alarmTick, 1000);            // مؤقّت داخل Worker: أقل تأثراً بتصغير النافذة
+    if (!loopTimer) {
+      try { loopTimer = setInterval(alarmTick, 1000); } catch (e) {}
+    }
+    if (!ticker) {
+      try { ticker = U.createTicker(alarmTick, 1000); } catch (e) {}
+    }
   }
 
   function reNotify(body, count, isNote) {
@@ -1361,7 +1381,10 @@
   function onNewItem(item) {
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
-    if (S.sound) alerter.play('urgent');
+    lastSoundAt = Date.now();
+    lastNotifyAt = Date.now();
+    lastVisualAt = Date.now();
+    if (S.sound) fireAlarm();
     var nTitle = (item.bar ? 'شريط — ' : (item.note ? 'ملاحظة — ' : 'خبر عاجل — ')) + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
     if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.bar ? U.barPreview(item.text) : item.text).slice(0, 180), 'yt-' + item.id);
@@ -1402,6 +1425,7 @@
       bus.publish('ack/' + id, a, { retain: true });
       try { alerter.cancelAll(); } catch (e) {}            // إسكات التنبيه فوراً
       try { visualPulseStop(); } catch (e) {}
+      lastSoundAt = 0;
       try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
       if (pipDoc) { try { updateFloat(); } catch (e) {} }
       alerter.play('info');
@@ -1420,6 +1444,7 @@
     bus.publish('ack/' + id, a, { retain: true });
     try { alerter.cancelAll(); } catch (e) {}
     try { visualPulseStop(); } catch (e) {}
+    lastSoundAt = 0;
     if (!uncopiedItems().length) { try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {} }
     if (pipDoc) { try { updateFloat(); } catch (e) {} }
     alerter.play('info');
