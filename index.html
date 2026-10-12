@@ -857,11 +857,12 @@
   function onMessage(rel, data, isEmpty) {
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
-      if (isEmpty) { store.remove(id); return; }         // خبر محذوف من المحرر
+      if (isEmpty) { store.remove(id); render(); updateAlarmBar(); return; }         // خبر محذوف من المحرر
       if (!data || !data.id) data = { id: id, t: '', ts: Date.now() };
       if (!data.t) return;
       var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
       if (res && res.isNew) onNewItem(res.item);
+      else { render(); updateAlarmBar(); }
       return;
     }
     if (rel.indexOf('note/') === 0) {
