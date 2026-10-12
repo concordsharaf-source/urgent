@@ -340,8 +340,13 @@ window.URGENT = (function () {
     function unlock() {
       var c = ensure();
       if (!c) return;
-      try { if (c.state === 'suspended') c.resume(); } catch (e) {}
-      unlocked = c.state === 'running';
+      try {
+        if (c.state === 'suspended') {
+          c.resume().then(function () { unlocked = true; }).catch(function () {});
+        } else {
+          unlocked = true;
+        }
+      } catch (e) {}
       try {
         var o = c.createOscillator(), g = c.createGain();
         g.gain.value = 0.0001; o.connect(g); g.connect(c.destination);
@@ -424,8 +429,17 @@ window.URGENT = (function () {
     function play(kind2) {
       var c = ensure();
       if (!c) return;
-      try { if (c.state === 'suspended') c.resume(); } catch (e) {}
-      burst(0.02, kind2);
+      if (c.state === 'suspended') {
+        try {
+          c.resume().then(function () {
+            burst(0.04, kind2);
+          }).catch(function () {
+            burst(0.04, kind2);
+          });
+          return;
+        } catch (e) {}
+      }
+      burst(0.04, kind2);
     }
     /* جدولة مسبقة: يبقى التنبيه يرن كل everyMs حتى آخر horizonMs (افتراضياً 90 ثانية)
        بلا حاجة إلى أي مؤقّت في الصفحة — تعمل والنافذة مصغّرة أو في الخلفية. */
