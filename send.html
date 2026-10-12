@@ -581,7 +581,8 @@
   function canSendBar() {
     if (!S.admin) return false;
     if (U.isOwner(S.admin.user)) return true;
-    return String(S.admin.name || '').replace(/^\s+|\s+$/g, '') === 'مدير التحرير';
+    var n = String(S.admin.name || '').replace(/^\s+|\s+$/g, '');
+    return n === 'مدير التحرير' || n === 'رئيس دائرة الأخبار';
   }
   function canSeeBar() { return canSendBar() || !!S.barShowOthers; }
   function syncBarBtn() {
@@ -703,7 +704,10 @@
     setBarStatus('');
   }
   function sendBar() {
-    if (!canSendBar()) return;
+    if (!canSendBar()) {
+      U.toast('صلاحية إرسال الشريط الإخباري خاصة بمدير التحرير ورئيس دائرة الأخبار', 'warn', 5000);
+      return;
+    }
     var t = barPayload(barText.value);
     if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
     if (t.length > 20000) { U.toast('الشريط طويل جداً — الحد 20000 حرف', 'warn', 6000); return; }
