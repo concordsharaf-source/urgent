@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.16.0" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.0" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -39,12 +39,19 @@
     align-items: center;
     gap: 12px;
     padding: 12px 20px;
-    background: rgba(13,21,39,0.85);
+    background: rgba(13,21,39,0.92);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     position: sticky;
     top: 0;
     z-index: 100;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+    will-change: transform;
+  }
+  .arch-nav.nav-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
   }
   .arch-brand {
     display: flex;
@@ -72,7 +79,51 @@
   .arch-tools {
     display: flex;
     align-items: center;
+    gap: 10px;
+  }
+  .arch-tools .chip,
+  .arch-tools .nav-link {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+    padding: 8px 15px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #ffffff !important;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+  .arch-tools .chip:visited,
+  .arch-tools .nav-link:visited {
+    color: #ffffff !important;
+  }
+  .arch-tools .chip span,
+  .arch-tools .nav-link span {
+    color: #ffffff !important;
+    font-weight: 700;
+  }
+  .arch-tools .chip .ico,
+  .arch-tools .nav-link .ico,
+  .arch-tools .chip svg,
+  .arch-tools .nav-link svg {
+    color: #ffffff !important;
+    fill: currentColor;
+    stroke: currentColor;
+  }
+  .arch-tools .chip:hover,
+  .arch-tools .nav-link:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff !important;
+    transform: translateY(-1px);
+  }
+  .arch-tools .chip:hover span,
+  .arch-tools .nav-link:hover span {
+    color: #ffffff !important;
   }
   .main-container {
     max-width: 1100px;
@@ -199,36 +250,108 @@
     background: rgba(255,255,255,0.16);
     color: #fff;
   }
-  .day-group {
-    margin-bottom: 24px;
+  /* خانة كل يوم — مطوية افتراضياً وتُفتح بالضغط */
+  .day {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    background: #0d1527;
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .day-header {
+  .day:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .day.open {
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 8px 24px -10px rgba(0,0,0,0.5);
+  }
+  .day-head {
+    width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    margin-bottom: 12px;
-    position: sticky;
-    top: 68px;
-    backdrop-filter: blur(8px);
-    z-index: 10;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    color: #ffffff;
+    text-align: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
   }
-  .day-title {
-    font-size: 14.5px;
+  .day-head:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .day.open .day-head {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .day-head .dicon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #60a5fa;
+  }
+  .day-head .day-title {
+    font-size: 15px;
     font-weight: 800;
-    color: #f1f5f9;
+    color: #ffffff;
   }
-  .day-badge {
-    background: rgba(59,130,246,0.18);
+  .day-head .day-badge {
+    background: rgba(59, 130, 246, 0.18);
     color: #93c5fd;
-    border: 1px solid rgba(59,130,246,0.3);
+    border: 1px solid rgba(59, 130, 246, 0.32);
     border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 12px;
+    padding: 3px 12px;
+    font-size: 12.5px;
     font-weight: 700;
+  }
+  .day-head .car {
+    margin-inline-start: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s ease;
+    color: #94a3b8;
+  }
+  .day.open .day-head .car {
+    transform: rotate(180deg);
+    color: #3b82f6;
+  }
+  .day-body {
+    display: none;
+    padding: 14px 16px 16px;
+  }
+  .day.open .day-body {
+    display: block;
+    animation: dayOpen 0.25s ease-out;
+  }
+  @keyframes dayOpen {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .day-close {
+    width: 100%;
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .day-close:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
   }
   .cards-grid {
     display: flex;
@@ -389,7 +512,7 @@
     .filter-row { flex-direction: column; align-items: stretch; }
     .btn-export { margin-inline-start: 0; justify-content: center; }
     .arch-stats { flex-direction: column; }
-    .day-header { top: 62px; }
+    .arch-nav { padding: 10px 14px; }
   }
 </style>
 </head>
@@ -405,8 +528,8 @@
   </div>
   <div class="grow"></div>
   <div class="arch-tools">
-    <a class="chip" href="index.html" target="_blank" title="شاشة الاستقبال للمنفذ"><i class="ico" data-ic="screen"></i><span>شاشة المنفذ</span></a>
-    <a class="chip" href="send.html" target="_blank" title="لوحة المحررين"><i class="ico" data-ic="edit"></i><span>لوحة التحرير</span></a>
+    <a class="chip nav-link" href="index.html" target="_blank" title="شاشة الاستقبال للمنفذ"><i class="ico" data-ic="screen"></i><span>شاشة المنفذ</span></a>
+    <a class="chip nav-link" href="send.html" target="_blank" title="لوحة المحررين"><i class="ico" data-ic="edit"></i><span>لوحة التحرير</span></a>
   </div>
 </header>
 
@@ -481,8 +604,8 @@
   <div id="feedContent"></div>
 </main>
 
-<script src="config.js?v=4.16.0"></script>
-<script src="core.js?v=4.16.0"></script>
+<script src="config.js?v=4.16.1"></script>
+<script src="core.js?v=4.16.1"></script>
 <script>
 (function () {
   'use strict';
@@ -496,6 +619,7 @@
   var searchQuery = '';
   var authorQuery = '';
   var dateQuery = '';
+  var openDays = {}; // الأيام المفتوحة حالياً (افتراضياً كل الأيام مطوية)
 
   var feedContent = U.$('#feedContent');
   var searchInput = U.$('#searchInput');
@@ -545,6 +669,21 @@
   }
 
   function wireEvents() {
+    // إخفاء الهيدر بسلاسة مع التمرير لأسفل وإظهاره عند التمرير لأعلى أو العودة للقمة
+    var lastScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var navEl = document.querySelector('.arch-nav');
+    window.addEventListener('scroll', function () {
+      var curY = window.pageYOffset || document.documentElement.scrollTop || 0;
+      if (curY <= 15) {
+        navEl.classList.remove('nav-hidden');
+      } else if (curY > lastScrollY && curY > 50) {
+        navEl.classList.add('nav-hidden');
+      } else if (lastScrollY - curY > 10) {
+        navEl.classList.remove('nav-hidden');
+      }
+      lastScrollY = curY;
+    }, { passive: true });
+
     searchInput.addEventListener('input', function () {
       searchQuery = (searchInput.value || '').trim().toLowerCase();
       render();
@@ -578,12 +717,38 @@
     btnExportJson.addEventListener('click', exportJson);
 
     feedContent.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-copy-text]');
-      if (!btn) return;
-      var text = btn.getAttribute('data-copy-text');
-      U.copyText(text).then(function (ok) {
-        U.toast(ok ? 'تم نسخ النص إلى الحافظة' : 'تعذر النسخ التلقائي', ok ? 'ok' : 'warn');
-      });
+      // فتح أو طي خانة اليوم
+      var headBtn = e.target.closest('.day-head');
+      if (headBtn) {
+        var dayWrap = headBtn.closest('.day');
+        if (dayWrap) {
+          var dk = dayWrap.getAttribute('data-day');
+          var willOpen = !dayWrap.classList.contains('open');
+          openDays[dk] = willOpen;
+          dayWrap.classList.toggle('open', willOpen);
+        }
+        return;
+      }
+      // إغلاق خانة اليوم من زر الطي الداخلي
+      var closeBtn = e.target.closest('.day-close');
+      if (closeBtn) {
+        var dayWrap2 = closeBtn.closest('.day');
+        if (dayWrap2) {
+          var dk2 = dayWrap2.getAttribute('data-day');
+          openDays[dk2] = false;
+          dayWrap2.classList.remove('open');
+        }
+        return;
+      }
+      // نسخ النص
+      var copyBtn = e.target.closest('[data-copy-text]');
+      if (copyBtn) {
+        var text = copyBtn.getAttribute('data-copy-text');
+        U.copyText(text).then(function (ok) {
+          U.toast(ok ? 'تم نسخ النص إلى الحافظة' : 'تعذر النسخ التلقائي', ok ? 'ok' : 'warn');
+        });
+        return;
+      }
     });
   }
 
@@ -677,15 +842,26 @@
 
     dayKeys.forEach(function (dk) {
       var items = dayGroups[dk];
-      var groupEl = document.createElement('section');
-      groupEl.className = 'day-group';
+      // افتراضياً: أخبار كل يوم مطوية في خانة بتاريخ ذلك اليوم
+      // تُفتح تلقائياً فقط إذا كان هناك بحث نشط لتسهيل معاينة النتائج المباشرة
+      var isOpen = !!openDays[dk] || (!!searchQuery && searchQuery.length > 0);
 
-      var headEl = document.createElement('div');
-      headEl.className = 'day-header';
-      headEl.innerHTML =
+      var dayWrap = document.createElement('section');
+      dayWrap.className = 'day' + (isOpen ? ' open' : '');
+      dayWrap.setAttribute('data-day', dk);
+
+      var headBtn = document.createElement('button');
+      headBtn.type = 'button';
+      headBtn.className = 'day-head';
+      headBtn.innerHTML =
+        '<span class="dicon"><i class="ico" data-ic="inbox"></i></span>' +
         '<span class="day-title">' + U.dayLabel(dk) + '</span>' +
-        '<span class="day-badge">' + items.length + ' ' + (currentTab === 'bars' ? 'شريط' : 'خبر') + '</span>';
-      groupEl.appendChild(headEl);
+        '<span class="day-badge">' + items.length + ' ' + (currentTab === 'bars' ? 'شريط' : 'خبر') + '</span>' +
+        '<span class="car"><i class="ico" data-ic="chevron"></i></span>';
+      dayWrap.appendChild(headBtn);
+
+      var bodyEl = document.createElement('div');
+      bodyEl.className = 'day-body';
 
       var gridEl = document.createElement('div');
       gridEl.className = 'cards-grid';
@@ -721,8 +897,16 @@
         gridEl.appendChild(card);
       });
 
-      groupEl.appendChild(gridEl);
-      feedContent.appendChild(groupEl);
+      bodyEl.appendChild(gridEl);
+
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'day-close';
+      closeBtn.innerHTML = '<i class="ico" data-ic="chevron" style="transform:rotate(180deg)"></i><span>إغلاق هذا اليوم — طيّ الأخبار</span>';
+      bodyEl.appendChild(closeBtn);
+
+      dayWrap.appendChild(bodyEl);
+      feedContent.appendChild(dayWrap);
     });
 
     U.hydrateIcons(feedContent);
