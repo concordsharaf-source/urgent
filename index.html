@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.15.6" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.6" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.16.0" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.0" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -340,6 +340,7 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
+    <a class="chip" id="btnArchive" href="archive.html" target="_blank" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
     <a class="chip ico-only editor-only hidden" id="btnToEditor" href="send.html" aria-label="العودة إلى لوحة التحرير" title="العودة إلى لوحة التحرير"><i class="ico" data-ic="back"></i></a>
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
@@ -442,12 +443,6 @@
     } catch (e) {}
   })();
   </script>
-  <!-- أرشيف الأيام السابقة: خانة لكل يوم وتاريخها تُفتح بالضغط -->
-  <section class="archive" id="archive">
-    <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
-      <span class="cnt" id="archCount"></span></div>
-    <div id="archDays"></div>
-  </section>
 </main>
 
 <footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
@@ -455,8 +450,8 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.15.6"></script>
-<script src="core.js?v=4.15.6"></script>
+<script src="config.js?v=4.16.0"></script>
+<script src="core.js?v=4.16.0"></script>
 <script>
 (function () {
   'use strict';
@@ -504,7 +499,6 @@
   var connDot = U.$('#connDot'), connText = U.$('#connText');
 
   var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
-  var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
   var clockEl = U.$('#clock');
   var btnSound = U.$('#btnSound');
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
@@ -1474,28 +1468,31 @@
     store.remove(id);
   }
 
-  /* ---------- العرض ---------- */
+  /* ---------- العرض (خفيف وفوري — يقتصر على اليوم والأخبار المعلقة) ---------- */
   var nodes = {};
-  var dayNodes = {};                 // يوم ⇒ صندوقه في الأرشيف
-  var openDays = {};                 // الأيام المفتوحة حالياً
   var curToday = U.dayKeyOf(Date.now());
 
   function render() {
     var boots = document.querySelectorAll('[data-boot]');
     for (var bi = 0; bi < boots.length; bi++) boots[bi].remove();
     var items = store.list();
+    curToday = U.dayKeyOf(Date.now());
+
+    // الشاشة الحية تعرض أخبار اليوم الحالي + أي خبر أو شريط معلق بانتظار النسخ
+    // أرشيف الأيام السابقة بالكامل محفوظ في صفحة مستقلة سريعة (archive.html)
     var want = {};
-    items.forEach(function (it) { want[it.id] = true; });
+    var liveList = items.filter(function (it) {
+      if (!it || !it.id) return false;
+      return it.bar || isPending(it) || U.dayKeyOf(it.ts) === curToday;
+    });
+    liveList.forEach(function (it) { want[it.id] = true; });
 
     Object.keys(nodes).forEach(function (id) {
       if (!want[id]) { nodes[id].remove(); delete nodes[id]; delete S.fresh[id]; }
     });
 
-    /* ---- اليوم الحالي: كما كان (بالترتيب) ---- */
-    var g = U.groupByDay(items);
-    curToday = g.todayKey;
     var prev = null;
-    g.todayItems.forEach(function (it) {
+    liveList.forEach(function (it) {
       var node = nodes[it.id];
       if (!node) { node = buildCard(it); nodes[it.id] = node; }
       updateCard(node, it);
@@ -1506,95 +1503,11 @@
       prev = node;
     });
 
-    /* ---- الأيام السابقة: خانة لكل يوم قابلة للفتح والإغلاق ---- */
-    renderArchive(g);
-
-    document.documentElement.classList.toggle('has-saved', items.length > 0);
-    document.documentElement.classList.toggle('show-wait', items.length === 0);
-    emptyBox.classList.toggle('hidden', items.length > 0);
-    if (!items.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
-    if (items.length) updateHeaderCount(items);
-  }
-
-  function buildDay(key) {
-    var wrap = U.el('div', 'day');
-    wrap.setAttribute('data-day', key);
-    var head = U.el('button', 'day-head');
-    head.type = 'button';
-    head.innerHTML = U.ic('inbox', 18) + '<span class="dlabel"></span><span class="pill"></span>' +
-      '<span class="car">' + U.ic('chevron', 18) + '</span>';
-    wrap.appendChild(head);
-    var body = U.el('div', 'day-body');
-    var list = U.el('div', 'day-list');
-    body.appendChild(list);
-    var close = U.el('button', 'day-close');
-    close.type = 'button';
-    close.textContent = 'إغلاق القائمة';
-    close.setAttribute('data-day-close', key);
-    body.appendChild(close);
-    wrap.appendChild(body);
-    var d = { wrap: wrap, head: head, body: body, list: list, label: head.querySelector('.dlabel'), pill: head.querySelector('.pill') };
-    head.addEventListener('click', function () { toggleDay(key); });
-    close.addEventListener('click', function () { setDay(key, false); });
-    return d;
-  }
-
-  function setDay(key, open) {
-    openDays[key] = !!open;
-    var d = dayNodes[key];
-    if (!d) return;
-    d.wrap.classList.toggle('open', !!open);
-    U.txt(d.pill || d.head.querySelector('.pill'), open ? 'إغلاق' : ((d.count || 0) + ' خبر'));
-  }
-  function toggleDay(key) { setDay(key, !openDays[key]); }
-
-  function renderArchive(g) {
-    // احذف صناديق الأيام التي لم تعد تحتوي شيئاً
-    Object.keys(dayNodes).forEach(function (k) {
-      if (g.byDay[k]) return;
-      try { dayNodes[k].wrap.remove(); } catch (e) {}
-      delete dayNodes[k];
-      delete openDays[k];
-    });
-
-    g.days.forEach(function (k, idx) {
-      var d = dayNodes[k];
-      if (!d) { d = dayNodes[k] = buildDay(k); archDays.appendChild(d.wrap); }
-      else {
-        var expected = archDays.children[idx];
-        if (expected !== d.wrap) archDays.insertBefore(d.wrap, expected || null);
-      }
-      var list = g.byDay[k].slice().sort(function (a, b) { return b.ts - a.ts; });
-      d.count = list.length;
-      U.txt(d.label, U.dayLabel(k));
-      U.txt(d.pill, openDays[k] ? 'إغلاق' : (list.length + ' خبر'));
-      d.wrap.classList.toggle('open', !!openDays[k]);
-
-      var prv = null;
-      list.forEach(function (it) {
-        var node = nodes[it.id];
-        if (!node) { node = buildCard(it); nodes[it.id] = node; }
-        updateCard(node, it);
-        if (prv !== node) {
-          var exp = prv ? prv.nextSibling : d.list.firstChild;
-          if (exp !== node) d.list.insertBefore(node, exp);
-        }
-        prv = node;
-      });
-    });
-
-    /* القسم ظاهر دائماً: إن لم توجد أيام سابقة نُظهر تنبيهاً واضحاً */
-    if (!g.days.length) {
-      if (!archDays.querySelector('.arch-empty')) {
-        archDays.innerHTML = '<div class="arch-empty">لا توجد أخبار من أيام سابقة بعد — كل خبر يمرّ عليه يوم كامل ينتقل تلقائياً إلى هنا في خانة يومه وتاريخه.</div>';
-      }
-    } else {
-      var ae = archDays.querySelector('.arch-empty');
-      if (ae) ae.remove();
-    }
-    var total = 0;
-    g.days.forEach(function (k) { total += g.byDay[k].length; });
-    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر سابق') : 'فارغ حالياً');
+    document.documentElement.classList.toggle('has-saved', liveList.length > 0);
+    document.documentElement.classList.toggle('show-wait', liveList.length === 0);
+    emptyBox.classList.toggle('hidden', liveList.length > 0);
+    if (!liveList.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
+    if (liveList.length) updateHeaderCount(liveList);
   }
 
   function updateHeaderCount(items) {

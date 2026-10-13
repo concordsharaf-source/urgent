@@ -8,7 +8,7 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.15.6';
+var VERSION = 'yt-news-v4.16.0';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -60,12 +60,14 @@ function precacheDoc(c, cleanPath, filePath) {
 function shellUrl(pathname) {
   if (pathname === '/' || pathname === '/index.html') return './';
   if (pathname === '/send' || pathname === '/send.html') return './send';
+  if (pathname === '/archive' || pathname === '/archive.html') return './archive';
   return '';
 }
 
 function altShellUrl(pathname) {
   if (pathname === '/' || pathname === '/index.html') return './index.html';
   if (pathname === '/send' || pathname === '/send.html') return './send.html';
+  if (pathname === '/archive' || pathname === '/archive.html') return './archive.html';
   return '';
 }
 
@@ -78,7 +80,8 @@ self.addEventListener('install', function (e) {
       }));
       var pIndex = precacheDoc(c, './', './index.html');
       var pSend = precacheDoc(c, './send', './send.html');
-      return Promise.all([pAssets, pIndex, pSend]);
+      var pArchive = precacheDoc(c, './archive', './archive.html');
+      return Promise.all([pAssets, pIndex, pSend, pArchive]);
     })
   );
 });
@@ -118,7 +121,7 @@ self.addEventListener('fetch', function (e) {
 
   // صفحة التطبيق: من الذاكرة فوراً مهما كان رابط الفتح (?src=pwa أو ?sn=)
   // طلب التحديث (?sn= أو ?swu=) يذهب للشبكة حتى لا تُعاد نسخة قديمة في حلقة.
-  var isDoc = req.mode === 'navigate' || /\.html$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/send';
+  var isDoc = req.mode === 'navigate' || /\.html$/.test(url.pathname) || url.pathname === '/' || url.pathname === '/send' || url.pathname === '/archive';
   if (isDoc) {
     var shell = shellUrl(url.pathname);
     var altShell = altShellUrl(url.pathname);

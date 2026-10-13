@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.15.6" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.15.6" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.16.0" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.0" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -336,6 +336,7 @@
     <div class="controls">
       <span class="clock" id="clock">--:--:--</span>
       <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span><span class="ptxt"> بانتظار النسخ</span></button>
+      <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
       <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
       <a class="chip ico-only" id="linkDisplay" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
       <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
@@ -400,13 +401,6 @@
     <!-- الأخبار -->
     <div class="feed" id="feed"></div>
 
-    <!-- أرشيف الأيام السابقة -->
-    <section class="archive" id="archive">
-      <div class="arch-h"><i class="ico" data-ic="inbox"></i>أرشيف الأخبار — أيام سابقة
-        <span class="cnt" id="archCount"></span></div>
-      <div id="archDays"></div>
-    </section>
-
     <div class="danger-zone">
       <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
     </div>
@@ -418,8 +412,8 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.15.6"></script>
-<script src="core.js?v=4.15.6"></script>
+<script src="config.js?v=4.16.0"></script>
+<script src="core.js?v=4.16.0"></script>
 <script>
 (function () {
   'use strict';
@@ -474,8 +468,7 @@
   var btnBar = U.$('#btnBar'), barPanel = U.$('#barPanel'), barText = U.$('#barText');
   var barCounter = U.$('#barCounter'), barStatus = U.$('#barStatus');
   var feed = U.$('#feed'), todayNum = U.$('#todayNum');
-  var archBox = U.$('#archive'), archDays = U.$('#archDays'), archCount = U.$('#archCount');
-  var dayNodes = {}, openDays = {}, curToday = U.dayKeyOf(Date.now());
+  var curToday = U.dayKeyOf(Date.now());
   var connDot = U.$('#connDot'), connText = U.$('#connText');
   var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
   var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
@@ -1551,89 +1544,12 @@
     } else {
       todayList.forEach(function (it) { feed.appendChild(buildItem(it)); });
     }
-    renderArchive(g);
 
     updateDisplayChip();
     updatePendingChip();
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
     btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
-  }
-
-  /* ---------- أرشيف الأيام (خانة لكل يوم) ---------- */
-  function buildDay(key) {
-    var wrap = U.el('div', 'day');
-    wrap.setAttribute('data-day', key);
-    var head = U.el('button', 'day-head');
-    head.type = 'button';
-    head.innerHTML = U.ic('inbox', 18) + '<span class="dlabel"></span><span class="pill"></span>' +
-      '<span class="car">' + U.ic('chevron', 18) + '</span>';
-    wrap.appendChild(head);
-    var body = U.el('div', 'day-body');
-    var list = U.el('div', 'day-list');
-    body.appendChild(list);
-    var close = U.el('button', 'day-close');
-    close.type = 'button';
-    close.textContent = 'إغلاق القائمة — طيّ هذا اليوم';
-    close.addEventListener('click', function () { setDay(key, false); });
-    body.appendChild(close);
-    wrap.appendChild(body);
-    var d = { wrap: wrap, head: head, body: body, list: list, label: head.querySelector('.dlabel'), pill: head.querySelector('.pill') };
-    head.addEventListener('click', function () { setDay(key, !openDays[key]); });
-    return d;
-  }
-  function setDay(key, open) {
-    openDays[key] = !!open;
-    var d = dayNodes[key];
-    if (!d) return;
-    d.wrap.classList.toggle('open', !!open);
-    U.txt(d.pill, (d.count || 0) + ' خبر');          // العدد الإجمالي يبقى ظاهراً حتى واليوم مفتوح
-  }
-  function dayTotalsOf() {
-    var today = U.dayKeyOf(Date.now());
-    var map = {};
-    store.list().forEach(function (it) {
-      if (it.bar) return;
-      var k = U.dayKeyOf(it.ts);
-      if (k === today) return;
-      map[k] = (map[k] || 0) + 1;
-    });
-    return map;
-  }
-  function renderArchive(g) {
-    var dayTotals = dayTotalsOf();
-    Object.keys(dayNodes).forEach(function (k) {
-      if (g.byDay[k]) return;
-      try { dayNodes[k].wrap.remove(); } catch (e) {}
-      delete dayNodes[k]; delete openDays[k];
-    });
-    g.days.forEach(function (k, idx) {
-      var d = dayNodes[k];
-      if (!d) { d = dayNodes[k] = buildDay(k); archDays.appendChild(d.wrap); }
-      else {
-        var expected = archDays.children[idx];
-        if (expected !== d.wrap) archDays.insertBefore(d.wrap, expected || null);
-      }
-      var items2 = g.byDay[k].slice().sort(function (a, b) { return b.ts - a.ts; });
-      d.count = (dayTotals[k] != null) ? dayTotals[k] : items2.length;   // الإجمالي بغض النظر عن الفلتر أو الاستلام
-      U.txt(d.label, U.dayLabel(k));
-      d.wrap.classList.toggle('open', !!openDays[k]);
-      U.txt(d.pill, d.count + ' خبر');
-      d.list.innerHTML = '';
-      items2.forEach(function (it) { d.list.appendChild(buildItem(it)); });
-    });
-    /* القسم ظاهر دائماً: إن لم توجد أيام سابقة نُظهر تنبيهاً واضحاً */
-    if (!g.days.length) {
-      if (!archDays.querySelector('.arch-empty')) {
-        archDays.innerHTML = '<div class="arch-empty">لا توجد أخبار من أيام سابقة بعد — كل خبر يمرّ عليه يوم كامل ينتقل تلقائياً إلى هنا في خانة يومه وتاريخه.</div>';
-      }
-    } else {
-      var ae = archDays.querySelector('.arch-empty');
-      if (ae) ae.remove();
-    }
-    var total = 0;
-    g.days.forEach(function (k) { total += (dayTotals[k] != null ? dayTotals[k] : g.byDay[k].length); });
-    U.txt(archCount, g.days.length ? (g.days.length + ' يوم — ' + total + ' خبر') : 'فارغ حالياً');
   }
 
   function buildItem(it) {

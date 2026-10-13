@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0f1a" />
+<meta name="description" content="أرشيف الأخبار العاجلة والشريط الإخباري — اليمن اليوم" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>أرشيف الأخبار والشريط — اليمن اليوم</title>
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.16.0" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.0" /></noscript>
+<link rel="manifest" href="manifest.webmanifest" />
+<style>
+  :root {
+    --bg-page: #070b13;
+    --card-bg: #0d1527;
+    --border-card: rgba(255,255,255,0.08);
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #dc2626;
+    --accent-green: #16a34a;
+  }
+  body {
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Noto Kufi Arabic', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .arch-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(13,21,39,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .arch-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .arch-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  .arch-title h1 {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+  }
+  .arch-title p {
+    font-size: 12px;
+    margin: 2px 0 0;
+    color: var(--text-muted);
+  }
+  .grow { flex: 1; }
+  .arch-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .main-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+    width: 100%;
+    box-sizing: border-box;
+    flex: 1;
+  }
+  .search-section {
+    background: #0d1527;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-icon {
+    position: absolute;
+    right: 14px;
+    color: #64748b;
+    pointer-events: none;
+    display: flex;
+  }
+  .search-input {
+    width: 100%;
+    padding: 12px 42px 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    font: inherit;
+    font-size: 15px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .tabs {
+    display: flex;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .tab-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    padding: 7px 16px;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover { color: #f1f5f9; }
+  .tab-btn.active {
+    background: #1e293b;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  }
+  .tab-btn.active.bar-tab {
+    background: #15803d;
+    color: #fff;
+  }
+  .badge-count {
+    background: rgba(255,255,255,0.16);
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .select-filter {
+    background: rgba(0,0,0,0.35);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .btn-export {
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.15s;
+    margin-inline-start: auto;
+  }
+  .btn-export:hover {
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+  }
+  .day-group {
+    margin-bottom: 24px;
+  }
+  .day-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    position: sticky;
+    top: 68px;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  .day-title {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #f1f5f9;
+  }
+  .day-badge {
+    background: rgba(59,130,246,0.18);
+    color: #93c5fd;
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .arch-card {
+    background: #0d1527;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 6px 18px -8px rgba(0,0,0,0.4);
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .arch-card:hover {
+    border-color: rgba(255,255,255,0.18);
+  }
+  .arch-card.bar-card {
+    border-inline-start: 4px solid #16a34a;
+  }
+  .arch-card.urgent-card {
+    border-inline-start: 4px solid #dc2626;
+  }
+  .arch-card.note-card {
+    border-inline-start: 4px solid #2563eb;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .tag.urgent { background: #dc2626; }
+  .tag.note { background: #2563eb; }
+  .tag.bar { background: #16a34a; }
+  .card-author {
+    font-weight: 700;
+    color: #cbd5e1;
+  }
+  .card-time {
+    margin-inline-start: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-text {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.7;
+    margin: 0;
+    color: #f8fafc;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .card-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 12.5px;
+  }
+  .ack-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .ack-pill.copied {
+    background: rgba(34,197,94,0.14);
+    color: #86efac;
+    border: 1px solid rgba(34,197,94,0.25);
+  }
+  .ack-pill.pending {
+    background: rgba(239,68,68,0.14);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+  .btn-copy {
+    background: rgba(255,255,255,0.09);
+    color: #f1f5f9;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 5px 14px;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: auto;
+    transition: 0.15s;
+  }
+  .btn-copy:hover {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: #fff;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state i {
+    opacity: 0.4;
+    margin-bottom: 12px;
+  }
+  .empty-state h3 {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: #cbd5e1;
+  }
+  .empty-state p {
+    font-size: 13.5px;
+    margin: 0;
+  }
+  .arch-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    flex: 1;
+    background: #0d1527;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stat-val {
+    font-size: 22px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-lbl {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  @media (max-width: 768px) {
+    .filter-row { flex-direction: column; align-items: stretch; }
+    .btn-export { margin-inline-start: 0; justify-content: center; }
+    .arch-stats { flex-direction: column; }
+    .day-header { top: 62px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="arch-nav">
+  <div class="arch-brand">
+    <img class="arch-logo" src="assets/logo-320.png" alt="اليمن اليوم" />
+    <div class="arch-title">
+      <h1>أرشيف الأخبار والشريط</h1>
+      <p>غرفة الأخبار — السجل الشامل</p>
+    </div>
+  </div>
+  <div class="grow"></div>
+  <div class="arch-tools">
+    <a class="chip" href="index.html" target="_blank" title="شاشة الاستقبال للمنفذ"><i class="ico" data-ic="screen"></i><span>شاشة المنفذ</span></a>
+    <a class="chip" href="send.html" target="_blank" title="لوحة المحررين"><i class="ico" data-ic="edit"></i><span>لوحة التحرير</span></a>
+  </div>
+</header>
+
+<main class="main-container">
+  <!-- إحصاءات سريعة -->
+  <div class="arch-stats">
+    <div class="stat-card">
+      <div class="tag urgent" style="padding:8px"><i class="ico" data-ic="send" style="width:20px;height:20px"></i></div>
+      <div>
+        <div class="stat-val" id="totalNews">0</div>
+        <div class="stat-lbl">إجمالي الأخبار المؤرشفة</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="tag bar" style="padding:8px"><i class="ico" data-ic="inbox" style="width:20px;height:20px"></i></div>
+      <div>
+        <div class="stat-val" id="totalBars">0</div>
+        <div class="stat-lbl">إجمالي أشرطة الأخبار</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="tag note" style="padding:8px"><i class="ico" data-ic="check" style="width:20px;height:20px"></i></div>
+      <div>
+        <div class="stat-val" id="totalDays">0</div>
+        <div class="stat-lbl">عدد الأيام المحفوظة</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- البحث والفلترة -->
+  <section class="search-section">
+    <div class="search-input-wrap">
+      <span class="search-icon"><i class="ico" data-ic="search"></i></span>
+      <input type="text" id="searchInput" class="search-input" placeholder="ابحث في نص الخبر، الكلمات، أو اسم المحرر…" />
+    </div>
+
+    <div class="filter-row">
+      <div class="tabs">
+        <button type="button" class="tab-btn active" id="tabNews" data-tab="news">
+          <i class="ico" data-ic="send"></i>
+          <span>الأخبار والملاحظات</span>
+          <span class="badge-count" id="countNewsBadge">0</span>
+        </button>
+        <button type="button" class="tab-btn bar-tab" id="tabBars" data-tab="bars">
+          <i class="ico" data-ic="inbox"></i>
+          <span>أشرطة الأخبار</span>
+          <span class="badge-count" id="countBarsBadge">0</span>
+        </button>
+      </div>
+
+      <select id="authorFilter" class="select-filter">
+        <option value="">جميع المحررين</option>
+      </select>
+
+      <select id="dateFilter" class="select-filter">
+        <option value="">جميع الأيام</option>
+      </select>
+
+      <button type="button" class="btn-export" id="btnExportTxt" title="تصدير السجل كملف نصي">
+        <i class="ico" data-ic="copy"></i>
+        <span>تصدير ملف نصي (.txt)</span>
+      </button>
+
+      <button type="button" class="btn-export" id="btnExportJson" title="تصدير كملف بيانات نسخة احتياطية">
+        <i class="ico" data-ic="back"></i>
+        <span>تصدير نسخة احتياطية (.json)</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- حاوية القائمة -->
+  <div id="feedContent"></div>
+</main>
+
+<script src="config.js?v=4.16.0"></script>
+<script src="core.js?v=4.16.0"></script>
+<script>
+(function () {
+  'use strict';
+  var U = window.URGENT;
+  var cfg = U.config();
+  var room = U.room();
+  var BASE = 'urgent/' + room + '/';
+
+  var store = U.createStore({ room: room, limit: 1200 });
+  var currentTab = 'news'; // 'news' | 'bars'
+  var searchQuery = '';
+  var authorQuery = '';
+  var dateQuery = '';
+
+  var feedContent = U.$('#feedContent');
+  var searchInput = U.$('#searchInput');
+  var tabNews = U.$('#tabNews');
+  var tabBars = U.$('#tabBars');
+  var authorFilter = U.$('#authorFilter');
+  var dateFilter = U.$('#dateFilter');
+  var btnExportTxt = U.$('#btnExportTxt');
+  var btnExportJson = U.$('#btnExportJson');
+
+  var totalNewsEl = U.$('#totalNews');
+  var totalBarsEl = U.$('#totalBars');
+  var totalDaysEl = U.$('#totalDays');
+  var countNewsBadge = U.$('#countNewsBadge');
+  var countBarsBadge = U.$('#countBarsBadge');
+
+  // اتصال بالبث لتحديث الأرشيف لحظياً عند وصول أي خبر أو شريط
+  var bus = U.createBus({
+    base: BASE,
+    role: 'archive',
+    who: 'archive',
+    name: 'الأرشيف',
+    onMessage: function (topic, data, isEmpty) {
+      var rel = topic.slice(BASE.length);
+      if (rel.indexOf('news/') === 0) {
+        if (isEmpty) store.remove(rel.slice(5));
+        else if (data && data.t) store.applyNews(data);
+      } else if (rel.indexOf('note/') === 0) {
+        if (isEmpty) store.remove(rel.slice(5));
+        else if (data && data.t) store.applyNote(data);
+      } else if (rel.indexOf('bar/') === 0) {
+        if (isEmpty) store.remove(rel.slice(4));
+        else if (data && data.t) store.applyBar(data);
+      } else if (rel.indexOf('ack/') === 0) {
+        if (!isEmpty && data) store.applyAck(data);
+      }
+      render();
+    }
+  });
+
+  function init() {
+    store.load();
+    bus.connect();
+    wireEvents();
+    render();
+    U.hydrateIcons(document);
+  }
+
+  function wireEvents() {
+    searchInput.addEventListener('input', function () {
+      searchQuery = (searchInput.value || '').trim().toLowerCase();
+      render();
+    });
+
+    tabNews.addEventListener('click', function () {
+      currentTab = 'news';
+      tabNews.classList.add('active');
+      tabBars.classList.remove('active');
+      render();
+    });
+
+    tabBars.addEventListener('click', function () {
+      currentTab = 'bars';
+      tabBars.classList.add('active');
+      tabNews.classList.remove('active');
+      render();
+    });
+
+    authorFilter.addEventListener('change', function () {
+      authorQuery = authorFilter.value;
+      render();
+    });
+
+    dateFilter.addEventListener('change', function () {
+      dateQuery = dateFilter.value;
+      render();
+    });
+
+    btnExportTxt.addEventListener('click', exportTxt);
+    btnExportJson.addEventListener('click', exportJson);
+
+    feedContent.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-copy-text]');
+      if (!btn) return;
+      var text = btn.getAttribute('data-copy-text');
+      U.copyText(text).then(function (ok) {
+        U.toast(ok ? 'تم نسخ النص إلى الحافظة' : 'تعذر النسخ التلقائي', ok ? 'ok' : 'warn');
+      });
+    });
+  }
+
+  function getAllItems() {
+    return store.list().slice().sort(function (a, b) { return b.ts - a.ts; });
+  }
+
+  function syncFilters(items) {
+    // قائمة المحررين
+    var authors = {};
+    var dates = {};
+    items.forEach(function (it) {
+      if (it.author) authors[it.author] = true;
+      var dk = U.dayKeyOf(it.ts);
+      dates[dk] = true;
+    });
+
+    var curA = authorFilter.value;
+    authorFilter.innerHTML = '<option value="">جميع المحررين (' + Object.keys(authors).length + ')</option>';
+    Object.keys(authors).sort().forEach(function (a) {
+      var opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = a;
+      if (a === curA) opt.selected = true;
+      authorFilter.appendChild(opt);
+    });
+
+    var curD = dateFilter.value;
+    dateFilter.innerHTML = '<option value="">جميع الأيام (' + Object.keys(dates).length + ')</option>';
+    Object.keys(dates).sort().reverse().forEach(function (k) {
+      var opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = U.dayLabel(k);
+      if (k === curD) opt.selected = true;
+      dateFilter.appendChild(opt);
+    });
+  }
+
+  function render() {
+    var all = getAllItems();
+    var newsList = all.filter(function (it) { return !it.bar; });
+    var barsList = all.filter(function (it) { return !!it.bar; });
+
+    var g = U.groupByDay(all);
+    U.txt(totalNewsEl, String(newsList.length));
+    U.txt(totalBarsEl, String(barsList.length));
+    U.txt(totalDaysEl, String(g.days.length + (g.todayItems.length ? 1 : 0)));
+    U.txt(countNewsBadge, String(newsList.length));
+    U.txt(countBarsBadge, String(barsList.length));
+
+    syncFilters(all);
+
+    var targetList = (currentTab === 'bars') ? barsList : newsList;
+
+    // تطبيق الفلاتر
+    var filtered = targetList.filter(function (it) {
+      if (authorQuery && it.author !== authorQuery) return false;
+      if (dateQuery && U.dayKeyOf(it.ts) !== dateQuery) return false;
+      if (searchQuery) {
+        var txt = (it.text || '').toLowerCase();
+        var aut = (it.author || '').toLowerCase();
+        if (txt.indexOf(searchQuery) === -1 && aut.indexOf(searchQuery) === -1) return false;
+      }
+      return true;
+    });
+
+    feedContent.innerHTML = '';
+
+    if (!filtered.length) {
+      feedContent.innerHTML =
+        '<div class="empty-state">' +
+          '<i class="ico" data-ic="inbox" style="width:48px;height:48px"></i>' +
+          '<h3>لا توجد نتائج مطابقة للبحث</h3>' +
+          '<p>جرّب تغيير كلمات البحث أو اختيار تاريخ ومحرر مختلفين.</p>' +
+        '</div>';
+      U.hydrateIcons(feedContent);
+      return;
+    }
+
+    // تجميع باليوم
+    var dayGroups = {};
+    var dayKeys = [];
+    filtered.forEach(function (it) {
+      var dk = U.dayKeyOf(it.ts);
+      if (!dayGroups[dk]) {
+        dayGroups[dk] = [];
+        dayKeys.push(dk);
+      }
+      dayGroups[dk].push(it);
+    });
+
+    dayKeys.forEach(function (dk) {
+      var items = dayGroups[dk];
+      var groupEl = document.createElement('section');
+      groupEl.className = 'day-group';
+
+      var headEl = document.createElement('div');
+      headEl.className = 'day-header';
+      headEl.innerHTML =
+        '<span class="day-title">' + U.dayLabel(dk) + '</span>' +
+        '<span class="day-badge">' + items.length + ' ' + (currentTab === 'bars' ? 'شريط' : 'خبر') + '</span>';
+      groupEl.appendChild(headEl);
+
+      var gridEl = document.createElement('div');
+      gridEl.className = 'cards-grid';
+
+      items.forEach(function (it) {
+        var card = document.createElement('article');
+        card.className = 'arch-card ' + (it.bar ? 'bar-card' : (it.note ? 'note-card' : 'urgent-card'));
+
+        var isCopied = it.ack && (it.ack.kind === 'copied' || it.ack.kind === 'got');
+        var copyStatus = isCopied
+          ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i> نُسخ (' + U.fmtTime(it.ack.ts) + ') · ' + (it.ack.by || 'المنفذ') + '</span>'
+          : '<span class="ack-pill pending">بانتظار النسخ</span>';
+
+        var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
+        var tagLabel = it.bar ? 'شريط إخباري' : (it.note ? 'ملاحظة' : 'خبر عاجل');
+
+        card.innerHTML =
+          '<div class="card-top">' +
+            '<span class="tag ' + tagClass + '">' + tagLabel + '</span>' +
+            '<span class="card-author">' + (it.author || 'غرفة الأخبار') + '</span>' +
+            (it.editedAt ? '<span style="color:#f59e0b;font-size:11px">محدّث ' + U.fmtTime(it.editedAt) + '</span>' : '') +
+            '<span class="card-time">' + U.fmtTime(it.ts) + '</span>' +
+          '</div>' +
+          '<p class="card-text">' + escapeHtml(it.text || '') + '</p>' +
+          '<div class="card-foot">' +
+            copyStatus +
+            '<span style="color:#64748b;font-size:11.5px">' + countWords(it.text) + ' كلمة</span>' +
+            '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
+              '<i class="ico" data-ic="copy"></i><span>نسخ النص</span>' +
+            '</button>' +
+          '</div>';
+
+        gridEl.appendChild(card);
+      });
+
+      groupEl.appendChild(gridEl);
+      feedContent.appendChild(groupEl);
+    });
+
+    U.hydrateIcons(feedContent);
+  }
+
+  function countWords(s) {
+    var m = String(s || '').replace(/^\s+|\s+$/g, '').match(/[\u0600-\u06FF\w]+/g);
+    return m ? m.length : 0;
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function escapeAttr(s) {
+    return String(s || '').replace(/"/g, '&quot;');
+  }
+
+  function exportTxt() {
+    var all = getAllItems();
+    var list = (currentTab === 'bars') ? all.filter(function (it) { return !!it.bar; }) : all.filter(function (it) { return !it.bar; });
+    if (!list.length) { U.toast('لا توجد بيانات لتصديرها', 'warn'); return; }
+
+    var title = currentTab === 'bars' ? 'أرشيف أشرطة الأخبار — اليمن اليوم' : 'أرشيف الأخبار العاجلة — اليمن اليوم';
+    var lines = [
+      '====================================================',
+      title,
+      'تاريخ التصدير: ' + new Date().toLocaleString('ar-YE'),
+      'إجمالي المحتوى: ' + list.length + (currentTab === 'bars' ? ' شريط' : ' خبر'),
+      '====================================================\n'
+    ];
+
+    var g = U.groupByDay(list);
+    var allDays = (g.todayItems.length ? [g.todayKey] : []).concat(g.days);
+    var dayMap = {};
+    list.forEach(function (it) {
+      var dk = U.dayKeyOf(it.ts);
+      (dayMap[dk] = dayMap[dk] || []).push(it);
+    });
+
+    Object.keys(dayMap).sort().reverse().forEach(function (dk) {
+      lines.push('\n### ' + U.dayLabel(dk) + ' (' + dayMap[dk].length + ' خبر)');
+      lines.push('----------------------------------------------------');
+      dayMap[dk].forEach(function (it, idx) {
+        var num = idx + 1;
+        var time = U.fmtTime(it.ts);
+        var auth = it.author || 'غرفة الأخبار';
+        var kind = it.bar ? '[شريط]' : (it.note ? '[ملاحظة]' : '[عاجل]');
+        lines.push(num + '. ' + kind + ' (' + time + ' - ' + auth + '):');
+        lines.push(it.text);
+        lines.push('');
+      });
+    });
+
+    var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    downloadBlob(blob, (currentTab === 'bars' ? 'archive-bars-' : 'archive-news-') + Date.now() + '.txt');
+    U.toast('تم تحميل ملف الأرشيف النصي', 'ok');
+  }
+
+  function exportJson() {
+    var all = getAllItems();
+    if (!all.length) { U.toast('لا توجد بيانات لتصديرها', 'warn'); return; }
+    var data = {
+      channel: (cfg.channel && cfg.channel.title) || 'اليمن اليوم',
+      exportedAt: new Date().toISOString(),
+      count: all.length,
+      items: all
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+    downloadBlob(blob, 'urgent-archive-backup-' + Date.now() + '.json');
+    U.toast('تم تصدير النسخة الاحتياطية كملف JSON', 'ok');
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+  }
+
+  init();
+})();
+</script>
+
+</body>
+</html>
