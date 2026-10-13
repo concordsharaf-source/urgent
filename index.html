@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.16.2" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.2" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -147,32 +147,19 @@
     color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
   .alarmbar .abtn:hover{background:rgba(255,255,255,.24)}
 
-  /* ===== أرشيف الأيام (خانة لكل يوم، منسدلة بزر إغلاق) ===== */
-  .archive{margin:26px 0 10px;display:flex;flex-direction:column;gap:10px}
-  .arch-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#cbd5e1;
-    padding:0 4px 2px;border-bottom:1px dashed rgba(148,163,184,.28)}
-  .arch-h .cnt{font-size:12.5px;font-weight:700;color:var(--dim);margin-inline-start:auto}
-  .day{border:1px solid rgba(148,163,184,.22);border-radius:16px;background:rgba(148,163,184,.06);overflow:hidden}
-  .day-head{width:100%;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;
-    background:transparent;border:none;color:#e2e8f0;font:inherit;font-weight:800;font-size:15px;text-align:right}
-  .day-head:hover{background:rgba(148,163,184,.10)}
-  .day-head .car{margin-inline-start:auto;display:inline-flex;transition:transform .25s ease;opacity:.8}
-  .day.open .day-head .car{transform:rotate(180deg)}
-  .day-head .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
-    background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.3);color:#e2e8f0}
-  .day-body{display:none;padding:0 12px 12px;border-top:1px solid rgba(148,163,184,.16)}
-  .day.open .day-body{display:block;animation:dayOpen .3s ease-out}
-  @keyframes dayOpen{from{opacity:0;transform:translateY(-8px)}}
-  /* بطاقات الأرشيف: أصغر قليلاً لتسهيل المراجعة */
-  .day-body .card{border-radius:16px;padding:14px 16px 12px;box-shadow:none}
-  .day-body .card .text{font-size:calc(clamp(14px, 0.7vw + 10px, 20px) * var(--fs))}
-  .day-body .copy-btn,.day-body .recv-btn{padding:9px 18px;font-size:14.5px;min-height:40px}
-  .day-close{width:100%;margin-top:12px;padding:11px;border-radius:12px;cursor:pointer;font:inherit;
-    font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
-    border:1px solid rgba(148,163,184,.3)}
-  .day-close:hover{background:rgba(148,163,184,.22)}
-  .arch-empty{padding:16px 15px;border:1px dashed rgba(148,163,184,.34);border-radius:14px;
-    text-align:center;color:var(--dim);font-size:13.5px;font-weight:600;background:rgba(148,163,184,.04)}
+  /* ===== زر الأرشيف في أسفل الصفحة ===== */
+  .archive-bar{display:flex;justify-content:center;margin:32px 0 20px;padding:0 18px}
+  .btn-archive{display:inline-flex;align-items:center;gap:10px;padding:12px 28px;border-radius:14px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#ffffff!important;
+    text-decoration:none;font-size:14.5px;font-weight:700;transition:all .2s ease;cursor:pointer;
+    box-shadow:0 4px 14px -6px rgba(0,0,0,.4)}
+  .btn-archive:hover{background:rgba(255,255,255,.14);border-color:rgba(59,130,246,.5);transform:translateY(-1px);
+    box-shadow:0 8px 20px -6px rgba(0,0,0,.5);color:#ffffff!important}
+  .btn-archive .ico{color:#60a5fa}
+  @media(max-width:640px){
+    .archive-bar{margin:22px 0 16px}
+    .btn-archive{width:100%;justify-content:center;padding:12px 18px;font-size:13.5px}
+  }
 
   .editors{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 0;max-width:1240px;margin:0 auto}
   .editors .lbl{font-size:12.5px;color:var(--dim)}
@@ -340,7 +327,6 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
-    <a class="chip" id="btnArchive" href="archive.html" target="_blank" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
     <a class="chip ico-only editor-only hidden" id="btnToEditor" href="send.html" aria-label="العودة إلى لوحة التحرير" title="العودة إلى لوحة التحرير"><i class="ico" data-ic="back"></i></a>
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
@@ -445,13 +431,20 @@
   </script>
 </main>
 
+<div class="archive-bar">
+  <a class="btn-archive" id="btnArchive" href="archive.html" target="_blank" rel="noopener" title="أرشيف الأخبار والشريط — أيام سابقة">
+    <i class="ico" data-ic="inbox"></i>
+    <span>أرشيف الأخبار والشريط — أيام سابقة</span>
+  </a>
+</div>
+
 <footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
   <span class="vlbl">الإصدار</span>
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.16.1"></script>
-<script src="core.js?v=4.16.1"></script>
+<script src="config.js?v=4.16.2"></script>
+<script src="core.js?v=4.16.2"></script>
 <script>
 (function () {
   'use strict';
